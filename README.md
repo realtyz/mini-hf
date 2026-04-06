@@ -96,17 +96,28 @@ pnpm build
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `ADMIN_EMAIL` | Admin user email | `admin@example.com` |
-| `ADMIN_PASSWORD` | Admin user password | `admin` |
+| `DEFAULT_ADMIN_EMAIL` | Admin user email (auto-created on first startup) | `admin@example.com` |
+| `DEFAULT_ADMIN_PASSWORD` | Admin user password (auto-created on first startup) | `changeme` |
 | `JWT_SECRET_KEY` | Secret key for JWT signing | *(required)* |
-| `PG_PASSWORD` | PostgreSQL password | `123456` |
-| `PG_DATABASE` | PostgreSQL database name | `mini_hf` |
-| `REDIS_URL` | Redis connection URL | `redis://localhost:6379` |
+| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | JWT access token expiration time in minutes | `30` |
+| `JWT_ALGORITHM` | JWT signing algorithm | `HS256` |
+| `CONFIG_ENCRYPTION_KEY` | Encryption key for sensitive config values (falls back to JWT_SECRET_KEY if not set) | *optional* |
+| `PG_HOST` | PostgreSQL host | *(required)* |
+| `PG_PORT` | PostgreSQL port | *(required)* |
+| `PG_USERNAME` | PostgreSQL username | *(required)* |
+| `PG_PASSWORD` | PostgreSQL password | *(required)* |
+| `PG_DATABASE` | PostgreSQL database name | *(required)* |
+| `APP_NAME` | Application name | *(required)* |
+| `DEBUG` | Debug mode | `false` |
+| `REDIS_URL` | Redis connection URL | *(required)* |
 | `S3_ENDPOINT` | S3-compatible storage endpoint | *(required)* |
 | `S3_ACCESS_KEY` | S3 access key | *(required)* |
 | `S3_SECRET_KEY` | S3 secret key | *(required)* |
 | `S3_BUCKET_NAME` | S3 bucket name | *(required)* |
-| `INCOMPLETE_FILE_PATH` | Temp download directory | `./data/incomplete` |
+| `S3_REGION` | S3 region | `us-east-1` |
+| `S3_USE_SSL` | Use SSL for S3 connection | `false` |
+| `S3_VERIFY_SSL` | Verify SSL certificate for S3 | `false` |
+| `INCOMPLETE_FILE_PATH` | Temp download directory | *(required)* |
 
 ### Frontend Environment
 

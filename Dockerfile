@@ -28,19 +28,7 @@ COPY packages/mgmt_server/ packages/mgmt_server/
 COPY packages/hf_server/ packages/hf_server/
 COPY packages/worker/ packages/worker/
 
-# 创建虚拟环境并安装所有依赖
-# 不使用 workspace 模式，直接逐个安装包
-RUN uv venv && \
-    . .venv/bin/activate && \
-    uv pip install -e packages/core && \
-    uv pip install -e packages/cache && \
-    uv pip install -e packages/database && \
-    uv pip install -e packages/storage && \
-    uv pip install -e packages/services && \
-    uv pip install -e packages/mgmt_server && \
-    uv pip install -e packages/hf_server && \
-    uv pip install -e packages/worker && \
-    uv pip install alembic psycopg2-binary loguru
+RUN uv sync --locked --all-packages
 
 # 暴露两个服务端口（worker 不需要端口）
 EXPOSE 9800 9801
