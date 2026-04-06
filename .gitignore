@@ -1,0 +1,13 @@
+__pycache__
+.venv
+dist
+**.local
+.pytest_cache
+
+
+# Git worktrees
+.worktrees/
+
+.claude
+
+.ruff_cache

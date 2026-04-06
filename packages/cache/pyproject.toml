@@ -1,0 +1,26 @@
+[project]
+name = "cache"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "realtyz", email = "realtyz@outlook.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "redis>=7.3.0",
+    "core",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+]
+
+[tool.uv.sources]
+core = { workspace = true }

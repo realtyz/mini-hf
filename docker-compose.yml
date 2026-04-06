@@ -1,0 +1,131 @@
+version: "3.8"
+
+services:
+  db-init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mini-hf/backend:${VERSION:-latest}
+    command: ["uv", "run", "alembic", "upgrade", "head"]
+    env_file:
+      - .env
+    environment:
+      - PG_HOST=postgres
+      - PG_PORT=5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  mgmt-server:
+    image: mini-hf/backend:${VERSION:-latest}
+    command: ["uv", "run", "python", "-m", "mgmt_server.main"]
+    ports:
+      - "9800:9800"
+    env_file:
+      - .env
+    environment:
+      - PG_HOST=postgres
+      - PG_PORT=5432
+      - REDIS_URL=redis://redis:6379
+      - INCOMPLETE_FILE_PATH=/tmp/mini-hf
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    volumes:
+      - ${INCOMPLETE_FILE_PATH:-./data/incomplete}:/tmp/mini-hf
+
+  hf-server:
+    image: mini-hf/backend:${VERSION:-latest}
+    command: ["uv", "run", "python", "-m", "hf_server.main"]
+    ports:
+      - "9801:9801"
+    env_file:
+      - .env
+    environment:
+      - PG_HOST=postgres
+      - PG_PORT=5432
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+
+  worker:
+    image: mini-hf/backend:${VERSION:-latest}
+    command: ["uv", "run", "python", "-m", "worker.main"]
+    env_file:
+      - .env
+    environment:
+      - PG_HOST=postgres
+      - PG_PORT=5432
+      - REDIS_URL=redis://redis:6379
+      - INCOMPLETE_FILE_PATH=/tmp/mini-hf
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    volumes:
+      - /tmp/mini-hf:/tmp/mini-hf
+    deploy:
+      replicas: 1
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - VITE_API_BASE_URL=http://localhost:9800/api/v1
+        - VITE_HF_SERVER_URL=http://localhost:9801
+    image: mini-hf/frontend:${VERSION:-latest}
+    ports:
+      - "80:80"
+    depends_on:
+      - mgmt-server
+      - hf-server
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=${PG_USERNAME:-postgres}
+      - POSTGRES_PASSWORD=${PG_PASSWORD:-123456}
+      - POSTGRES_DB=${PG_DATABASE:-mini_hf}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${PG_USERNAME:-postgres} -d ${PG_DATABASE:-mini_hf}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

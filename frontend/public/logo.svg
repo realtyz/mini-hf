@@ -1,0 +1,19 @@
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 外层立方体 - 代表缓存存储 -->
+  <path d="M16 2L4 9V23L16 30L28 23V9L16 2Z" fill="currentColor" opacity="0.15"/>
+  <path d="M16 2L4 9V23L16 30L28 23V9L16 2Z" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- 内层立方体线条 -->
+  <path d="M16 17V30" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M16 17L4 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <path d="M16 17L28 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+  <!-- 中心节点 - 代表 AI 模型 -->
+  <circle cx="16" cy="17" r="3" fill="currentColor"/>
+  <!-- 连接线 - 代表神经网络 -->
+  <line x1="16" y1="14" x2="16" y2="8" stroke="currentColor" stroke-width="1"/>
+  <line x1="18.5" y1="18.5" x2="23" y2="21" stroke="currentColor" stroke-width="1"/>
+  <line x1="13.5" y1="18.5" x2="9" y2="21" stroke="currentColor" stroke-width="1"/>
+  <!-- 小节点 -->
+  <circle cx="16" cy="8" r="1.5" fill="currentColor" opacity="0.6"/>
+  <circle cx="23" cy="21" r="1.5" fill="currentColor" opacity="0.6"/>
+  <circle cx="9" cy="21" r="1.5" fill="currentColor" opacity="0.6"/>
+</svg>

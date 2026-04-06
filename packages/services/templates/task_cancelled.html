@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>任务已取消</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #f6f9fc;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          "Helvetica Neue", Arial, sans-serif;
+        line-height: 1.6;
+        color: #374151;
+      }
+      .wrapper {
+        padding: 40px 20px;
+      }
+      .card {
+        max-width: 560px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+        overflow: hidden;
+      }
+      .brand {
+        text-align: center;
+        padding: 28px 24px 12px;
+      }
+      .brand-logo {
+        font-size: 22px;
+        font-weight: 700;
+        color: #111827;
+        letter-spacing: -0.5px;
+      }
+      .header {
+        background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+        color: #ffffff;
+        padding: 32px 24px;
+        text-align: center;
+      }
+      .header-icon {
+        font-size: 40px;
+        margin-bottom: 8px;
+      }
+      .header-title {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 600;
+      }
+      .content {
+        padding: 32px;
+      }
+      .content p {
+        margin: 0 0 16px;
+        font-size: 15px;
+        color: #4b5563;
+      }
+      .info-card {
+        background-color: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 12px;
+        padding: 20px;
+        margin-top: 20px;
+      }
+      .info-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #fef3c7;
+      }
+      .info-item:last-child {
+        border-bottom: none;
+      }
+      .info-label {
+        color: #92400e;
+        font-weight: 500;
+        font-size: 14px;
+      }
+      .info-value {
+        color: #b45309;
+        font-weight: 500;
+        font-size: 14px;
+        text-align: right;
+        max-width: 55%;
+        word-break: break-word;
+      }
+      .footer {
+        text-align: center;
+        padding: 24px;
+        color: #9ca3af;
+        font-size: 12px;
+        border-top: 1px solid #f3f4f6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <div class="card">
+        <div class="brand">
+          <div class="brand-logo">Mini-HF</div>
+        </div>
+        <div class="header">
+          <div class="header-icon">⚠️</div>
+          <h1 class="header-title">任务已取消</h1>
+        </div>
+        <div class="content">
+          <p>您好，</p>
+          <p>您提交的下载任务已被取消。</p>
+          <div class="info-card">
+            <div class="info-item">
+              <span class="info-label">仓库</span>
+              <span class="info-value">{{ task.repo_id }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">类型</span>
+              <span class="info-value">{{ task.repo_type }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">版本</span>
+              <span class="info-value">{{ task.revision }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="footer">此邮件由 mini-hf 系统自动发送，请勿回复。</div>
+      </div>
+    </div>
+  </body>
+</html>

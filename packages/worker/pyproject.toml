@@ -1,0 +1,26 @@
+[project]
+name = "worker"
+version = "0.1.0"
+description = "Background task worker for downloading and uploading models and datasets"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "core",
+    "database",
+    "httpx>=0.28.1",
+    "storage",
+    "services",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/worker"]
+
+[tool.uv.sources]
+core = { workspace = true }
+database = { workspace = true }
+storage = { workspace = true }
+services = { workspace = true }

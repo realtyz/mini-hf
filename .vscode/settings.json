@@ -1,0 +1,15 @@
+{
+  "python.analysis.extraPaths": [
+    "packages/core/src",
+    "packages/database/src",
+    "packages/huggingface/src",
+    "packages/logging/src",
+    "packages/services/src",
+    "packages/storage/src",
+    "packages/cache/src",
+    "packages/worker/src",
+    "packages/mgmt_server/src",
+    "packages/hf_server/src"
+  ],
+  "python.analysis.autoImportCompletions": true
+}
