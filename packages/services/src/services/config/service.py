@@ -157,6 +157,106 @@ class ConfigService:
         """Get the underlying ConfigManager for direct access."""
         return self._provider
 
+    @property
+    def config_manager(self) -> ConfigProvider:
+        """Get the underlying ConfigManager for direct access (alias for manager)."""
+        return self._provider
+
+    async def get(self, key: str, default: str = "") -> str:
+        """Get a configuration value with caching.
+
+        Args:
+            key: Configuration key
+            default: Default value if not found
+
+        Returns:
+            Configuration value or default
+        """
+        return await self._provider.get(key, default)
+
+    async def get_int(self, key: str, default: int = 0) -> int:
+        """Get a configuration value as integer.
+
+        Args:
+            key: Configuration key
+            default: Default value if not found or invalid
+
+        Returns:
+            Configuration value as integer
+        """
+        return await self._provider.get_int(key, default)
+
+    async def get_bool(self, key: str, default: bool = False) -> bool:
+        """Get a configuration value as boolean.
+
+        Args:
+            key: Configuration key
+            default: Default value if not found
+
+        Returns:
+            Configuration value as boolean
+        """
+        return await self._provider.get_bool(key, default)
+
+    async def get_float(self, key: str, default: float = 0.0) -> float:
+        """Get a configuration value as float.
+
+        Args:
+            key: Configuration key
+            default: Default value if not found or invalid
+
+        Returns:
+            Configuration value as float
+        """
+        return await self._provider.get_float(key, default)
+
+    async def get_by_prefix(self, prefix: str) -> dict[str, str]:
+        """Get all configuration values with a given key prefix.
+
+        Args:
+            prefix: Key prefix to filter by
+
+        Returns:
+            Dictionary of key-value pairs (with prefix stripped)
+        """
+        return await self._provider.get_by_prefix(prefix)
+
+    async def set(
+        self,
+        key: str,
+        value: str,
+        category: str = "general",
+        description: str | None = None,
+        is_sensitive: bool = False,
+    ) -> None:
+        """Set a configuration value.
+
+        Args:
+            key: Configuration key
+            value: Configuration value
+            category: Configuration category
+            description: Optional description
+            is_sensitive: Whether the value should be encrypted
+        """
+        await self._provider.set(
+            key=key,
+            value=value,
+            category=category,
+            description=description,
+            is_sensitive=is_sensitive,
+        )
+
+    async def delete(self, key: str) -> bool:
+        """Delete a configuration.
+
+        Args:
+            key: Configuration key to delete
+
+        Returns:
+            True if deleted, False if not found
+        """
+        return await self._provider.delete(key)
+
     async def get_smtp_config(self) -> SMTPConfig:
         """Get SMTP configuration as a data class.
 

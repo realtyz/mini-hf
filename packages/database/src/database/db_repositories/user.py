@@ -114,3 +114,17 @@ class UserRepository:
         await self.session.commit()
         await self.session.refresh(user)
         return user
+
+    async def admin_exists(self) -> bool:
+        """Check if any admin user exists in the database.
+
+        Returns:
+            True if at least one admin user exists, False otherwise
+        """
+        result = await self.session.execute(
+            select(User).where(
+                User.role == "admin",
+                User.is_deleted == False
+            )
+        )
+        return result.scalar_one_or_none() is not None

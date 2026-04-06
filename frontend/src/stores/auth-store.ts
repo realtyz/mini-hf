@@ -82,12 +82,26 @@ export const useAuthStore = create<AuthState>()(
     {
       name: 'auth-storage', // localStorage key
       storage: createJSONStorage(() => localStorage),
-      // 持久化 token 和 refreshToken，用户信息不持久化
+      // 持久化 token 相关状态，用户信息不持久化
       partialize: (state) => ({
         token: state.token,
         refreshToken: state.refreshToken,
         tokenExpiresAt: state.tokenExpiresAt,
+        isAuthenticated: state.isAuthenticated,
       }),
+      // 重新水化后验证状态一致性
+      onRehydrateStorage: () => (state) => {
+        if (state) {
+          // 如果有 token 但 isAuthenticated 为 false，自动修正
+          if (state.token && !state.isAuthenticated) {
+            state.isAuthenticated = true
+          }
+          // 如果没有 token 但 isAuthenticated 为 true，自动修正
+          if (!state.token && state.isAuthenticated) {
+            state.isAuthenticated = false
+          }
+        }
+      },
     }
   )
 )

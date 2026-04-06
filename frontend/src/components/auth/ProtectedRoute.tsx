@@ -63,13 +63,13 @@ export function ProtectedRoute({
   fallback,
 }: ProtectedRouteProps) {
   const location = useLocation()
-  const { isAuthenticated, token } = useAuthStore()
+  const { token } = useAuthStore()
 
   // 使用 React Query 获取当前用户信息（自动处理缓存）
   const { isLoading, error } = useCurrentUser()
 
-  // 未认证：重定向到登录页
-  if (!isAuthenticated || !token) {
+  // 未认证：重定向到登录页（主要依据 token 是否存在）
+  if (!token) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
 

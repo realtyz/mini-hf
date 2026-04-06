@@ -35,9 +35,8 @@ class Settings(BaseSettings):
     REDIS_URL: str
 
     # Admin user settings (for auto-creation on first startup)
-    ADMIN_EMAIL: str
-    ADMIN_PASSWORD: str
-    ADMIN_NAME: str
+    DEFAULT_ADMIN_EMAIL: str = "admin@example.com"
+    DEFAULT_ADMIN_PASSWORD: str = "changeme"
 
     INCOMPLETE_FILE_PATH: str
 

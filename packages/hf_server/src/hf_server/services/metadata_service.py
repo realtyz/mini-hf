@@ -3,7 +3,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.db_models.hf_metadata import HfRepoSnapshot, HfRepoTreeItem, SnapshotStatus
+from database.db_models import HfRepoSnapshot, HfRepoTreeItem, SnapshotStatus
 
 # Regex to match commit hash (40 hex characters)
 REGEX_COMMIT_HASH = re.compile(r"^[0-9a-f]{40}$")
