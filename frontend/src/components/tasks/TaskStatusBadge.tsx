@@ -34,7 +34,7 @@ const statusConfig: Record<
   running: {
     label: "进行中",
     variant: "info",
-    dotColor: "bg-sky-500",
+    dotColor: "bg-orange-500",
     isActive: true,
   },
   canceling: {

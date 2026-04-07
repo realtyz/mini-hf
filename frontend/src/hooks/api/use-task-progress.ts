@@ -8,7 +8,7 @@ import type { TaskProgressData, TaskStatus, ApiResponse } from '@/lib/api-types'
  * 获取任务文件级进度
  *
  * - 仅在任务状态为 running 时启用查询
- * - 任务运行时每 1 秒轮询一次
+ * - 任务运行时每 3 秒轮询一次
  * - 任务停止后停止轮询
  */
 export function useTaskProgress(
@@ -33,7 +33,7 @@ export function useTaskProgress(
     refetchInterval: () => {
       // 使用传入的 taskStatus 判断，确保第一次就能正确轮询
       // 第一次请求时 query.state.data 为 undefined，不能依赖它判断
-      return isRunning ? 1000 : false
+      return isRunning ? 3000 : false
     },
     staleTime: 1000,
     retry: (failureCount, error) => {

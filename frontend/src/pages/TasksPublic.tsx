@@ -146,13 +146,13 @@ export function TasksPublic() {
     queryKey: ["public-tasks"],
     queryFn: fetchPublicTasks,
     refetchInterval: (query) => {
-      // 如果有运行中的任务，每 3 秒刷新一次
+      // 如果有运行中的任务，每 5 秒刷新一次
       const tasks = query.state.data?.data;
       if (tasks?.some((t) => t.status?.toLowerCase() === "running")) {
-        return 3000;
+        return 5000;
       }
-      // 否则每 30 秒刷新一次
-      return 30000;
+      // 否则每 15 秒刷新一次
+      return 15000;
     },
   });
 
@@ -430,9 +430,9 @@ export function TasksPublic() {
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.98 }}
                     transition={{ duration: 0.3 }}
-                    className="rounded-xl border-2 border-dashed bg-muted/20 py-16"
+                    className="flex h-72 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/20"
                   >
-                    <div className="text-center">
+                    <div className="text-center px-6">
                       <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-muted/50">
                         <Inbox className="h-7 w-7 text-muted-foreground/60" />
                       </div>

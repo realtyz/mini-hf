@@ -119,7 +119,7 @@ export function ChartSection() {
           <Skeleton className="h-4 w-48 mt-2" />
         </CardHeader>
         <CardContent className="pt-4">
-          <Skeleton className="h-[280px] w-full" />
+          <Skeleton className="h-70 w-full" />
         </CardContent>
       </Card>
     )
@@ -187,7 +187,7 @@ export function ChartSection() {
         <CardContent className="pt-0">
           <ChartContainer
             config={chartConfig}
-            className="aspect-auto h-[260px] w-full"
+            className="aspect-auto h-65 w-full"
           >
             <BarChart
               data={trends}
