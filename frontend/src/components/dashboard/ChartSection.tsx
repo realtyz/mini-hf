@@ -18,7 +18,7 @@ import { motion } from 'framer-motion'
 import { useState } from 'react'
 
 // Color palette aligned with system badge colors:
-// emerald=success, sky=running, amber=pending, red=failed
+// emerald=success, amber=pending, red=failed
 const chartConfig = {
   completed: {
     label: '已完成',
@@ -27,10 +27,6 @@ const chartConfig = {
   failed: {
     label: '失败',
     color: 'hsl(0, 84%, 60%)', // red-500
-  },
-  running: {
-    label: '进行中',
-    color: 'hsl(199, 89%, 48%)', // sky-500
   },
   pending: {
     label: '等待中',
@@ -97,7 +93,6 @@ export function ChartSection() {
   const { trends, isLoading } = useTaskTrends()
   const [activeBars, setActiveBars] = useState<Record<string, boolean>>({
     completed: true,
-    running: true,
     pending: true,
     failed: true,
   })
@@ -110,11 +105,10 @@ export function ChartSection() {
   const totals = trends.reduce(
     (acc, day) => ({
       completed: acc.completed + day.completed,
-      running: acc.running + day.running,
       pending: acc.pending + day.pending,
       failed: acc.failed + day.failed,
     }),
-    { completed: 0, running: 0, pending: 0, failed: 0 }
+    { completed: 0, pending: 0, failed: 0 }
   )
 
   if (isLoading) {
@@ -156,12 +150,6 @@ export function ChartSection() {
                 onToggle={() => toggleBar('completed')}
               />
               <LegendItem
-                color="hsl(199, 89%, 48%)"
-                label="运行"
-                isActive={activeBars.running}
-                onToggle={() => toggleBar('running')}
-              />
-              <LegendItem
                 color="hsl(38, 92%, 50%)"
                 label="等待"
                 isActive={activeBars.pending}
@@ -182,11 +170,6 @@ export function ChartSection() {
               label="总完成"
               value={totals.completed}
               color="hsl(160, 84%, 39%)"
-            />
-            <StatBadge
-              label="运行中"
-              value={totals.running}
-              color="hsl(199, 89%, 48%)"
             />
             <StatBadge
               label="待处理"
@@ -245,14 +228,6 @@ export function ChartSection() {
                 <Bar
                   dataKey="completed"
                   fill="hsl(160, 84%, 39%)"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={40}
-                />
-              )}
-              {activeBars.running && (
-                <Bar
-                  dataKey="running"
-                  fill="hsl(199, 89%, 48%)"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={40}
                 />

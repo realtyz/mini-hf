@@ -26,7 +26,7 @@ export function useUsers(pagination?: PaginationParams) {
         params.append('page_size', String(pagination.page_size))
 
       const queryString = params.toString()
-      const url = `/user/${queryString ? `?${queryString}` : ''}`
+      const url = `/user/list${queryString ? `?${queryString}` : ''}`
 
       const response = await api.get<ApiResponse<PaginatedResponse<UserResponse>>>(url)
       return response.data

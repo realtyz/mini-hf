@@ -7,7 +7,7 @@ from loguru import logger
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from mgmt_server.api.deps import DbDep
-from mgmt_server.api.v1.endpoints.users import AdminUserDep
+from mgmt_server.api.v1.endpoints.user import AdminUserDep
 from mgmt_server.api.v1.schemas.configs import (
     AnnouncementConfigResponse,
     AnnouncementConfigResponseWrapper,

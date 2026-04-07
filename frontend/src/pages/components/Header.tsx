@@ -20,6 +20,7 @@ import { Logo } from "@/components/shared/Logo";
 import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { landingContent } from "@/constants/landing";
 import { useAuthStore } from "@/stores/auth-store";
+import { useCurrentUser } from "@/hooks/api/use-auth-queries";
 import { useTheme } from "@/components/theme-provider";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -174,6 +175,9 @@ export function Header({
   const [isOpen, setIsOpen] = useState(false);
   const { isAuthenticated, user } = useAuthStore();
   const location = useLocation();
+
+  // 确保用户信息已加载（刷新后从 API 获取）
+  useCurrentUser();
 
   const isDocs = variant === "docs";
   const isInConsole = location.pathname.startsWith("/console");

@@ -6,11 +6,6 @@
 
 设置 `HF_ENDPOINT` 环境变量后，HuggingFace 官方库（transformers、datasets、huggingface-hub 等）会自动将请求发送到 mini-hf 服务器，而非 HuggingFace 官方服务器。
 
-mini-hf 服务器会：
-1. 如果仓库已缓存，直接返回缓存文件
-2. 如果仓库未缓存，返回源站地址（此时仍从官方服务器下载）
-
-因此，**建议优先创建下载任务将需要的仓库缓存到本地**。
 
 ## 使用命令行工具
 

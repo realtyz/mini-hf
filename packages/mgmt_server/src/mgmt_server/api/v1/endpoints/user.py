@@ -158,7 +158,7 @@ async def update_my_password(
 # Admin endpoints
 
 
-@router.get("", response_model=UserListResponse)
+@router.get("/list", response_model=UserListResponse)
 async def list_users(
     admin_user: AdminUserDep,
     user_service: UserServiceDep,

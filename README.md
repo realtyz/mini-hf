@@ -4,7 +4,7 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
 
 ## Features
 
-- **HF Hub Compatible** — Drop-in replacement for `HF_ENDPOINT` with full API compatibility
+- **HF Hub Compatible** — Drop-in replacement for `HF_ENDPOINT` with common API compatibility
 - **Multi-Source Support** — Cache models from both HuggingFace and ModelScope
 - **Smart Version Management** — Automatically track model revisions with incremental updates
 - **Web Management UI** — Modern React-based dashboard for repository and task management
@@ -25,7 +25,7 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/your-org/mini-hf.git
+   git clone https://github.com/realtyz/mini-hf.git
    cd mini-hf
    ```
 

@@ -42,7 +42,7 @@ class TaskResponse(BaseModel):
     total_storage: int
     required_file_count: int
     total_file_count: int
-    repo_items: list
+    repo_items: list = []
     commit_hash: str | None
 
     # 实际下载统计（任务完成或失败后填充）

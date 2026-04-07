@@ -15,7 +15,7 @@ from database.db_models import RepoStatus
 from sqlalchemy import func, select
 from database.db_models import HfRepoProfile, HfRepoTreeItem
 from mgmt_server.api.deps import CurrentUserToken, DbDep, UserServiceDep
-from mgmt_server.api.v1.endpoints.users import AdminUserDep
+from mgmt_server.api.v1.endpoints.user import AdminUserDep
 from storage.client import s3_client
 from storage.utils.key_builder import build_blob_key
 from mgmt_server.api.v1.schemas.repos import (

@@ -16,8 +16,9 @@ from services.huggingface import RepoFile, RepoFolder, HuggingfaceService
 from mgmt_server.services.repo_service import RepoService
 
 from database.db_repositories.user import UserRepository
+from database.db_repositories.task import TaskRepository
 from mgmt_server.api.deps import CurrentUserToken, DbDep, UserServiceDep
-from mgmt_server.api.v1.endpoints.users import AdminUserDep, get_current_user
+from mgmt_server.api.v1.endpoints.user import AdminUserDep, CurrentUserDep, get_current_user
 from mgmt_server.api.v1.schemas import (
     AsyncPreviewTaskData,
     AsyncPreviewTaskResponse,
@@ -476,7 +477,7 @@ async def list_tasks(
             total_storage=t.total_storage,
             required_file_count=t.required_file_count,
             total_file_count=t.total_file_count,
-            repo_items=t.repo_items,
+            repo_items=t.repo_items or [],
             commit_hash=t.commit_hash,
         )
         for t in tasks
@@ -536,7 +537,7 @@ async def list_public_tasks(
             total_storage=t.total_storage,
             required_file_count=t.required_file_count,
             total_file_count=t.total_file_count,
-            repo_items=t.repo_items,
+            repo_items=t.repo_items or [],
             commit_hash=t.commit_hash,
         )
         for t in tasks
@@ -588,7 +589,7 @@ async def get_task(
             total_storage=task.total_storage,
             required_file_count=task.required_file_count,
             total_file_count=task.total_file_count,
-            repo_items=task.repo_items,
+            repo_items=task.repo_items or [],
             commit_hash=task.commit_hash,
         )
     )
@@ -928,7 +929,7 @@ async def create_repo_download_task(
             total_storage=task.total_storage,
             required_file_count=task.required_file_count,
             total_file_count=task.total_file_count,
-            repo_items=task.repo_items,
+            repo_items=task.repo_items or [],
             commit_hash=task.commit_hash,
         )
     )
@@ -1001,7 +1002,7 @@ async def review_task(
             total_storage=task.total_storage,
             required_file_count=task.required_file_count,
             total_file_count=task.total_file_count,
-            repo_items=task.repo_items,
+            repo_items=task.repo_items or [],
             commit_hash=task.commit_hash,
         )
     )
@@ -1117,7 +1118,7 @@ async def cancel_task(
             total_storage=updated_task.total_storage,
             required_file_count=updated_task.required_file_count,
             total_file_count=updated_task.total_file_count,
-            repo_items=updated_task.repo_items,
+            repo_items=updated_task.repo_items or [],
             commit_hash=updated_task.commit_hash,
         )
     )
@@ -1126,26 +1127,40 @@ async def cancel_task(
 @router.post("/{task_id}/pin", response_model=TaskDetailResponse)
 async def pin_task(
     task_id: int,
-    admin_user: AdminUserDep,
+    current_user: CurrentUserDep,
     db: DbDep,
 ) -> TaskDetailResponse:
     """Pin a pending task to give it higher priority.
 
-    Only admin users can pin tasks. Pinned tasks are executed before
+    Only task creator or admin users can pin tasks. Pinned tasks are executed before
     non-pinned tasks. When multiple tasks are pinned, the most recently
     pinned task is executed first (LIFO order).
 
     Args:
         task_id: Task ID to pin
-        admin_user: Current admin user (dependency enforces admin role)
+        current_user: Current authenticated user
         db: Database session
 
     Returns:
         Updated task information
 
     Raises:
-        HTTPException: If task not found, not in PENDING status, or user is not admin
+        HTTPException: If task not found, not in PENDING status, or user is not authorized
     """
+    # Check if user is authorized (creator or admin)
+    task_repo = TaskRepository(db)
+    task = await task_repo.get_by_id(task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found",
+        )
+    if task.creator_user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only task creator or admin can pin this task",
+        )
+
     task_service = TaskService()
 
     try:
@@ -1188,10 +1203,11 @@ async def pin_task(
             pinned_at=task.pinned_at,
             required_storage=task.required_storage,
             creator_user_id=task.creator_user_id,
+            creator_user=creator_user,
             total_storage=task.total_storage,
             required_file_count=task.required_file_count,
             total_file_count=task.total_file_count,
-            repo_items=task.repo_items,
+            repo_items=task.repo_items or [],
             commit_hash=task.commit_hash,
         )
     )
@@ -1200,25 +1216,39 @@ async def pin_task(
 @router.post("/{task_id}/unpin", response_model=TaskDetailResponse)
 async def unpin_task(
     task_id: int,
-    admin_user: AdminUserDep,
+    current_user: CurrentUserDep,
     db: DbDep,
 ) -> TaskDetailResponse:
     """Unpin a pinned task to remove its higher priority.
 
-    Only admin users can unpin tasks. This removes the pinned status from
+    Only task creator or admin users can unpin tasks. This removes the pinned status from
     a task, returning it to normal priority.
 
     Args:
         task_id: Task ID to unpin
-        admin_user: Current admin user (dependency enforces admin role)
+        current_user: Current authenticated user
         db: Database session
 
     Returns:
         Updated task information
 
     Raises:
-        HTTPException: If task not found, not in PENDING status, or user is not admin
+        HTTPException: If task not found, not in PENDING status, or user is not authorized
     """
+    # Check if user is authorized (creator or admin)
+    task_repo = TaskRepository(db)
+    task = await task_repo.get_by_id(task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found",
+        )
+    if task.creator_user_id != current_user.id and current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only task creator or admin can unpin this task",
+        )
+
     task_service = TaskService()
 
     try:
@@ -1261,10 +1291,11 @@ async def unpin_task(
             pinned_at=task.pinned_at,
             required_storage=task.required_storage,
             creator_user_id=task.creator_user_id,
+            creator_user=creator_user,
             total_storage=task.total_storage,
             required_file_count=task.required_file_count,
             total_file_count=task.total_file_count,
-            repo_items=task.repo_items,
+            repo_items=task.repo_items or [],
             commit_hash=task.commit_hash,
         )
     )
@@ -1403,7 +1434,7 @@ async def retry_task(
             total_storage=new_task.total_storage,
             required_file_count=new_task.required_file_count,
             total_file_count=new_task.total_file_count,
-            repo_items=new_task.repo_items,
+            repo_items=new_task.repo_items or [],
             commit_hash=new_task.commit_hash,
         )
     )
