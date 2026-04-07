@@ -1,6 +1,6 @@
 export const landingContent = {
   header: {
-    brand: "mini-hf",
+    brand: "MiniHF",
     navigation: [
       { label: "使用文档", href: "/docs", icon: "BookOpen" },
       { label: "仓库列表", href: "/repositories", icon: "Database" },
@@ -33,7 +33,7 @@ export const landingContent = {
     },
     {
       title: "统一出口",
-      description: "所有 HF 流量经由 mini-hf 中转，便于在网络边界统一管控外网访问",
+      description: "所有 HF 流量经由 MiniHF 中转，便于在网络边界统一管控外网访问",
       icon: "Shield",
     },
   ],
@@ -42,13 +42,13 @@ export const landingContent = {
     steps: [
       {
         number: "01",
-        title: "部署 mini-hf",
+        title: "部署 MiniHF",
         description: "启动服务，配置 PostgreSQL、Redis 和 S3 存储凭证",
       },
       {
         number: "02",
         title: "设置 HF_ENDPOINT",
-        description: "将 HF_ENDPOINT 指向你的 mini-hf 地址，其余不变",
+        description: "将 HF_ENDPOINT 指向你的 MiniHF 地址，其余不变",
       },
       {
         number: "03",
@@ -64,7 +64,7 @@ export const landingContent = {
   },
   codeExample: {
     title: "接入示例",
-    description: "三步切换到 mini-hf，已有脚本无需修改",
+    description: "三步切换到 MiniHF，已有脚本无需修改",
     code: `# 1. 安装 huggingface_hub
 pip install huggingface_hub
 
@@ -72,7 +72,7 @@ pip install huggingface_hub
 export HF_ENDPOINT=${import.meta.env.VITE_HF_SERVER_URL ?? "http://your-mini-hf-server"}
 
 # 3. 照常下载模型
-hf download meta-llama/Llama-2-7b-chat-hf`,
+hf download Qwen/Qwen3.5-4B`,
     language: "bash",
   },
   benefits: {

@@ -48,7 +48,7 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
 5. **Use with HuggingFace**
    ```bash
    export HF_ENDPOINT=http://localhost:9801
-   huggingface-cli download bert-base-uncased
+   hf download bert-base-uncased
    ```
 
 ## Development Setup

@@ -351,14 +351,22 @@ async def delete_repository(
     current_user: CurrentUserToken,
     user_service: UserServiceDep,
     db: DbDep,
+    hard: Annotated[
+        bool,
+        Query(
+            description="Hard delete: remove all database records including profile. Default is soft delete (preserve profile)."
+        ),
+    ] = False,
 ) -> dict:
     """Delete an entire cached repository.
 
     This will delete all snapshots and all blobs from S3.
-    Note: Individual snapshot deletion is no longer supported.
+    By default performs soft delete (preserves profile with CLEANED status).
+    Set hard=true to completely remove all database records.
 
     Args:
         repo_id: Repository ID (e.g., "facebook/bart-large")
+        hard: If true, hard delete (remove all records). If false, soft delete (preserve profile).
 
     Returns:
         Deletion result with details about deleted snapshots and blobs
@@ -401,7 +409,10 @@ async def delete_repository(
 
     # Execute deletion directly (no Worker involved)
     repo_service = RepoService()
-    result = await repo_service.delete_repository(repo_id, repo_type)
+    if hard:
+        result = await repo_service.hard_delete_repository(repo_id, repo_type)
+    else:
+        result = await repo_service.delete_repository(repo_id, repo_type)
 
     return result
 

@@ -87,6 +87,7 @@ services:
       args:
         - VITE_API_BASE_URL=http://localhost:9800/api/v1
         - VITE_HF_SERVER_URL=http://localhost:9801
+        - VITE_EMAIL_DOMAIN=minihf.com
     image: mini-hf/frontend:${VERSION:-latest}
     ports:
       - "80:80"

@@ -79,7 +79,7 @@ async function fetchPublicTasks(): Promise<TaskListResponse> {
   return api.get<TaskListResponse>("/task/list_public", {
     params: {
       hours: 168,
-      limit: 100,
+      limit: 1000,
     },
   });
 }

@@ -18,40 +18,40 @@
 export HF_ENDPOINT=http://your-server:9801
 
 # 下载模型
-hf download bert-base-uncased
+hf download Qwen/Qwen3.5-4B
 
 # 下载到指定目录
-hf download bert-base-uncased --local-dir ./models/bert
+hf download Qwen/Qwen3.5-4B --local-dir ./models/Qwen3.5-4B
 ```
 
 ### 下载数据集
 
 ```bash
 # 下载数据集
-hf download --repo-type dataset imdb
+hf download --repo-type dataset openai/gsm8k
 
 # 下载到指定目录
-hf download --repo-type dataset imdb --local-dir ./data/imdb
+hf download --repo-type dataset openai/gsm8k --local-dir ./data/gsm8k
 ```
 
 ### 下载特定文件
 
 ```bash
 # 下载单个文件
-hf download bert-base-uncased config.json
+hf download Qwen/Qwen3.5-4B config.json
 
 # 下载多个文件
-hf download bert-base-uncased config.json pytorch_model.bin
+hf download Qwen/Qwen3.5-4B config.json merges.txt
 ```
 
 ### 指定版本
 
 ```bash
 # 使用特定分支或 tag
-hf download bert-base-uncased --revision v1.0.0
+hf download Qwen/Qwen3.5-4B --revision v1.0.0
 
 # 使用 commit hash
-hf download bert-base-uncased --revision a0
+hf download Qwen/Qwen3.5-4B --revision a0
 ```
 
 ### 访问私有仓库
@@ -65,10 +65,10 @@ hf download your-org/private-model --token hf_xxxxxxxxxxxx
 
 ```bash
 # 只下载特定模式的文件
-hf download bert-base-uncased --include "*.safetensors"
+hf download Qwen/Qwen3.5-4B --include "*.safetensors"
 
 # 排除特定文件
-hf download bert-base-uncased --exclude "*.md"
+hf download Qwen/Qwen3.5-4B --exclude "*.md"
 ```
 
 ## 在 Python 代码中使用
@@ -82,8 +82,8 @@ os.environ["HF_ENDPOINT"] = "http://your-server:9801"
 from transformers import AutoModel, AutoTokenizer
 
 # 加载已缓存的模型
-model = AutoModel.from_pretrained("bert-base-uncased")
-tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+model = AutoModel.from_pretrained("Qwen/Qwen3.5-4B")
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3.5-4B")
 ```
 
 ### 使用 Datasets 加载数据集
@@ -95,7 +95,7 @@ os.environ["HF_ENDPOINT"] = "http://your-server:9801"
 from datasets import load_dataset
 
 # 加载已缓存的数据集
-dataset = load_dataset("imdb", split="train")
+dataset = load_dataset("openai/gsm8k", split="train")
 ```
 
 ### 使用 huggingface-hub 下载文件
@@ -108,7 +108,7 @@ from huggingface_hub import hf_hub_download
 
 # 下载单个文件
 file_path = hf_hub_download(
-    repo_id="bert-base-uncased",
+    repo_id="Qwen/Qwen3.5-4B",
     filename="config.json"
 )
 ```
@@ -119,14 +119,8 @@ file_path = hf_hub_download(
 from transformers import AutoModel
 
 model = AutoModel.from_pretrained(
-    "bert-base-uncased",
+    "Qwen/Qwen3.5-4B",
     revision="v1.0.0"  # 使用特定 tag
-)
-
-# 或使用 commit hash
-model = AutoModel.from_pretrained(
-    "bert-base-uncased",
-    revision="a0"
 )
 ```
 

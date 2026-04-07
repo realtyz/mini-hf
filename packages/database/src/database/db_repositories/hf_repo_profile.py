@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.db_models import HfRepoProfile, HfRepoSnapshot, RepoStatus
+from database.db_models import HfRepoProfile, HfRepoSnapshot, RepoStatus, SnapshotStatus
 
 
 class HfRepoProfileRepository:
@@ -93,7 +93,19 @@ class HfRepoProfileRepository:
         profile = await self.get_or_create_profile(repo_id, repo_type)
 
         if is_new_commit:
-            profile.cached_commits += 1
+            # Query actual active snapshot count instead of incrementing
+            count_stmt = (
+                select(func.count())
+                .select_from(
+                    select(HfRepoSnapshot).where(
+                        HfRepoSnapshot.repo_id == repo_id,
+                        HfRepoSnapshot.repo_type == repo_type,
+                        HfRepoSnapshot.status == SnapshotStatus.ACTIVE,
+                    )
+                )
+            )
+            count_result = await self._session.execute(count_stmt)
+            profile.cached_commits = count_result.scalar() or 0
 
         # 首次缓存时设置 first_cached_at
         if profile.first_cached_at is None:

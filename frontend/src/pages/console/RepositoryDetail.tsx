@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router'
-import { ArrowLeft, Box, Database, Download, GitCommit, ChevronRight, Trash2, Loader2, HardDrive, Calendar, Clock, Copy, Check } from 'lucide-react'
+import { ArrowLeft, Box, Database, Download, GitCommit, ChevronRight, Trash2, Loader2, HardDrive, Calendar, Clock, Copy, Check, AlertTriangle } from 'lucide-react'
 import { RepoTreeViewer } from '@/components/repo-tree-viewer'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -114,6 +116,7 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
   // 对话框状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [hardDelete, setHardDelete] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -149,6 +152,7 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
   // 删除仓库
   const handleDeleteClick = () => {
     setDeleteDialogOpen(true)
+    setHardDelete(false)
   }
 
   const handleConfirmDelete = async () => {
@@ -156,8 +160,8 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
     setIsProcessing(true)
     try {
       const endpoint = `/hf_repo/${encodeURIComponent(repoId)}`
-      await api.delete(endpoint)
-      toast.success('仓库已删除')
+      await api.delete(endpoint, { params: { hard: hardDelete } })
+      toast.success(hardDelete ? '仓库已彻底删除' : '仓库已删除')
       setDeleteDialogOpen(false)
       setIsLeaving(true)
       setTimeout(() => navigate(backPath), 300)
@@ -249,9 +253,9 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
         {showActions && (
           <div className="flex gap-2 shrink-0">
             <Button
-              variant="outline"
+              variant="destructive"
               size="sm"
-              className="text-[13px] border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:border-red-800/50 dark:text-red-400 dark:hover:bg-red-950/40 dark:hover:border-red-700 cursor-pointer"
+              className="text-[13px] cursor-pointer"
               onClick={handleDeleteClick}
               disabled={isProcessing}
             >
@@ -381,9 +385,40 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
           <AlertDialogHeader>
             <AlertDialogTitle className="text-left">确认删除仓库</AlertDialogTitle>
             <AlertDialogDescription className="text-left">
-              您即将删除仓库 <span className="font-semibold text-foreground">{repo.repo_id}</span>。此操作不可撤销，所有缓存的文件和版本数据将被永久删除。
+              您即将删除仓库 <span className="font-semibold text-foreground">{repo.repo_id}</span>。{!hardDelete && '此操作将删除所有缓存的文件和版本数据。'}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="py-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="hard-delete"
+                checked={hardDelete}
+                onCheckedChange={(checked) => setHardDelete(checked === true)}
+              />
+              <Label
+                htmlFor="hard-delete"
+                className="flex-1 cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">彻底删除</span>
+                  <span className="text-xs text-muted-foreground">(同时删除数据库记录)</span>
+                </div>
+              </Label>
+            </div>
+            {hardDelete && (
+              <div className="mt-3 ml-6 space-y-1">
+                <div className="flex items-start gap-2 text-xs text-destructive">
+                  <AlertTriangle className="size-3 shrink-0 mt-0.5" />
+                  <span>此操作将从数据库完全移除仓库记录，所有数据将永久丢失！</span>
+                </div>
+                <ul className="ml-5 text-xs text-muted-foreground space-y-1 list-disc">
+                  <li>从数据库完全移除仓库记录</li>
+                  <li>从数据库删除所有文件树记录</li>
+                  <li>从数据库删除所有版本快照</li>
+                </ul>
+              </div>
+            )}
+          </div>
           <AlertDialogFooter className="flex-row gap-3 sm:justify-end">
             <AlertDialogCancel
               disabled={isProcessing}
@@ -394,17 +429,20 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
             <AlertDialogAction
               onClick={handleConfirmDelete}
               disabled={isProcessing}
-              className="flex-1 sm:flex-initial sm:min-w-25 border border-red-300 bg-transparent text-red-600 hover:bg-red-50 hover:border-red-400 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/50"
+              className={cn(
+                "flex-1 sm:flex-initial sm:min-w-25",
+                hardDelete ? "" : "border border-red-300 bg-transparent text-red-600 hover:bg-red-50 hover:border-red-400 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/50"
+              )}
             >
               {isProcessing ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  删除中...
+                  {hardDelete ? "彻底删除中..." : "删除中..."}
                 </>
               ) : (
                 <>
                   <Trash2 className="mr-2 h-4 w-4" />
-                  确认删除
+                  {hardDelete ? "确认彻底删除" : "确认删除"}
                 </>
               )}
             </AlertDialogAction>

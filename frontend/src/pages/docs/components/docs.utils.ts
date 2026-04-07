@@ -1,5 +1,6 @@
 import type { DocMeta, TocItem } from './docs.types'
 import { defaultDocs } from './docs.data'
+import { default as Slugger } from 'github-slugger'
 
 export function getDocList(): DocMeta[] {
   return defaultDocs.sort((a, b) => a.order - b.order)
@@ -30,23 +31,14 @@ export async function loadDocContent(slug: string): Promise<string> {
 export function extractToc(content: string): TocItem[] {
   const toc: TocItem[] = []
   const lines = content.split('\n')
-  const idCounts: Record<string, number> = {}
+  const slugger = new Slugger()
 
   for (const line of lines) {
     const match = line.match(/^(#{2,3})\s+(.+)$/)
     if (match) {
       const level = match[1].length
       const text = match[2].trim()
-      const baseId = text
-        .toLowerCase()
-        .replace(/[^\w\s-]/g, '')
-        .replace(/\s+/g, '-')
-
-      // Ensure unique IDs for duplicate headings
-      const count = idCounts[baseId] || 0
-      const id = count === 0 ? baseId : `${baseId}-${count}`
-      idCounts[baseId] = count + 1
-
+      const id = slugger.slug(text)
       toc.push({ id, text, level })
     }
   }

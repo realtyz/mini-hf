@@ -77,7 +77,6 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
 
     # Read HF endpoint configuration
     config_service = ConfigService(session)
-    endpoints = await config_service.get_hf_endpoints()
     default_endpoint = await config_service.get_hf_default_endpoint()
     logger.info("  -> Using HF endpoint: {}", default_endpoint)
 
