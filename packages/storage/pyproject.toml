@@ -5,7 +5,7 @@ description = "Storage utilities for model and dataset cache management"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "boto3>=1.42.59",
+    "boto3==1.20.1",
 ]
 
 [build-system]
