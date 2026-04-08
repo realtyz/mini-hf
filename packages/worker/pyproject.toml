@@ -3,7 +3,7 @@ name = "worker"
 version = "0.1.0"
 description = "Background task worker for downloading and uploading models and datasets"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "core",
     "database",

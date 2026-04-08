@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "HuggingFace-compatible API server for hub client integration (port 9801)"
 readme = "README.md"
 authors = [{ name = "realtyz", email = "realtyz@outlook.com" }]
-requires-python = ">=3.12"
+requires-python = ">=3.10,<3.13"
 dependencies = ["database", "fastapi[standard]>=0.133.1"]
 
 [build-system]

@@ -3,7 +3,7 @@ name = "database"
 version = "0.1.0"
 description = "SQLAlchemy models and repositories for user, config, HF metadata and task queue"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "asyncpg<0.31.0",
     "sqlalchemy>=2.0.47",

@@ -195,7 +195,7 @@ class TaskRepository:
 
         # 排序优先级：
         # 1. 置顶任务在最前面（后置顶的排前面）
-        # 2. 状态优先级：PENDING_APPROVAL (0) → RUNNING (1) → PENDING (2) → 其他 (3)
+        # 2. 状态优先级：RUNNING (0) → PENDING_APPROVAL (1) → PENDING (2) → 其他 (3)
         # 3. 同状态下：
         #    - PENDING_APPROVAL/RUNNING/PENDING: 按 reviewed_at 升序
         #    - 其他状态: 按 completed_at 降序
@@ -205,8 +205,8 @@ class TaskRepository:
                 Task.pinned_at.desc().nulls_last(),
                 # 2. 状态优先级分组
                 case(
-                    (Task.status == TaskStatus.PENDING_APPROVAL, 0),
-                    (Task.status == TaskStatus.RUNNING, 1),
+                    (Task.status == TaskStatus.RUNNING, 0),
+                    (Task.status == TaskStatus.PENDING_APPROVAL, 1),
                     (Task.status == TaskStatus.PENDING, 2),
                     else_=3
                 ).asc(),
