@@ -35,7 +35,6 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
     task?.status
   );
 
-  // 使用真实的进度数据或回退到任务级数据
   const progressInfo = progressData;
   const files = progressInfo?.files ?? [];
 

@@ -454,23 +454,27 @@ export function TasksPublic() {
                     className="grid gap-6 lg:grid-cols-[1fr_2fr]"
                   >
                     {/* Task List */}
-                    <div>
+                    <div className="min-h-128">
                       <h3 className="text-sm font-medium text-muted-foreground mb-3">
                         任务列表
                       </h3>
-                      <ActiveTaskList
-                        tasks={activeTasks}
-                        selectedTaskId={selectedTaskId}
-                        onSelectTask={handleSelectTask}
-                      />
+                      <div className="h-[calc(100%-1.5rem)]">
+                        <ActiveTaskList
+                          tasks={activeTasks}
+                          selectedTaskId={selectedTaskId}
+                          onSelectTask={handleSelectTask}
+                        />
+                      </div>
                     </div>
 
                     {/* File Progress */}
-                    <div>
+                    <div className="min-h-128">
                       <h3 className="text-sm font-medium text-muted-foreground mb-3">
                         文件下载进度
                       </h3>
-                      <TaskFileProgressPanel task={selectedTask} />
+                      <div className="h-[calc(100%-1.5rem)]">
+                        <TaskFileProgressPanel task={selectedTask} />
+                      </div>
                     </div>
                   </motion.div>
                 )}

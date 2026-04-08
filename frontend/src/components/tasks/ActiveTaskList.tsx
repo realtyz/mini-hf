@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Smile, Globe, Loader2, Clock } from "lucide-react";
+import { Smile, Globe, Loader2, Clock, Pin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { TaskResponse, TaskStatus } from "@/lib/api-types";
 
@@ -120,6 +120,10 @@ function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
           {task.status?.toLowerCase() === "running" ? (
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
               <Loader2 className="h-2.5 w-2.5 text-blue-500 animate-spin" />
+            </div>
+          ) : task.pinned_at ? (
+            <div className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50">
+              <Pin className="h-2.5 w-2.5 text-amber-500" />
             </div>
           ) : (
             <div

@@ -116,6 +116,8 @@ export function TaskStatusBadge({
         className={cn(
           "min-w-16 justify-center gap-1.5 font-medium transition-shadow duration-200",
           size === "sm" ? "text-[11px] px-2 py-0.5" : "text-xs px-2.5 py-1",
+          status === "running" &&
+            "bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
           className
         )}
       >
