@@ -101,7 +101,7 @@ class HfRepoProfileRepository:
                         HfRepoSnapshot.repo_id == repo_id,
                         HfRepoSnapshot.repo_type == repo_type,
                         HfRepoSnapshot.status == SnapshotStatus.ACTIVE,
-                    )
+                    ).subquery()
                 )
             )
             count_result = await self._session.execute(count_stmt)

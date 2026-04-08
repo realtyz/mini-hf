@@ -482,4 +482,18 @@
   .animate-blink {
     animation: blink 1s step-end infinite;
   }
+
+  /* Breathing light effect for running tasks */
+  @keyframes pulse-bg {
+    0%, 100% {
+      background-color: rgba(249, 115, 22, 0.03);
+    }
+    50% {
+      background-color: rgba(249, 115, 22, 0.12);
+    }
+  }
+
+  .animate-pulse-bg {
+    animation: pulse-bg 2.5s ease-in-out infinite;
+  }
 }

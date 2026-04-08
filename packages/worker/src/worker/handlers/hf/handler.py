@@ -87,6 +87,12 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
             repo_type=repo_type,
             initial_status=RepoStatus.UPDATING,
         )
+        # Always set status to UPDATING, even if profile already existed
+        await profile_repo.set_profile_status(
+            repo_id=repo_id,
+            repo_type=repo_type,
+            status=RepoStatus.UPDATING,
+        )
         logger.info("  -> Profile status set to UPDATING for {}", repo_id)
 
         # Step 2: Get repository info to determine commit_hash

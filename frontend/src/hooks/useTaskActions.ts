@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useCallback } from 'react'
+import { toast } from 'sonner'
 import api from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
 import type {
@@ -108,6 +109,12 @@ export function useTaskActions() {
         queryKey: queryKeys.tasks.detail(variables.taskId),
       })
     },
+    onError: (error: ApiError, variables) => {
+      const action = variables.approved ? '批准' : '拒绝'
+      toast.error(`${action}任务失败`, {
+        description: error.message,
+      })
+    },
   })
 
   /**
@@ -122,6 +129,11 @@ export function useTaskActions() {
     onSuccess: (_, taskId) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
+    },
+    onError: (error: ApiError) => {
+      toast.error('取消任务失败', {
+        description: error.message,
+      })
     },
   })
 
@@ -138,6 +150,11 @@ export function useTaskActions() {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
     },
+    onError: (error: ApiError) => {
+      toast.error('置顶任务失败', {
+        description: error.message,
+      })
+    },
   })
 
   /**
@@ -153,6 +170,11 @@ export function useTaskActions() {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
     },
+    onError: (error: ApiError) => {
+      toast.error('取消置顶失败', {
+        description: error.message,
+      })
+    },
   })
 
   /**
@@ -166,6 +188,11 @@ export function useTaskActions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+    },
+    onError: (error: ApiError) => {
+      toast.error('重试任务失败', {
+        description: error.message,
+      })
     },
   })
 
@@ -293,6 +320,7 @@ export function useAsyncPreviewTask(
     setTaskId(null)
     setStatus(null)
     setPollCount(0)
+    setIsStarting(false)
   }, [])
 
   // 轮询任务状态

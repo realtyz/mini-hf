@@ -88,11 +88,16 @@ export function TaskRow({
   const isAdmin = user?.role === "admin";
   const isFinalStatus = FINAL_STATUSES.includes(task.status);
   const isPinned = !!task.pinned_at && !isFinalStatus;
+  const isRunning = task.status === "running";
 
   // 取消确认对话框状态
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   // 重试确认对话框状态
   const [retryDialogOpen, setRetryDialogOpen] = useState(false);
+  // 批准确认对话框状态
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  // 拒绝确认对话框状态
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
 
   // 是否可以取消（待审批或排队中的任务）
   const canCancel =
@@ -128,6 +133,16 @@ export function TaskRow({
     onRetry?.(task);
   };
 
+  const handleApproveConfirm = () => {
+    setApproveDialogOpen(false);
+    onApprove?.(task);
+  };
+
+  const handleRejectConfirm = () => {
+    setRejectDialogOpen(false);
+    onReject?.(task);
+  };
+
   return (
     <motion.tr
       initial={{ opacity: 0 }}
@@ -141,7 +156,7 @@ export function TaskRow({
         "h-14 transition-all duration-200",
         "hover:bg-muted/70",
         "group border-b border-border/50 last:border-b-0",
-        isPinned && "bg-amber-50/50 dark:bg-amber-950/10"
+        isRunning && "animate-pulse-bg"
       )}
     >
       <TableCell className="pl-4 text-center">
@@ -250,18 +265,20 @@ export function TaskRow({
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={(e) =>
-                    handleActionClick(e, () => onApprove?.(task))
-                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setApproveDialogOpen(true);
+                  }}
                   disabled={isApproving}
                 >
                   <Check className="mr-2 h-4 w-4 text-muted-foreground" />
                   批准
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  onClick={(e) =>
-                    handleActionClick(e, () => onReject?.(task))
-                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setRejectDialogOpen(true);
+                  }}
                   disabled={isRejecting}
                   className="text-destructive focus:text-destructive"
                 >
@@ -385,6 +402,61 @@ export function TaskRow({
                 disabled={isRetrying}
               >
                 确认重试
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 批准确认对话框 */}
+        <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认批准任务</AlertDialogTitle>
+              <AlertDialogDescription className="pt-2">
+                确认要批准任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+                <p className="mt-2 text-sm">
+                  仓库：<span className="font-medium">{task.repo_id}</span>
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  批准后任务将进入下载队列开始执行。
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2">
+              <AlertDialogCancel disabled={isApproving}>返回</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleApproveConfirm}
+                disabled={isApproving}
+              >
+                确认批准
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* 拒绝确认对话框 */}
+        <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认拒绝任务</AlertDialogTitle>
+              <AlertDialogDescription className="pt-2">
+                确认要拒绝任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+                <p className="mt-2 text-sm">
+                  仓库：<span className="font-medium">{task.repo_id}</span>
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  拒绝后任务将被标记为失败，需要重新创建任务。
+                </p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-2">
+              <AlertDialogCancel disabled={isRejecting}>返回</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleRejectConfirm}
+                disabled={isRejecting}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                确认拒绝
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

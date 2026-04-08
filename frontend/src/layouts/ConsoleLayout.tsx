@@ -266,6 +266,33 @@ function ReposLink() {
 }
 
 /**
+ * 任务列表链接按钮
+ */
+function TaskListLink() {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
+            asChild
+          >
+            <Link to="/tasks-public" aria-label="任务列表">
+              <ListTodo className="h-4 w-4" />
+            </Link>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" align="center">
+          <p className="text-xs">任务列表</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+/**
  * 主题切换按钮
  */
 function ThemeToggle() {
@@ -604,6 +631,7 @@ function ConsoleHeader() {
       <div className="flex items-center gap-1.5">
         <DocsLink />
         <ReposLink />
+        <TaskListLink />
         <div className="h-5 w-px bg-border mx-0.5 hidden sm:block" />
         <ThemeToggle />
         <div className="h-5 w-px bg-border mx-0.5 hidden sm:block" />

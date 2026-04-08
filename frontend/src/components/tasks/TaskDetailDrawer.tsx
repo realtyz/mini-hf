@@ -24,6 +24,16 @@ import {
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TaskStatusBadge } from "./TaskStatusBadge";
 import { TaskProgressBar } from "./TaskProgressBar";
 import { PreviewFileTree } from "./PreviewFileTree";
@@ -327,6 +337,7 @@ export function TaskDetailDrawer({
   );
   const { reviewTask, cancelTask } = useTaskActions();
   const [rejectNotes, setRejectNotes] = useState("");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
 
@@ -336,6 +347,7 @@ export function TaskDetailDrawer({
     if (!isOpen) {
       reviewTask.reset();
       setRejectNotes("");
+      setCancelDialogOpen(false);
     }
     onOpenChange(isOpen);
   };
@@ -350,8 +362,13 @@ export function TaskDetailDrawer({
     reviewTask.mutate({ taskId, approved: false, notes: rejectNotes || "审批拒绝" });
   };
 
-  const handleCancel = () => {
+  const handleCancelClick = () => {
+    setCancelDialogOpen(true);
+  };
+
+  const handleCancelConfirm = () => {
     if (!taskId) return;
+    setCancelDialogOpen(false);
     cancelTask.mutate(taskId, {
       onSuccess: () => refetchTask(),
     });
@@ -639,7 +656,7 @@ export function TaskDetailDrawer({
                       {canCancel && (
                         <Button
                           variant="outline"
-                          onClick={handleCancel}
+                          onClick={handleCancelClick}
                           disabled={cancelTask.isPending}
                           className="h-9 text-[13px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:hover:text-red-400 dark:active:bg-red-950/60"
                         >
@@ -669,7 +686,7 @@ export function TaskDetailDrawer({
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={handleCancel}
+                            onClick={handleCancelClick}
                             disabled={cancelTask.isPending}
                             className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
                           >
@@ -688,6 +705,40 @@ export function TaskDetailDrawer({
             </div>
         ) : null}
       </SheetContent>
+
+      {/* 取消确认对话框 */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认取消任务</AlertDialogTitle>
+            <AlertDialogDescription className="pt-2">
+              确定要取消任务 <strong className="text-foreground">#{taskId}</strong> 吗？
+              {task && (
+                <>
+                  <p className="mt-2 text-sm">
+                    仓库：<span className="font-medium">{task.repo_id}</span>
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {task.status === "pending_approval"
+                      ? "取消后任务将被标记为已取消，需要重新创建任务。"
+                      : "任务正在排队中，取消后需要重新创建任务。"}
+                  </p>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel disabled={cancelTask.isPending}>返回</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelConfirm}
+              disabled={cancelTask.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              确认取消
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }
