@@ -635,6 +635,20 @@ async def preview_task(
             "Set full_download to False to use pattern filtering.",
         )
 
+    # Check for existing active tasks with same repo_id and source
+    task_repo = TaskRepository(db)
+    existing_task = await task_repo.get_active_download_task(
+        repo_id=request.repo_id,
+        source=request.source,
+    )
+    if existing_task:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"An active task for repository '{request.repo_id}' already exists. "
+            f"Task ID: {existing_task.id}, Status: {existing_task.status}. "
+            f"Please wait for it to complete or cancel it before creating a new task.",
+        )
+
     # Determine endpoint: prefer explicit hf_endpoint parameter, then config
     actual_endpoint = request.hf_endpoint
     if actual_endpoint is None:
@@ -1370,6 +1384,20 @@ async def retry_task(
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Permission denied: only the task creator or an admin can retry this task",
+        )
+
+    # Check for existing active tasks with same repo_id and source
+    task_repo = TaskRepository(db)
+    existing_task = await task_repo.get_active_download_task(
+        repo_id=original_task.repo_id,
+        source=original_task.source,
+    )
+    if existing_task:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"An active task for repository '{original_task.repo_id}' already exists. "
+            f"Task ID: {existing_task.id}, Status: {existing_task.status}. "
+            f"Please wait for it to complete or cancel it before retrying.",
         )
 
     # Create new task with the same configuration

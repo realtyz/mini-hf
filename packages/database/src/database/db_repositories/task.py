@@ -194,30 +194,42 @@ class TaskRepository:
             stmt = stmt.where(Task.creator_user_id == creator_user_id)
 
         # 排序优先级：
-        # 1. 置顶任务在最前面（后置顶的排前面）
-        # 2. 状态优先级：RUNNING (0) → PENDING_APPROVAL (1) → PENDING (2) → 其他 (3)
-        # 3. 同状态下：
-        #    - PENDING_APPROVAL/RUNNING/PENDING: 按 reviewed_at 升序
+        # 1. RUNNING状态在最前面（无论是否置顶）
+        # 2. 置顶的非RUNNING任务（后置顶的排前面）
+        # 3. 其他非RUNNING、非置顶任务
+        # 4. 同分组内按状态优先级：PENDING_APPROVAL (0) → PENDING (1) → 其他 (2)
+        # 5. 同状态下：
+        #    - PENDING_APPROVAL/PENDING: 按 reviewed_at 升序
         #    - 其他状态: 按 completed_at 降序
         stmt = (
             stmt.order_by(
-                # 1. 置顶任务最前面
-                Task.pinned_at.desc().nulls_last(),
-                # 2. 状态优先级分组
+                # 1. RUNNING任务优先级为0，其他为1
                 case(
                     (Task.status == TaskStatus.RUNNING, 0),
-                    (Task.status == TaskStatus.PENDING_APPROVAL, 1),
-                    (Task.status == TaskStatus.PENDING, 2),
-                    else_=3
+                    else_=1
                 ).asc(),
-                # 3a. 对于 PENDING_APPROVAL/RUNNING/PENDING，按 reviewed_at 升序
+                # 2. 置顶任务在非RUNNING任务中排前面
+                case(
+                    (Task.status == TaskStatus.RUNNING, 1),  # RUNNING任务忽略置顶
+                    (Task.pinned_at.isnot(None), 0),        # 非RUNNING置顶任务
+                    else_=1                                  # 非置顶任务
+                ).asc(),
+                # 3. 置顶任务后置顶的排前面
+                Task.pinned_at.desc().nulls_last(),
+                # 4. 状态优先级分组（非RUNNING任务）
+                case(
+                    (Task.status == TaskStatus.RUNNING, 0),         # RUNNING任务忽略
+                    (Task.status == TaskStatus.PENDING_APPROVAL, 0),
+                    (Task.status == TaskStatus.PENDING, 1),
+                    else_=2
+                ).asc(),
+                # 5a. 对于 PENDING_APPROVAL/PENDING，按 reviewed_at 升序
                 case(
                     (Task.status == TaskStatus.PENDING_APPROVAL, Task.reviewed_at),
-                    (Task.status == TaskStatus.RUNNING, Task.reviewed_at),
                     (Task.status == TaskStatus.PENDING, Task.reviewed_at),
                     else_=None
                 ).asc().nulls_last(),
-                # 3b. 对于其他状态，按 completed_at 降序
+                # 5b. 对于其他状态，按 completed_at 降序
                 case(
                     (Task.status == TaskStatus.PENDING_APPROVAL, None),
                     (Task.status == TaskStatus.RUNNING, None),
