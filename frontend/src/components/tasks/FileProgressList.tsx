@@ -116,7 +116,7 @@ function FileProgressRow({
           </div>
         ) : null}
         {file.status === "failed" && file.error_message ? (
-          <div className="text-[10px] text-red-500 mt-0.5 truncate" title={file.error_message}>
+          <div className="text-[10px] text-red-500 mt-0.5 truncate w-full min-w-0" title={file.error_message}>
             错误: {file.error_message}
           </div>
         ) : null}

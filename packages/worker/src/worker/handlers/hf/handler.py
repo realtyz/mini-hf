@@ -26,6 +26,7 @@ from .diff_calculator import calculate_file_diff
 from .cleanup import cleanup_deleted_files
 from .tree_saver import save_repo_tree
 from .file_processor import download_and_upload_files
+from .._downloader import DownloadCancelledError
 
 
 async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -> None:
@@ -335,6 +336,79 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
             new_status=RepoStatus.ACTIVE,
         )
         logger.info("  -> Profile status set to ACTIVE for {}", repo_id)
+
+    except DownloadCancelledError:
+        # Task was cancelled by user, restore profile status appropriately
+        logger.info("  -> Download cancelled by user for {}", repo_id)
+
+        # Cleanup progress tracking
+        downloaded_file_count, downloaded_bytes = 0, 0
+        try:
+            (
+                downloaded_file_count,
+                downloaded_bytes,
+            ) = await progress_tracker.get_progress_snapshot()
+            await progress_tracker.fail_task("Cancelled by user")
+            await progress_tracker.clear()
+        except Exception as tracker_error:
+            logger.warning("  -> Failed to update progress tracker: {}", tracker_error)
+
+        # Save actual download stats to task
+        try:
+            await session.execute(
+                update(Task)
+                .where(Task.id == task.id)
+                .values(
+                    downloaded_file_count=downloaded_file_count,
+                    downloaded_bytes=downloaded_bytes,
+                )
+            )
+            await session.commit()
+        except Exception as stats_error:
+            logger.warning("  -> Failed to save downloaded stats: {}", stats_error)
+
+        # Restore profile status based on situation
+        try:
+            existing_snapshot = await snapshot_repo.get_active_snapshot(
+                repo_id, repo_type, revision
+            )
+
+            if existing_snapshot:
+                if existing_snapshot.commit_hash != new_commit_hash:
+                    # Old snapshot is still active (and different from new commit),
+                    # restore to ACTIVE since old data is still available
+                    await profile_repo.set_profile_status(
+                        repo_id=repo_id,
+                        repo_type=repo_type,
+                        status=RepoStatus.ACTIVE,
+                    )
+                    logger.info(
+                        "  -> Restored profile status to ACTIVE for {} (old snapshot exists)",
+                        repo_id,
+                    )
+                else:
+                    # Snapshot is the same (shouldn't happen as we would have returned early),
+                    # but set to ACTIVE to be safe
+                    await profile_repo.set_profile_status(
+                        repo_id=repo_id,
+                        repo_type=repo_type,
+                        status=RepoStatus.ACTIVE,
+                    )
+                    logger.info("  -> Restored profile status to ACTIVE for {}", repo_id)
+            else:
+                # No old data available (first download cancelled),
+                # set to INACTIVE
+                await profile_repo.set_profile_status(
+                    repo_id=repo_id,
+                    repo_type=repo_type,
+                    status=RepoStatus.INACTIVE,
+                )
+                logger.info("  -> Set profile status to INACTIVE for {} (first download cancelled)", repo_id)
+
+        except Exception as status_error:
+            logger.error("  -> Failed to restore profile status on cancellation: {}", status_error)
+
+        raise  # Re-raise exception for worker to mark task as CANCELLED
 
     except Exception as e:
         # Download failed, mark task as failed and cleanup progress

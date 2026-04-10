@@ -164,7 +164,7 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
             sortedChildren.map((item, index) => (
               <div
                 key={item.path}
-                className="flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/30 transition-colors group min-w-0"
+                className="flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/30 transition-colors group min-w-0 overflow-hidden"
                 style={{
                   animationDelay: `${index * 20}ms`
                 }}
@@ -177,7 +177,7 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
                       </div>
                       <button
                         onClick={() => handleEnterDirectory(item.path)}
-                        className="truncate font-mono text-xs text-left cursor-pointer hover:text-primary transition-colors group-hover:underline"
+                        className="truncate font-mono text-xs text-left cursor-pointer hover:text-primary transition-colors group-hover:underline w-full min-w-0"
                         title={item.name}
                       >
                         {item.name}
@@ -197,7 +197,7 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
                         }`} />
                       </div>
                       <span
-                        className={`truncate font-mono text-xs transition-colors ${
+                        className={`truncate font-mono text-xs transition-colors w-full min-w-0 ${
                           !item.required ? "text-muted-foreground/50" : ""
                         }`}
                         title={item.name}
