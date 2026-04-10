@@ -58,7 +58,7 @@ export function useTaskList(options: UseTaskListOptions = {}) {
     offset,
   }
 
-  const endpoint = isPublic ? '/task/list_public' : '/task/list'
+  const endpoint = isPublic ? '/task/list-public' : '/task/list'
 
   return useQuery<TaskListResponse>({
     queryKey: queryKeys.tasks.list(filters, params),

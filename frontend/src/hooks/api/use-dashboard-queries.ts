@@ -13,7 +13,7 @@ import api from '@/lib/api'
 export function useDashboardStats() {
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.dashboard.stats(),
-    queryFn: () => api.get<DashboardStatsResponse>('/hf_repo/dashboard_stats'),
+    queryFn: () => api.get<DashboardStatsResponse>('/hf_repo/dashboard-stats'),
     staleTime: 60 * 1000, // 1 minute
   })
 

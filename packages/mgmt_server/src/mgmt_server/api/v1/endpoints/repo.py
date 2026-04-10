@@ -35,7 +35,7 @@ from services.task import TaskService
 router = APIRouter(prefix="/hf_repo", tags=["Repo Management"])
 
 
-@router.get("/dashboard_stats", response_model=DashboardStatsResponse)
+@router.get("/dashboard-stats", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
     db: DbDep,
 ) -> DashboardStatsResponse:
@@ -161,7 +161,7 @@ async def list_repositories(
     )
 
 
-@router.get("/list_public", response_model=RepoListResponse)
+@router.get("/list-public", response_model=RepoListResponse)
 async def list_public_repositories(
     db: DbDep,
     repo_type: Annotated[

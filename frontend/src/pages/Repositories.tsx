@@ -52,7 +52,7 @@ async function fetchRepositories({
   }
 
   const endpoint =
-    modelSource === "huggingface" ? "/hf_repo/list_public" : "/ms_repo/list";
+    modelSource === "huggingface" ? "/hf_repo/list-public" : "/ms_repo/list";
   return api.get<RepoListResponse>(endpoint, { params: queryParams });
 }
 

@@ -127,7 +127,7 @@ async def get_hf_endpoint_config(
     )
 
 
-@router.post("/smtp/test", response_model=SMTPTestResponse)
+@router.post("/category/smtp/test", response_model=SMTPTestResponse)
 async def test_smtp_connection(
     admin_user: AdminUserDep,
     request: SMTPTestRequest,
@@ -191,7 +191,7 @@ async def test_smtp_connection(
     return SMTPTestResponse(data=success, test_message=message)
 
 
-@router.put("/smtp", response_model=SMTPConfigResponseWrapper)
+@router.put("/category/smtp", response_model=SMTPConfigResponseWrapper)
 async def save_smtp_config(
     admin_user: AdminUserDep,
     config_service: ConfigServiceDep,

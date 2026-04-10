@@ -31,7 +31,7 @@ export function useConfigs(category?: string) {
     queryKey: [...queryKeys.configs.list(), category],
     queryFn: async () => {
       const params = category ? `?category=${encodeURIComponent(category)}` : ''
-      return api.get<ConfigListResponse>(`/configs${params}`)
+      return api.get<ConfigListResponse>(`/config${params}`)
     },
   })
 }
@@ -43,7 +43,7 @@ export function useConfig(key: string) {
   return useQuery({
     queryKey: queryKeys.configs.detail(key),
     queryFn: async () => {
-      return api.get<ApiResponse<ConfigItem>>(`/configs/${encodeURIComponent(key)}`)
+      return api.get<ApiResponse<ConfigItem>>(`/config/${encodeURIComponent(key)}`)
     },
     enabled: !!key,
   })
@@ -56,7 +56,7 @@ export function useSMTPConfig() {
   return useQuery({
     queryKey: [...queryKeys.configs.all, 'smtp'],
     queryFn: async () => {
-      return api.get<ApiResponse<SMTPConfigResponse>>('/configs/category/smtp')
+      return api.get<ApiResponse<SMTPConfigResponse>>('/config/category/smtp')
     },
   })
 }
@@ -69,7 +69,7 @@ export function useCreateConfig() {
 
   return useMutation({
     mutationFn: async (data: ConfigCreateRequest) => {
-      return api.post<ApiResponse<ConfigItem>>('/configs', data)
+      return api.post<ApiResponse<ConfigItem>>('/config', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
@@ -92,7 +92,7 @@ export function useUpdateConfig() {
       data: ConfigUpdateRequest
     }) => {
       return api.put<ApiResponse<ConfigItem>>(
-        `/configs/${encodeURIComponent(key)}`,
+        `/config/${encodeURIComponent(key)}`,
         data
       )
     },
@@ -111,7 +111,7 @@ export function useBatchUpdateConfigs() {
 
   return useMutation({
     mutationFn: async (data: ConfigBatchUpdateRequest) => {
-      return api.put<ConfigListResponse>('/configs/batch', data)
+      return api.put<ConfigListResponse>('/config/batch', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
@@ -127,7 +127,7 @@ export function useDeleteConfig() {
 
   return useMutation({
     mutationFn: async (key: string) => {
-      return api.delete<ApiResponse<void>>(`/configs/${encodeURIComponent(key)}`)
+      return api.delete<ApiResponse<void>>(`/config/${encodeURIComponent(key)}`)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
@@ -143,7 +143,7 @@ export function useInitializeDefaultConfigs() {
 
   return useMutation({
     mutationFn: async () => {
-      return api.post<ConfigListResponse>('/configs/init')
+      return api.post<ConfigListResponse>('/config/init')
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
@@ -157,7 +157,7 @@ export function useInitializeDefaultConfigs() {
 export function useTestSMTPConnection() {
   return useMutation({
     mutationFn: async (data: SMTPTestRequest) => {
-      return api.post<SMTPTestResponse>('/configs/smtp/test', data)
+      return api.post<SMTPTestResponse>('/config/category/smtp/test', data)
     },
   })
 }
@@ -170,7 +170,7 @@ export function useSaveSMTPConfig() {
 
   return useMutation({
     mutationFn: async (data: SMTPSaveRequest) => {
-      return api.put<ApiResponse<SMTPConfigResponse>>('/configs/smtp', data)
+      return api.put<ApiResponse<SMTPConfigResponse>>('/config/category/smtp', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
@@ -185,7 +185,7 @@ export function useHFEndpointConfig() {
   return useQuery({
     queryKey: [...queryKeys.configs.all, 'hf'],
     queryFn: async () => {
-      return api.get<ApiResponse<HFEndpointConfigResponse>>('/configs/category/huggingface')
+      return api.get<ApiResponse<HFEndpointConfigResponse>>('/config/category/huggingface')
     },
   })
 }
@@ -198,7 +198,7 @@ export function useSaveHFEndpointConfig() {
 
   return useMutation({
     mutationFn: async (data: HFEndpointSaveRequest) => {
-      return api.put<ApiResponse<HFEndpointConfigResponse>>('/configs/category/huggingface', data)
+      return api.put<ApiResponse<HFEndpointConfigResponse>>('/config/category/huggingface', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
@@ -213,7 +213,7 @@ export function useNotificationConfig() {
   return useQuery({
     queryKey: [...queryKeys.configs.all, 'notification'],
     queryFn: async () => {
-      return api.get<ApiResponse<NotificationConfigResponse>>('/configs/category/notification')
+      return api.get<ApiResponse<NotificationConfigResponse>>('/config/category/notification')
     },
   })
 }
@@ -226,7 +226,7 @@ export function useSaveNotificationConfig() {
 
   return useMutation({
     mutationFn: async (data: NotificationSaveRequest) => {
-      return api.put<ApiResponse<NotificationConfigResponse>>('/configs/category/notification', data)
+      return api.put<ApiResponse<NotificationConfigResponse>>('/config/category/notification', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
@@ -241,7 +241,7 @@ export function useAnnouncementConfig() {
   return useQuery({
     queryKey: [...queryKeys.configs.all, 'announcement'],
     queryFn: async () => {
-      return api.get<ApiResponse<AnnouncementConfigResponse>>('/configs/category/announcement')
+      return api.get<ApiResponse<AnnouncementConfigResponse>>('/config/category/announcement')
     },
   })
 }
@@ -254,7 +254,7 @@ export function useSaveAnnouncementConfig() {
 
   return useMutation({
     mutationFn: async (data: AnnouncementSaveRequest) => {
-      return api.put<ApiResponse<AnnouncementConfigResponse>>('/configs/category/announcement', data)
+      return api.put<ApiResponse<AnnouncementConfigResponse>>('/config/category/announcement', data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })

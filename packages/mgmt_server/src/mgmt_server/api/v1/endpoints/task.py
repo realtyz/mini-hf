@@ -486,7 +486,7 @@ async def list_tasks(
     return TaskListResponse(data=task_responses, total=len(tasks))
 
 
-@router.get("/list_public", response_model=TaskListResponse)
+@router.get("/list-public", response_model=TaskListResponse)
 async def list_public_tasks(
     status: str | None = None,
     limit: int = 100,

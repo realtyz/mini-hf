@@ -44,7 +44,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  useConfigs,
+  useSMTPConfig,
   useBatchUpdateConfigs,
   useInitializeDefaultConfigs,
   useTestSMTPConnection,
@@ -509,7 +509,7 @@ function SettingsSkeleton() {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function Settings() {
-  const { data: configData, isLoading, error } = useConfigs('smtp')
+  const { data: smtpConfigData, isLoading: isSMTPLoading, error: smtpError } = useSMTPConfig()
   const batchUpdate = useBatchUpdateConfigs()
   const initializeDefaults = useInitializeDefaultConfigs()
   const testSMTP = useTestSMTPConnection()
@@ -569,26 +569,21 @@ export function Settings() {
 
   // Initialize form from config data
   useEffect(() => {
-    if (configData?.data) {
-      const configs = configData.data
-      const getValue = (key: string) => {
-        const config = configs.find((c) => c.key === key)
-        return config?.value ?? ''
-      }
-
+    if (smtpConfigData?.data) {
+      const data = smtpConfigData.data
       const newForm = {
-        host: getValue('smtp_host'),
-        port: getValue('smtp_port') || '587',
-        username: getValue('smtp_username'),
+        host: data.host,
+        port: String(data.port) || '587',
+        username: data.username,
         password: '',
-        use_tls: getValue('smtp_use_tls') !== 'false',
-        from_email: getValue('smtp_from_email'),
+        use_tls: data.use_tls,
+        from_email: data.from_email,
       }
 
       setSmtpForm(newForm)
       setOriginalForm(newForm)
     }
-  }, [configData])
+  }, [smtpConfigData])
 
   // Initialize HF config from data
   useEffect(() => {
@@ -918,11 +913,11 @@ export function Settings() {
     { id: 'notification' as SettingsTab, label: '通知&公告', icon: Bell },
   ]
 
-  if (isLoading || isHFLoading || isNotificationLoading || isAnnouncementLoading) {
+  if (isSMTPLoading || isHFLoading || isNotificationLoading || isAnnouncementLoading) {
     return <SettingsSkeleton />
   }
 
-  if (error) {
+  if (smtpError) {
     return (
       <div className="flex flex-1 flex-col gap-6">
         <div>

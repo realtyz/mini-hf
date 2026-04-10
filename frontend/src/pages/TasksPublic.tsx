@@ -76,7 +76,7 @@ function StatusCard({
 }
 
 async function fetchPublicTasks(): Promise<TaskListResponse> {
-  return api.get<TaskListResponse>("/task/list_public", {
+  return api.get<TaskListResponse>("/task/list-public", {
     params: {
       hours: 168,
       limit: 1000,
