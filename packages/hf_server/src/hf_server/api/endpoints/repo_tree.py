@@ -56,7 +56,7 @@ def _build_link_header(
     query_params["cursor"] = next_cursor
     query_params["limit"] = str(limit)
 
-    next_url = f"{request.url.path}?{urlencode(query_params)}"
+    next_url = f"{request.url.scheme}://{request.url.netloc}{request.url.path}?{urlencode(query_params)}"
     return f'<{next_url}>; rel="next"'
 
 
