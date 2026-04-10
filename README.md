@@ -2,6 +2,8 @@
 
 A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini-HF provides HF Hub-compatible APIs to accelerate model downloads within your local network while reducing external bandwidth usage.
 
+> **Important Deployment Requirement**: Mini-HF worker nodes must be deployed in an environment with internet connectivity to download models from upstream HuggingFace/ModelScope sources for the first time. Subsequent local network downloads will use cached models without requiring external internet access.
+
 ## Features
 
 - **HF Hub Compatible** — Drop-in replacement for `HF_ENDPOINT` with common API compatibility
@@ -14,12 +16,61 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
 - **Docker Ready** — Complete containerized deployment with Docker Compose
 
 
+## HF API Deployment Architecture
+
+```
+┌───────────────────────────────────────────────────────────┐
+│                 User Side (Air-gapped Env)                │
+├───────────────────┬─────────────────┬─────────────────────┤
+│  HF Client        │ HuggingFace Lib │  AI Applications    │
+│  (hf-cli)         │ (transformers)  │                     │
+└───────────────────┴─────────────────┴─────────────────────┘
+                              │
+                              ▼ HF_ENDPOINT=http://{{APP_HF_SERVER_URL}}
+┌───────────────────────────────────────────────────────────┐
+│                      Mini-HF Cluster                      │
+├───────────────────────────────────────────────────────────┤
+│                ┌──────────────────────────┐               │
+│                │    HF API Server         │               │
+│                │    (Port 9801)           │               │
+│                └──────────────────────────┘               │
+│                      │            │                       │
+│                      ▼            ▼                       │
+│         ┌─────────────────┐ ┌─────────────────┐           │
+│         │   Redis Cache   │ │  PostgreSQL DB  │           │
+│         │ (Metadata Cache)│ │ (Repo/File Meta)│           │
+│         └─────────────────┘ └─────────────────┘           │
+│                      │                                    │
+│                      ▼                                    │
+│         ┌──────────────────────────┐                      │
+│         │   S3-Compatible Storage  │                      │
+│         │   (Model File Storage)   │                      │
+│         └──────────────────────────┘                      │
+│                      ▲                                    │
+│                      │                                    │
+│         ┌──────────────────────────┐                      │
+│         │  Worker Task Processor   │                      │
+│         │ (Download from upstream) │                      │
+│         └──────────────────────────┘                      │
+└──────────────────────────────┬────────────────────────────┘
+                               │
+                               ▼
+┌───────────────────────────────────────────────────────────┐
+│                     Upstream Sources                      │
+├─────────────────────────────┬─────────────────────────────┤
+│      HuggingFace Hub        │        ModelScope           │
+│  (https://huggingface.co)   │ (https://modelscope.cn)     │
+└─────────────────────────────┴─────────────────────────────┘
+```
+
+
 ## Quick Start
 
 ### Prerequisites
 
 - Docker and Docker Compose
 - (Optional) Python 3.12+ for local development
+- **Internet connectivity** — The worker node requires internet access to download models from HuggingFace and ModelScope upstream sources
 
 ### Docker Deployment
 
@@ -62,7 +113,6 @@ The backend is organized as a uv workspace with multiple packages:
 uv sync
 
 # Run database migrations
-cd packages/mgmt_server
 uv run alembic upgrade head
 
 # Start management API server
@@ -96,6 +146,7 @@ pnpm build
 
 | Variable | Description | Default |
 |----------|-------------|---------|
+| `APP_HF_SERVER_URL` | Publicly accessible URL of the HF API server. Required for generating correct pagination links and download URLs. | `http://localhost:9801` |
 | `DEFAULT_ADMIN_EMAIL` | Admin user email (auto-created on first startup) | `admin@example.com` |
 | `DEFAULT_ADMIN_PASSWORD` | Admin user password (auto-created on first startup) | `changeme` |
 | `JWT_SECRET_KEY` | Secret key for JWT signing | *(required)* |
@@ -142,6 +193,7 @@ Base: `/api/v1`
 | `/tasks` | GET/POST | List/create tasks |
 | `/configs` | GET/PUT | System configuration |
 | `/health` | GET | Health check |
+
 
 ### HF-Compatible API (Port 9801)
 
