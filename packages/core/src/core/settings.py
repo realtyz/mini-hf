@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # Application settings
     APP_NAME: str
     DEBUG: bool = False
+    APP_HF_SERVER_URL: str
 
     # Redis settings (for worker)
     REDIS_URL: str

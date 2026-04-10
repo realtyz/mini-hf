@@ -15,7 +15,7 @@
 
 ```bash
 # 设置环境变量
-export HF_ENDPOINT=http://your-server:9801
+export HF_ENDPOINT={{HF_ENDPOINT}}
 
 # 下载模型
 hf download Qwen/Qwen3.5-4B
@@ -77,7 +77,7 @@ hf download Qwen/Qwen3.5-4B --exclude "*.md"
 
 ```python
 import os
-os.environ["HF_ENDPOINT"] = "http://your-server:9801"
+os.environ["HF_ENDPOINT"] = "{{HF_ENDPOINT}}"
 
 from transformers import AutoModel, AutoTokenizer
 
@@ -90,7 +90,7 @@ tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen3.5-4B")
 
 ```python
 import os
-os.environ["HF_ENDPOINT"] = "http://your-server:9801"
+os.environ["HF_ENDPOINT"] = "{{HF_ENDPOINT}}"
 
 from datasets import load_dataset
 
@@ -102,7 +102,7 @@ dataset = load_dataset("openai/gsm8k", split="train")
 
 ```python
 import os
-os.environ["HF_ENDPOINT"] = "http://your-server:9801"
+os.environ["HF_ENDPOINT"] = "{{HF_ENDPOINT}}"
 
 from huggingface_hub import hf_hub_download
 

@@ -231,8 +231,8 @@ export function ActiveTaskList({
   }
 
   return (
-    <div className="rounded-xl border overflow-hidden bg-card shadow-sm">
-      <div className="max-h-100 overflow-y-auto scrollbar-gutter-stable">
+    <div className="rounded-xl border overflow-hidden bg-card shadow-sm h-full">
+      <div className="h-full overflow-y-auto scrollbar-gutter-stable">
         {tasks.map((task, index) => (
           <TaskListItem
             key={task.id}

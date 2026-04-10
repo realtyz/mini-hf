@@ -9,16 +9,15 @@ import string
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import Literal
 
 from loguru import logger
 
+from database.db_models import Task
 from .client import EmailClient
 from .config import SMTPConfig
 from .exceptions import EmailError
 
-if TYPE_CHECKING:
-    from task import Task
 
 # Template directory (builtin templates)
 # Path: services/email/services.py -> services/email/ -> services/ -> src/ -> services/ -> templates/
@@ -143,7 +142,7 @@ class VerifyCodeService:
             client = EmailClient(config, template_dir=TEMPLATE_DIR)
             await client.send_template_email(
                 to=email,
-                subject="mini-hf 邮箱验证码",
+                subject="[Mini-HF] 邮箱验证码",
                 template_name="verify_code.html",
                 context={"code": code, "year": datetime.now().year},
             )

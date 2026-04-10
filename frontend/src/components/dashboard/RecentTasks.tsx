@@ -1,10 +1,4 @@
 import {
-  IconLoader,
-  IconCircleCheckFilled,
-  IconX,
-  IconClock,
-  IconClipboardCheck,
-  IconPlayerPause,
   IconArrowRight,
   IconDatabase,
   IconCloudDownload,
@@ -15,95 +9,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRecentTasks } from '@/hooks/api/use-dashboard-queries'
 import { useTaskProgress } from '@/hooks/api/use-task-progress'
-import type { TaskResponse, TaskStatus } from '@/lib/api-types'
-import { formatDistanceToNow } from '@/lib/utils'
+import type { TaskResponse } from '@/lib/api-types'
+import type { TaskStatus } from '@/types/task'
+import { formatBytes, formatDistanceToNow, cn } from '@/lib/utils'
+import { TASK_STATUS_CONFIG } from '@/lib/constants/task'
 import { Link } from 'react-router'
 import { motion, AnimatePresence } from 'framer-motion'
-import { cn } from '@/lib/utils'
 
-// 任务状态配置 - 使用系统统一配色
-const statusConfig: Record<TaskStatus, {
-  label: string
-  icon: React.ReactNode
-  badgeClass: string
-  dotClass: string
-  progressBg: string
-  progressFill: string
-  gradient: string
-}> = {
-  pending_approval: {
-    label: '待审批',
-    icon: <IconClipboardCheck className="size-3.5" />,
-    badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
-    dotClass: 'bg-amber-500',
-    progressBg: 'bg-amber-100 dark:bg-amber-950/70',
-    progressFill: 'bg-amber-500',
-    gradient: 'from-amber-500/8 via-amber-500/3 to-transparent',
-  },
-  pending: {
-    label: '等待中',
-    icon: <IconClock className="size-3.5" />,
-    badgeClass: 'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300',
-    dotClass: 'bg-slate-400',
-    progressBg: 'bg-slate-100 dark:bg-slate-800/70',
-    progressFill: 'bg-slate-400',
-    gradient: 'from-slate-400/8 via-slate-400/3 to-transparent',
-  },
-  running: {
-    label: '进行中',
-    icon: <IconLoader className="size-3.5 animate-spin" />,
-    badgeClass: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300',
-    dotClass: 'bg-blue-500',
-    progressBg: 'bg-blue-100 dark:bg-blue-950/70',
-    progressFill: 'bg-blue-500',
-    gradient: 'from-blue-500/8 via-blue-500/3 to-transparent',
-  },
-  completed: {
-    label: '已完成',
-    icon: <IconCircleCheckFilled className="size-3.5" />,
-    badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-    dotClass: 'bg-emerald-500',
-    progressBg: 'bg-emerald-100 dark:bg-emerald-950/70',
-    progressFill: 'bg-emerald-500',
-    gradient: 'from-emerald-500/8 via-emerald-500/3 to-transparent',
-  },
-  failed: {
-    label: '失败',
-    icon: <IconX className="size-3.5" />,
-    badgeClass: 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300',
-    dotClass: 'bg-red-500',
-    progressBg: 'bg-red-100 dark:bg-red-950/70',
-    progressFill: 'bg-red-500',
-    gradient: 'from-red-500/8 via-red-500/3 to-transparent',
-  },
-  canceling: {
-    label: '取消中',
-    icon: <IconPlayerPause className="size-3.5" />,
-    badgeClass: 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300',
-    dotClass: 'bg-orange-500',
-    progressBg: 'bg-orange-100 dark:bg-orange-950/70',
-    progressFill: 'bg-orange-500',
-    gradient: 'from-orange-500/8 via-orange-500/3 to-transparent',
-  },
-  cancelled: {
-    label: '已取消',
-    icon: <IconX className="size-3.5" />,
-    badgeClass: 'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300',
-    dotClass: 'bg-slate-400',
-    progressBg: 'bg-slate-100 dark:bg-slate-800/70',
-    progressFill: 'bg-slate-400',
-    gradient: 'from-slate-400/8 via-slate-400/3 to-transparent',
-  },
-}
-
-// 格式化文件大小
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
+const statusConfig = TASK_STATUS_CONFIG
 
 // 进度显示组件
 function TaskProgress({ taskId, status }: { taskId: number; status: TaskStatus }) {

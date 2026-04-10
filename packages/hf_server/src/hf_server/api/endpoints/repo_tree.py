@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
+from core.settings import settings
 from database.db_models import HfRepoSnapshot, HfRepoTreeItem, SnapshotStatus
 from hf_server.api.deps import DbDep
 from hf_server.api.schemas.responses.repo_tree import RepoTreeItemResponse, RepoTreeLfsInfo
@@ -56,7 +57,7 @@ def _build_link_header(
     query_params["cursor"] = next_cursor
     query_params["limit"] = str(limit)
 
-    next_url = f"{request.url.scheme}://{request.url.netloc}{request.url.path}?{urlencode(query_params)}"
+    next_url = f"{settings.APP_HF_SERVER_URL.rstrip('/')}{request.url.path}?{urlencode(query_params)}"
     return f'<{next_url}>; rel="next"'
 
 

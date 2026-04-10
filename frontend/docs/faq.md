@@ -33,7 +33,7 @@ echo $env:HF_ENDPOINT
 
 ```python
 import os
-os.environ["HF_ENDPOINT"] = "http://your-server:9801"
+os.environ["HF_ENDPOINT"] = "{{HF_ENDPOINT}}"
 ```
 
 注意：必须在导入 transformers/datasets 等库之前设置。

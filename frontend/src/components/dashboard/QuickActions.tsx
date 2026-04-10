@@ -7,16 +7,7 @@ import { useTaskList } from '@/hooks/useTaskList'
 import { useTaskProgress } from '@/hooks/api/use-task-progress'
 import type { TaskResponse } from '@/lib/api-types'
 import { Link } from 'react-router'
-import { cn } from '@/lib/utils'
-
-// 格式化文件大小
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
+import { cn, formatBytes } from '@/lib/utils'
 
 // 单个运行中任务卡片
 function RunningTaskItem({ task, index }: { task: TaskResponse; index: number }) {

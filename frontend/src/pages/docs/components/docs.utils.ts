@@ -20,8 +20,13 @@ export async function loadDocContent(slug: string): Promise<string> {
       throw new Error(`Document not found: ${slug}`)
     }
 
-    const content = await loader()
-    return content as string
+    let content = await loader() as string
+
+    // 模板变量替换
+    const hfEndpoint = import.meta.env.APP_HF_SERVER_URL ?? 'http://your-server:9801'
+    content = content.replace(/{{HF_ENDPOINT}}/g, hfEndpoint)
+
+    return content
   } catch (error) {
     console.error('Failed to load doc:', error)
     return `# 文档未找到\n\n未找到 "${slug}" 对应的文档。`

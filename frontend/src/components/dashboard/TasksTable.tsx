@@ -57,55 +57,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useRecentTasks } from '@/hooks/api/use-dashboard-queries'
 import { useTaskProgress } from '@/hooks/api/use-task-progress'
 import type { TaskResponse, TaskStatus } from '@/lib/api-types'
-import { formatDistanceToNow } from '@/lib/utils'
+import { formatBytes, formatDistanceToNow } from '@/lib/utils'
+import { TASK_STATUS_CONFIG } from '@/lib/constants/task'
 
 // 任务状态映射
-const statusConfig: Record<TaskStatus, { label: string; icon: React.ReactNode; color: string }> = {
-  pending_approval: {
-    label: '待审批',
-    icon: <IconClipboardCheck className="size-3.5 text-yellow-500" />,
-    color: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
-  },
-  pending: {
-    label: '等待中',
-    icon: <IconClock className="size-3.5 text-gray-500" />,
-    color: 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300',
-  },
-  running: {
-    label: '进行中',
-    icon: <IconLoader className="size-3.5 animate-spin text-blue-500" />,
-    color: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
-  },
-  completed: {
-    label: '已完成',
-    icon: <IconCircleCheckFilled className="size-3.5 text-green-500" />,
-    color: 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
-  },
-  failed: {
-    label: '失败',
-    icon: <IconX className="size-3.5 text-red-500" />,
-    color: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
-  },
-  canceling: {
-    label: '取消中',
-    icon: <IconPlayerPause className="size-3.5 text-orange-500" />,
-    color: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
-  },
-  cancelled: {
-    label: '已取消',
-    icon: <IconX className="size-3.5 text-gray-500" />,
-    color: 'bg-gray-50 text-gray-700 dark:bg-gray-950 dark:text-gray-300',
-  },
-}
-
-// 格式化文件大小
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
-}
+const statusConfig = TASK_STATUS_CONFIG
 
 // 进度单元格组件
 function ProgressCell({ taskId, status }: { taskId: number; status: TaskStatus }) {
