@@ -8,3 +8,8 @@ dependencies = ["alembic>=1.18.4", "loguru>=0.7.3", "psycopg2-binary>=2.9.11"]
 
 [tool.uv.workspace]
 members = ["packages/*"]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.10",
+]

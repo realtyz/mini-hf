@@ -5,13 +5,17 @@ from a PostgreSQL-based task queue.
 """
 
 import asyncio
+import platform
 import signal
-from typing import Any, Callable, Dict
+from typing import Awaitable, Callable
 
 from loguru import logger
 
 from services import task_notification_service
 from services.task import TaskService, Task, TaskStatus
+from worker.handlers.hf.cleanup import cleanup_stale_incomplete_files
+
+HandlerFunc = Callable[[Task, asyncio.Event], Awaitable[None]]
 
 
 class CancelledError(Exception):
@@ -44,13 +48,13 @@ class Worker:
         self.poll_interval = poll_interval
         self.max_concurrent = max_concurrent
         self.cancel_check_interval = cancel_check_interval
-        self._handlers: Dict[str, Callable[[Task, asyncio.Event], Any]] = {}
+        self._handlers: dict[str, Callable[[Task, asyncio.Event], Awaitable[None]]] = {}
         self._running = False
         self._logger = logger
         self._task_service = TaskService()
-        self._cancel_events: Dict[int, asyncio.Event] = {}
+        self._cancel_events: dict[int, asyncio.Event] = {}
 
-    def register(self, name: str) -> Callable:
+    def register(self, name: str):
         """Register a task handler.
 
         Usage:
@@ -59,7 +63,7 @@ class Worker:
                 ...
         """
 
-        def decorator(func: Callable) -> Callable:
+        def decorator(func: HandlerFunc) -> HandlerFunc:
             self._handlers[name] = func
             return func
 
@@ -72,14 +76,18 @@ class Worker:
         self._logger.info("Max concurrent tasks: {}", self.max_concurrent)
         self._logger.info("Press Ctrl+C to stop")
 
+        cleanup_stale_incomplete_files()
+
         # Register signal handlers for graceful shutdown (Windows compatible)
         signal.signal(signal.SIGINT, lambda s, f: self._signal_handler())
-        signal.signal(signal.SIGTERM, lambda s, f: self._signal_handler())
+        if platform.system() != "Windows":
+            signal.signal(signal.SIGTERM, lambda s, f: self._signal_handler())
 
         semaphore = asyncio.Semaphore(self.max_concurrent)
         running_tasks: set[asyncio.Task] = set()
 
         while self._running:
+            task_launched = False
             try:
                 # Wait for an available slot before fetching a task
                 # This ensures we don't pull tasks from DB when at max concurrency
@@ -102,21 +110,17 @@ class Worker:
                 task = tasks[0]
                 self._logger.info("Got task: {}", task.id)
 
-                # Process task and release semaphore when done
-                async def process_and_release(task: Task) -> None:
-                    try:
-                        await self._process_task(self._task_service, task)
-                    finally:
-                        semaphore.release()
-
-                t = asyncio.create_task(process_and_release(task))
+                # Once create_task succeeds, semaphore ownership transfers to _run_task
+                t = asyncio.create_task(self._run_task(task, semaphore))
+                task_launched = True
                 running_tasks.add(t)
                 t.add_done_callback(running_tasks.discard)
 
             except Exception as e:
-                # Release semaphore on error to avoid leaking slots
-                semaphore.release()
-                self._logger.error("Error: {}", e)
+                # Only release semaphore if task was NOT launched (ownership not transferred)
+                if not task_launched:
+                    semaphore.release()
+                self._logger.exception("Error in task processing: {}", e)
                 await asyncio.sleep(self.poll_interval)
 
         # Wait for all running tasks to complete cleanup
@@ -140,6 +144,13 @@ class Worker:
         """Handle shutdown signals."""
         self._logger.info("Shutting down...")
         self.stop()
+
+    async def _run_task(self, task: Task, semaphore: asyncio.Semaphore) -> None:
+        """Process a task and release the semaphore when done."""
+        try:
+            await self._process_task(self._task_service, task)
+        finally:
+            semaphore.release()
 
     async def _process_task(
         self,
@@ -192,7 +203,7 @@ class Worker:
             # Send cancellation notification
             await task_notification_service.send_task_notification(task, "cancelled")
         except Exception as e:
-            self._logger.error("Failed task {}: {}", task.id, e)
+            self._logger.exception("Failed task {}: {}", task.id, e)
             try:
                 await task_manager.fail(task.id, str(e))
                 # Send failure notification

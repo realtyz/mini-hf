@@ -301,6 +301,29 @@ class TaskRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def update_download_stats(
+        self,
+        task_id: int,
+        downloaded_file_count: int,
+        downloaded_bytes: int,
+    ) -> None:
+        """Update download progress stats for a task.
+
+        Args:
+            task_id: Task ID
+            downloaded_file_count: Number of files downloaded
+            downloaded_bytes: Total bytes downloaded
+        """
+        await self.session.execute(
+            update(Task)
+            .where(Task.id == task_id)
+            .values(
+                downloaded_file_count=downloaded_file_count,
+                downloaded_bytes=downloaded_bytes,
+            )
+        )
+        await self.session.commit()
+
     async def set_pinned(self, task_id: int, pinned: bool) -> None:
         """Set or clear pinned status for a task.
 

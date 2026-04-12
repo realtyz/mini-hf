@@ -17,14 +17,8 @@ import {
   IconChevronRight,
   IconChevronsLeft,
   IconChevronsRight,
-  IconCircleCheckFilled,
-  IconLoader,
   IconPlus,
   IconRefresh,
-  IconX,
-  IconClock,
-  IconClipboardCheck,
-  IconPlayerPause,
 } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

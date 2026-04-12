@@ -1,9 +1,17 @@
 """File cleanup operations for deleted files."""
 
+import os
+import time
+from pathlib import Path
+
 from loguru import logger
 
+from core import settings
 from database.db_repositories import HfRepoTreeRepository
 from storage import s3_client, build_blob_key
+
+INCOMPLETE_SUFFIX = ".incomplete"
+DEFAULT_STALE_FILE_AGE_SECONDS = 86400  # 24 hours
 
 
 async def cleanup_deleted_files(
@@ -16,7 +24,7 @@ async def cleanup_deleted_files(
     """Cleanup files that were deleted in the new commit.
 
     For each deleted file, directly delete from S3 without reference counting.
-    Since we only allow deleting entire repos (not individual revisions),
+    Since we only allow deleting entire repos (not individual versions),
     reference counting is no longer needed.
     """
     if not deleted_files:
@@ -54,3 +62,55 @@ async def cleanup_deleted_files(
 
     if deleted_count > 0:
         logger.info("  -> Cleaned up {} orphaned files from S3", deleted_count)
+
+
+def cleanup_stale_incomplete_files(
+    max_age_seconds: int = DEFAULT_STALE_FILE_AGE_SECONDS,
+) -> int:
+    """Remove stale .incomplete files and empty directories from the temp path.
+
+    Called at worker startup to clean up leftover files from crashed/interrupted
+    downloads. Files older than ``max_age_seconds`` are removed, then empty
+    directories are pruned bottom-up.
+
+    Args:
+        max_age_seconds: Age threshold in seconds. Files modified more than
+            this many seconds ago are considered stale and removed.
+
+    Returns:
+        Number of stale files removed.
+    """
+    incomplete_path = Path(settings.INCOMPLETE_FILE_PATH)
+    if not incomplete_path.exists():
+        return 0
+
+    now = time.time()
+    removed = 0
+
+    for dirpath, dirnames, filenames in os.walk(incomplete_path, topdown=False):
+        dir_path = Path(dirpath)
+        for filename in filenames:
+            if not filename.endswith(INCOMPLETE_SUFFIX):
+                continue
+            file_path = dir_path / filename
+            try:
+                file_age = now - file_path.stat().st_mtime
+                if file_age > max_age_seconds:
+                    file_path.unlink()
+                    removed += 1
+                    logger.debug("Removed stale incomplete file: {}", file_path)
+            except OSError:
+                pass
+
+        for dirname in dirnames:
+            sub_dir = dir_path / dirname
+            try:
+                if sub_dir.exists() and not any(sub_dir.iterdir()):
+                    sub_dir.rmdir()
+            except OSError:
+                pass
+
+    if removed > 0:
+        logger.info("Cleaned up {} stale incomplete file(s)", removed)
+
+    return removed

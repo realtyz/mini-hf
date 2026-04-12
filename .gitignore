@@ -8,6 +8,14 @@ dist
 # Git worktrees
 .worktrees/
 
+
+# AI coding tools
 .claude
+.kilo
+.opencode
+
+AGENTS.md
+CLAUDE.md
+opencode.json
 
 .ruff_cache

@@ -320,13 +320,11 @@ async def _process_single_file(
                     logger.debug("Failed to update progress: {}", e)
 
         # Create downloader instance (each file is independent, supports independent progress callback)
-        downloader = HttpFileDownloader(
+        async with HttpFileDownloader(
             temp_dir=settings.INCOMPLETE_FILE_PATH,
             progress_callback=progress_callback,
             progress_interval=PROGRESS_INTERVAL,
-        )
-
-        try:
+        ) as downloader:
             # Download file
             url = hf_url(
                 repo_id=repo_id,
@@ -348,28 +346,25 @@ async def _process_single_file(
 
             logger.debug("Downloading: {} -> {}", repo_file.path, target_path)
 
-            downloaded_path = await downloader.download(
-                url=url,
-                target_path=target_path,
-                expected_size=repo_file.size,
-                headers=headers,
-                cancel_event=cancel_event,
-            )
+            try:
+                downloaded_path = await downloader.download(
+                    url=url,
+                    target_path=target_path,
+                    expected_size=repo_file.size,
+                    headers=headers,
+                    cancel_event=cancel_event,
+                )
 
-            # Download completed, mark file as completed
-            if progress_tracker:
-                await progress_tracker.complete_file(repo_file.path)
+                # Download completed, mark file as completed
+                if progress_tracker:
+                    await progress_tracker.complete_file(repo_file.path)
 
-        except Exception as e:
-            # Mark file download as failed
-            logger.error("Download failed for {}: {}", repo_file.path, e)
-            if progress_tracker:
-                await progress_tracker.fail_file(repo_file.path, str(e))
-            raise
-
-        finally:
-            # Close downloader
-            await downloader.close()
+            except Exception as e:
+                # Mark file download as failed
+                logger.error("Download failed for {}: {}", repo_file.path, e)
+                if progress_tracker:
+                    await progress_tracker.fail_file(repo_file.path, str(e))
+                raise
 
         # Download completed, download_semaphore is automatically released (async with exit)
         # This allows other download tasks to start immediately
