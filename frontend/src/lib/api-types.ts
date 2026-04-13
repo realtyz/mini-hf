@@ -107,6 +107,13 @@ export interface UserCreateRequest {
   is_active?: boolean
 }
 
+export interface UserListResponse {
+  code: number
+  message: string
+  data: UserResponse[]
+  total: number
+}
+
 export interface UserUpdateRequest {
   name?: string
   email?: string
@@ -178,6 +185,7 @@ export interface TaskListFilters {
   status?: TaskStatus
   repo_type?: string
   source?: string
+  search?: string
 }
 
 // ==================== 仓库/模型 ====================

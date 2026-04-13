@@ -112,10 +112,12 @@ export function Tasks() {
   const [cancelingTaskId, setCancelingTaskId] = useState<number | null>(null);
   const [retryingTaskId, setRetryingTaskId] = useState<number | null>(null);
 
-  // 获取任务列表（控制台使用认证API，获取所有任务）
+  // 获取任务列表（控制台使用认证API，后端分页）
   const { data, isLoading, error, refetch } = useTaskList({
     status: status === "all" ? undefined : status,
-    limit: 100,
+    limit: PAGE_SIZE,
+    skip: (page - 1) * PAGE_SIZE,
+    search: search,
     public: false,
   });
 
@@ -125,24 +127,14 @@ export function Tasks() {
   // 任务操作 hooks
   const { pinTask, unpinTask, reviewTask, cancelTask, retryTask } = useTaskActions();
 
-  // 筛选和分页计算 - 使用 useMemo 优化
+  // 分页计算 - 基于后端返回的总数
   const { paginatedTasks, total, totalPages } = useMemo(() => {
-    const filtered =
-      data?.data?.filter((task) => {
-        if (!search) return true;
-        return task.repo_id.toLowerCase().includes(search.toLowerCase());
-      }) || [];
-
-    const totalCount = filtered.length;
-    const pages = Math.ceil(totalCount / PAGE_SIZE);
-    const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
     return {
-      paginatedTasks: paginated,
-      total: totalCount,
-      totalPages: pages,
+      paginatedTasks: data?.data || [],
+      total: data?.total || 0,
+      totalPages: Math.ceil((data?.total || 0) / PAGE_SIZE),
     };
-  }, [data?.data, search, page]);
+  }, [data?.data, data?.total]);
 
   const handleViewDetail = useCallback((task: TaskResponse) => {
     setSelectedTaskId(task.id);

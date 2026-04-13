@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import List, Optional
 
-from sqlalchemy import case, select, update
+from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.db_models import Task, TaskStatus
@@ -180,18 +180,33 @@ class TaskRepository:
         offset: int = 0,
         since: Optional[datetime] = None,
         creator_user_id: Optional[int] = None,
-    ) -> List[Task]:
-        
-        stmt = select(Task)
+    ) -> tuple[int, List[Task]]:
+        """List tasks with optional filtering and pagination.
 
+        Returns:
+            Tuple of (total_count, tasks_list)
+        """
+        
+        # Build base query
+        base_stmt = select(Task)
+        count_stmt = select(func.count()).select_from(Task)
+
+        # Apply filters to both queries
         if status:
-            stmt = stmt.where(Task.status == status)
+            base_stmt = base_stmt.where(Task.status == status)
+            count_stmt = count_stmt.where(Task.status == status)
 
         if since:
-            stmt = stmt.where(Task.created_at >= since)
+            base_stmt = base_stmt.where(Task.created_at >= since)
+            count_stmt = count_stmt.where(Task.created_at >= since)
 
         if creator_user_id:
-            stmt = stmt.where(Task.creator_user_id == creator_user_id)
+            base_stmt = base_stmt.where(Task.creator_user_id == creator_user_id)
+            count_stmt = count_stmt.where(Task.creator_user_id == creator_user_id)
+
+        # Get total count
+        total_result = await self.session.execute(count_stmt)
+        total = total_result.scalar_one()
 
         # 排序优先级：
         # 1. RUNNING状态在最前面（无论是否置顶）
@@ -202,7 +217,7 @@ class TaskRepository:
         #    - PENDING_APPROVAL/PENDING: 按 reviewed_at 升序
         #    - 其他状态: 按 completed_at 降序
         stmt = (
-            stmt.order_by(
+            base_stmt.order_by(
                 # 1. RUNNING任务优先级为0，其他为1
                 case(
                     (Task.status == TaskStatus.RUNNING, 0),
@@ -242,7 +257,9 @@ class TaskRepository:
         )
 
         result = await self.session.execute(stmt)
-        return list(result.scalars().all())
+        tasks = list(result.scalars().all())
+
+        return total, tasks
 
     async def has_active_download_task(self, repo_id: str) -> bool:
         """Check if repository has an active download task.

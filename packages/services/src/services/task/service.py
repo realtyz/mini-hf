@@ -305,27 +305,32 @@ class TaskService:
         status: Optional[TaskStatus] = None,
         limit: int = 100,
         offset: int = 0,
+        skip: int | None = None,
         since: Optional[datetime] = None,
         creator_user_id: Optional[int] = None,
-    ) -> List[Task]:
-        """List tasks with optional filtering.
+    ) -> tuple[int, List[Task]]:
+        """List tasks with optional filtering and pagination.
 
         Args:
             status: Filter by status
             limit: Maximum results
-            offset: Skip offset
+            offset: Skip offset (deprecated, use skip instead)
+            skip: Number of records to skip (pagination)
             since: Filter tasks created after this datetime
             creator_user_id: Filter by creator user ID
 
         Returns:
-            List of tasks
+            Tuple of (total_count, tasks_list)
         """
+        # Use skip if provided, otherwise fall back to offset
+        offset_val = skip if skip is not None else offset
+
         async with self._session_ctx() as session:
             repo = self._get_repo(session)
             return await repo.list_tasks(
                 status=status,
                 limit=limit,
-                offset=offset,
+                offset=offset_val,
                 since=since,
                 creator_user_id=creator_user_id,
             )

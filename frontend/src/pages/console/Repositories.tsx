@@ -110,12 +110,20 @@ export function RepositoriesConsole() {
 
   const [repoType, setRepoType] = useState<RepoTypeFilter>(savedState?.repoType ?? "all");
   const [search, setSearch] = useState(savedState?.search ?? "");
+  const [debouncedSearch, setDebouncedSearch] = useState(savedState?.search ?? "");
   const [statuses, setStatuses] = useState<RepoStatus[]>(savedState?.statuses ?? DEFAULT_STATUSES);
   const [sortBy, setSortBy] = useState<string>(savedState?.sortBy ?? "cache_updated_at");
   const [sortOrder, setSortOrder] = useState<string>(savedState?.sortOrder ?? "desc");
   const [page, setPage] = useState(savedState?.page ?? 0);
 
-  // 状态变化时保存到 sessionStorage
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(0);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
   useEffect(() => {
     saveStateToStorage({
       repoType,
@@ -131,7 +139,7 @@ export function RepositoriesConsole() {
     repoType,
     skip: page * PAGE_SIZE,
     limit: PAGE_SIZE,
-    search: search || undefined,
+    search: debouncedSearch || undefined,
     statuses: statuses.length > 0 ? statuses : undefined,
     sort_by: sortBy,
     sort_order: sortOrder,
@@ -150,23 +158,6 @@ export function RepositoriesConsole() {
     );
     setPage(0);
   };
-
-  // 搜索防抖
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (page !== 0) {
-        setPage(0);
-      } else {
-        refetch();
-      }
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search, repoType, statuses, sortBy, sortOrder, page, refetch]);
-
-  // 页面变化时重新获取数据
-  useEffect(() => {
-    refetch();
-  }, [page, refetch]);
 
   const handleRepoTypeChange = (value: string) => {
     setRepoType(value as RepoTypeFilter);

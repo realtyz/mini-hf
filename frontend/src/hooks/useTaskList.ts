@@ -10,7 +10,7 @@ export interface UseTaskListOptions {
   search?: string
   hours?: number
   limit?: number
-  offset?: number
+  skip?: number
   /** 是否使用公共API（无需认证）。默认 false，控制台使用认证API */
   public?: boolean
   /** 是否启用自动轮询（当列表中有活跃任务时）。默认 true */
@@ -21,7 +21,7 @@ interface TaskListParams extends PaginationParams {
   status?: TaskStatus
   hours?: number
   limit?: number
-  offset?: number
+  skip?: number
 }
 
 /**
@@ -43,19 +43,21 @@ function hasActiveTasks(tasks: TaskListResponse['data'] | undefined): boolean {
  * - 当列表中有活跃任务（running/pending/pending_approval/canceling）时，自动每 3 秒轮询
  */
 export function useTaskList(options: UseTaskListOptions = {}) {
-  const { status, source, repo_type, hours = 168, limit = 100, offset = 0, public: isPublic = false, enablePolling = true } = options
+  const { status, source, repo_type, hours = 168, limit = 100, skip = 0, public: isPublic = false, enablePolling = true, search } = options
 
   const filters: TaskListFilters = {
     ...(status && { status }),
     ...(source && { source }),
     ...(repo_type && { repo_type }),
+    ...(search && { search }),
   }
 
   const params: TaskListParams = {
     status,
     hours,
     limit,
-    offset,
+    skip,
+    search,
   }
 
   const endpoint = isPublic ? '/task/list-public' : '/task/list'
@@ -66,14 +68,16 @@ export function useTaskList(options: UseTaskListOptions = {}) {
       const response = await api.get<TaskListResponse>(endpoint, {
         params: isPublic
           ? {
-              ...(status && { status }),
-              ...(hours && { hours }),
-              ...(limit && { limit }),
+              ...(status !== undefined && { status }),
+              ...(hours !== undefined && { hours }),
+              ...(limit !== undefined && { limit }),
+              ...(search !== undefined && { search }),
             }
           : {
-              ...(status && { status }),
-              ...(limit && { limit }),
-              ...(offset && { offset }),
+              ...(status !== undefined && { status }),
+              ...(limit !== undefined && { limit }),
+              ...(skip !== undefined && { skip }),
+              ...(search !== undefined && { search }),
             },
       })
       return response

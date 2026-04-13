@@ -1,5 +1,4 @@
 import { useState, useMemo, useLayoutEffect, useRef } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -28,8 +27,7 @@ import {
   TaskHistoryTable,
 } from "@/components/tasks";
 import { useAuthStore } from "@/stores/auth-store";
-import api from "@/lib/api";
-import type { TaskListResponse } from "@/lib/api-types";
+import { useTaskList } from "@/hooks/useTaskList";
 
 // Skeleton with shimmer animation
 function ShimmerSkeleton({ className }: { className?: string }) {
@@ -73,15 +71,6 @@ function StatusCard({
       </div>
     </motion.div>
   );
-}
-
-async function fetchPublicTasks(): Promise<TaskListResponse> {
-  return api.get<TaskListResponse>("/task/list-public", {
-    params: {
-      hours: 168,
-      limit: 1000,
-    },
-  });
 }
 
 const COUNTDOWN_SECONDS = 5;
@@ -142,18 +131,12 @@ export function TasksPublic() {
     setShowLoginDialog(false);
   };
 
-  const { data, isLoading, isRefetching, error, refetch } = useQuery({
-    queryKey: ["public-tasks"],
-    queryFn: fetchPublicTasks,
-    refetchInterval: (query) => {
-      // 如果有运行中的任务，每 5 秒刷新一次
-      const tasks = query.state.data?.data;
-      if (tasks?.some((t) => t.status?.toLowerCase() === "running")) {
-        return 5000;
-      }
-      // 否则每 15 秒刷新一次
-      return 15000;
-    },
+  // 使用统一封装的useTaskList获取公共任务列表，自动适配skip/limit参数和轮询逻辑
+  const { data, isLoading, isRefetching, error, refetch } = useTaskList({
+    public: true,
+    hours: 168,
+    limit: 1000,
+    enablePolling: true,
   });
 
   // 按状态分组任务

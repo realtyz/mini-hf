@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import {
   RefreshCw,
   Plus,
@@ -673,12 +673,6 @@ function EmptyState({
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function Users() {
-  const { data, isLoading, error, refetch } = useUsers();
-  const users = useMemo(
-    () => (data as unknown as UserResponse[]) ?? [],
-    [data],
-  );
-
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
@@ -687,32 +681,26 @@ export function Users() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
 
-  // Search debounce
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedSearch(search), 200);
-    return () => clearTimeout(timer);
-  }, [search]);
+  const { data, isLoading, error, refetch } = useUsers({
+    page,
+    page_size: PAGE_SIZE,
+  });
+
+  const users = useMemo(() => data?.data ?? [], [data]);
+  const totalItems = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
 
   const filtered = useMemo(() => {
-    if (!debouncedSearch.trim()) return users;
-    const q = debouncedSearch.toLowerCase();
+    if (!search.trim()) return users;
+    const q = search.toLowerCase();
     return users.filter(
       (u) =>
         u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
     );
-  }, [users, debouncedSearch]);
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const paginated = filtered.slice(
-    (safePage - 1) * PAGE_SIZE,
-    safePage * PAGE_SIZE,
-  );
+  }, [users, search]);
 
   const handleSearch = (value: string) => {
     setSearch(value);
-    setPage(1);
   };
 
   const handleEdit = (user: UserResponse) => {
@@ -870,7 +858,7 @@ export function Users() {
               </TableHeader>
               <TableBody>
                 <AnimatePresence mode="popLayout">
-                  {paginated.map((user, index) => (
+                  {filtered.map((user, index) => (
                     <motion.tr
                       key={user.id}
                       variants={tableRowVariants}
@@ -985,10 +973,10 @@ export function Users() {
           className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
         >
           <p className="text-sm text-muted-foreground">
-            显示 {(safePage - 1) * PAGE_SIZE + 1} -{" "}
-            {Math.min(safePage * PAGE_SIZE, filtered.length)} 条，共{" "}
-            {filtered.length} 个用户
-            {search && `（筛选自 ${users.length} 个用户）`}
+            显示 {(page - 1) * PAGE_SIZE + 1} -{" "}
+            {Math.min(page * PAGE_SIZE, totalItems)} 条，共{" "}
+            {totalItems} 个用户
+            {search && `（当前页筛选中）`}
           </p>
           {totalPages > 1 && (
             <Pagination className="w-auto justify-end">
@@ -996,9 +984,9 @@ export function Users() {
                 <PaginationItem>
                   <PaginationPrevious
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    aria-disabled={safePage === 1}
+                    aria-disabled={page === 1}
                     className={
-                      safePage === 1
+                      page === 1
                         ? "pointer-events-none opacity-50"
                         : "cursor-pointer"
                     }
@@ -1007,7 +995,7 @@ export function Users() {
                 {Array.from({ length: totalPages }, (_, i) => i + 1)
                   .filter(
                     (p) =>
-                      p === 1 || p === totalPages || Math.abs(p - safePage) <= 1,
+                      p === 1 || p === totalPages || Math.abs(p - page) <= 1,
                   )
                   .reduce<(number | "ellipsis")[]>((acc, p, idx, arr) => {
                     if (idx > 0 && p - (arr[idx - 1] as number) > 1)
@@ -1023,7 +1011,7 @@ export function Users() {
                     ) : (
                       <PaginationItem key={item}>
                         <PaginationLink
-                          isActive={item === safePage}
+                          isActive={item === page}
                           onClick={() => setPage(item)}
                           className="cursor-pointer"
                         >
@@ -1035,9 +1023,9 @@ export function Users() {
                 <PaginationItem>
                   <PaginationNext
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    aria-disabled={safePage === totalPages}
+                    aria-disabled={page === totalPages}
                     className={
-                      safePage === totalPages
+                      page === totalPages
                         ? "pointer-events-none opacity-50"
                         : "cursor-pointer"
                     }

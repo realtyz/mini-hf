@@ -6,9 +6,8 @@ import api from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
 import type {
   ApiResponse,
-  PaginatedResponse,
-  PaginationParams,
   UserCreateRequest,
+  UserListResponse,
   UserResponse,
   UserUpdateRequest,
 } from '@/lib/api-types'
@@ -16,20 +15,22 @@ import type {
 /**
  * 获取用户列表（管理员）
  */
-export function useUsers(pagination?: PaginationParams) {
+export function useUsers(pagination?: { page?: number; page_size?: number }) {
   return useQuery({
     queryKey: queryKeys.users.list(pagination),
     queryFn: async () => {
+      const pageSize = pagination?.page_size ?? 20
+      const page = pagination?.page ?? 1
+      const skip = (page - 1) * pageSize
+
       const params = new URLSearchParams()
-      if (pagination?.page) params.append('page', String(pagination.page))
-      if (pagination?.page_size)
-        params.append('page_size', String(pagination.page_size))
+      params.append('skip', String(skip))
+      params.append('limit', String(pageSize))
 
-      const queryString = params.toString()
-      const url = `/user/list${queryString ? `?${queryString}` : ''}`
+      const url = `/user/list?${params.toString()}`
 
-      const response = await api.get<ApiResponse<PaginatedResponse<UserResponse>>>(url)
-      return response.data
+      const response = await api.get<UserListResponse>(url)
+      return response
     },
   })
 }

@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime, timedelta
 from typing import Annotated, Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from loguru import logger
 
 from cache import cache_service
@@ -415,8 +415,8 @@ async def list_tasks(
     db: DbDep,
     user_service: UserServiceDep,
     status: str | None = None,
-    limit: int = 100,
-    offset: int = 0,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 20,
+    skip: Annotated[int, Query(ge=0)] = 0,
 ) -> TaskListResponse:
     """List tasks - requires JWT authentication.
 
@@ -429,7 +429,7 @@ async def list_tasks(
         user_service: User service dependency
         status: Filter by task status
         limit: Maximum number of tasks to return
-        offset: Offset for pagination
+        skip: Number of tasks to skip (pagination)
     """
     # Resolve the current user entity
     user = await user_service.get_by_email(current_user.email)
@@ -449,10 +449,10 @@ async def list_tasks(
     # Non-admin users can only see their own tasks
     creator_user_id = None if user.role == "admin" else user.id
 
-    tasks = await task_service.list_tasks(
+    total, tasks = await task_service.list_tasks(
         status=status_filter,
         limit=limit,
-        offset=offset,
+        skip=skip,
         creator_user_id=creator_user_id,
     )
 
@@ -483,13 +483,14 @@ async def list_tasks(
         for t in tasks
     ]
 
-    return TaskListResponse(data=task_responses, total=len(tasks))
+    return TaskListResponse(data=task_responses, total=total)
 
 
 @router.get("/list-public", response_model=TaskListResponse)
 async def list_public_tasks(
     status: str | None = None,
-    limit: int = 100,
+    limit: Annotated[int, Query(ge=1, le=1000)] = 20,
+    skip: Annotated[int, Query(ge=0)] = 0,
     hours: int = 24,
 ) -> TaskListResponse:
     """List tasks from the last N hours - public access, no authentication required.
@@ -497,6 +498,7 @@ async def list_public_tasks(
     Args:
         status: Filter by task status
         limit: Maximum number of tasks to return
+        skip: Number of tasks to skip (pagination)
         hours: Time window in hours (default: 24)
     """
     task_service = TaskService()
@@ -512,8 +514,8 @@ async def list_public_tasks(
     # Calculate time range (default: last 24 hours)
     since = datetime.now() - timedelta(hours=hours)
 
-    tasks = await task_service.list_tasks(
-        status=status_filter, limit=limit, since=since
+    total, tasks = await task_service.list_tasks(
+        status=status_filter, limit=limit, skip=skip, since=since
     )
 
     task_responses = [
@@ -543,7 +545,7 @@ async def list_public_tasks(
         for t in tasks
     ]
 
-    return TaskListResponse(data=task_responses, total=len(tasks))
+    return TaskListResponse(data=task_responses, total=total)
 
 
 @router.get("/{task_id}", response_model=TaskDetailResponse)
