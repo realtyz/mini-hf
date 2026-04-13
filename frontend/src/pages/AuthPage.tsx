@@ -393,7 +393,7 @@ function LoginForm({ onFlip }: FormProps) {
           <Input
             id="email"
             type="email"
-            placeholder={`name@${import.meta.env.VITE_EMAIL_DOMAIN || "example.com"}`}
+            placeholder={`name@${import.meta.env.APP_EMAIL_DOMAIN || "example.com"}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -705,7 +705,7 @@ function RegisterForm({ onFlip }: FormProps) {
               <Input
                 id="reg-email"
                 type="email"
-                placeholder={`name@${import.meta.env.VITE_EMAIL_DOMAIN || "example.com"}`}
+                placeholder={`name@${import.meta.env.APP_EMAIL_DOMAIN || "example.com"}`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

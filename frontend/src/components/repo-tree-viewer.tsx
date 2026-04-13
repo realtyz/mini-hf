@@ -405,7 +405,7 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
                   {item.type === "file" &&
                     (item.is_cached ? (
                       <a
-                        href={`${import.meta.env.VITE_API_BASE_URL}/hf_repo/${encodeURIComponent(repoId)}/file?commit_hash=${encodeURIComponent(commitHash)}&path=${encodeURIComponent(item.path)}`}
+                        href={`${import.meta.env.APP_API_BASE_URL}/hf_repo/${encodeURIComponent(repoId)}/file?commit_hash=${encodeURIComponent(commitHash)}&path=${encodeURIComponent(item.path)}`}
                         download={item.name}
                         title="下载文件"
                         onClick={(e) => e.stopPropagation()}

@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { debounce } from "lodash-es";
 import {
   RefreshCw,
   Plus,
@@ -674,6 +675,7 @@ function EmptyState({
 
 export function Users() {
   const [search, setSearch] = useState("");
+  const [emailSearch, setEmailSearch] = useState("");
   const [page, setPage] = useState(1);
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
@@ -681,27 +683,37 @@ export function Users() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserResponse | null>(null);
 
+  // 防抖搜索，延迟500ms发送请求
+  const debouncedSearch = useMemo(
+    () =>
+      debounce((value: string) => {
+        setEmailSearch(value);
+        setPage(1); // 搜索时重置到第一页
+      }, 500),
+    []
+  );
+
   const { data, isLoading, error, refetch } = useUsers({
     page,
     page_size: PAGE_SIZE,
+    email_search: emailSearch,
   });
 
   const users = useMemo(() => data?.data ?? [], [data]);
   const totalItems = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
 
-  const filtered = useMemo(() => {
-    if (!search.trim()) return users;
-    const q = search.toLowerCase();
-    return users.filter(
-      (u) =>
-        u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q),
-    );
-  }, [users, search]);
-
   const handleSearch = (value: string) => {
     setSearch(value);
+    debouncedSearch(value.trim());
   };
+
+  // 组件卸载时取消防抖
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const handleEdit = (user: UserResponse) => {
     setSelectedUser(user);
@@ -821,7 +833,7 @@ export function Users() {
               </Button>
             </div>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : users.length === 0 ? (
           <EmptyState search={search} onCreate={() => setCreateOpen(true)} />
         ) : (
           <div className="overflow-x-auto">
@@ -858,7 +870,7 @@ export function Users() {
               </TableHeader>
               <TableBody>
                 <AnimatePresence mode="popLayout">
-                  {filtered.map((user, index) => (
+                  {users.map((user, index) => (
                     <motion.tr
                       key={user.id}
                       variants={tableRowVariants}
@@ -967,7 +979,7 @@ export function Users() {
       </motion.div>
 
       {/* Footer: Stats + Pagination */}
-      {!isLoading && !error && filtered.length > 0 && (
+      {!isLoading && !error && users.length > 0 && (
         <motion.div
           variants={itemVariants}
           className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"

@@ -57,7 +57,6 @@ export function useTaskList(options: UseTaskListOptions = {}) {
     hours,
     limit,
     skip,
-    search,
   }
 
   const endpoint = isPublic ? '/task/list-public' : '/task/list'

@@ -15,19 +15,22 @@ import type {
 /**
  * 获取用户列表（管理员）
  */
-export function useUsers(pagination?: { page?: number; page_size?: number }) {
+export function useUsers(params?: { page?: number; page_size?: number; email_search?: string }) {
   return useQuery({
-    queryKey: queryKeys.users.list(pagination),
+    queryKey: queryKeys.users.list(params),
     queryFn: async () => {
-      const pageSize = pagination?.page_size ?? 20
-      const page = pagination?.page ?? 1
+      const pageSize = params?.page_size ?? 20
+      const page = params?.page ?? 1
       const skip = (page - 1) * pageSize
 
-      const params = new URLSearchParams()
-      params.append('skip', String(skip))
-      params.append('limit', String(pageSize))
+      const searchParams = new URLSearchParams()
+      searchParams.append('skip', String(skip))
+      searchParams.append('limit', String(pageSize))
+      if (params?.email_search) {
+        searchParams.append('email_search', params.email_search)
+      }
 
-      const url = `/user/list?${params.toString()}`
+      const url = `/user/list?${searchParams.toString()}`
 
       const response = await api.get<UserListResponse>(url)
       return response

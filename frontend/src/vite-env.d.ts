@@ -6,10 +6,10 @@ declare module '*.md' {
 }
 
 interface ImportMetaEnv {
-  readonly VITE_API_BASE_URL: string
-  readonly VITE_HF_SERVER_URL: string
-  readonly VITE_APP_VERSION: string
-  readonly VITE_APP_COPYRIGHT: string
+  readonly APP_API_BASE_URL: string
+  readonly APP_HF_SERVER_URL: string
+  readonly APP_VERSION: string
+  readonly APP_COPYRIGHT: string
 }
 
 interface ImportMeta {
