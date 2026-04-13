@@ -78,26 +78,30 @@ class UserRepository:
         await self.session.refresh(user)
         return user
 
-    async def list_users(self, skip: int = 0, limit: int = 20) -> tuple[list[User], int]:
-        """List users with pagination.
+    async def list_users(self, skip: int = 0, limit: int = 20, email_search: Optional[str] = None) -> tuple[list[User], int]:
+        """List users with pagination and optional email fuzzy search.
 
         Args:
             skip: Number of users to skip
             limit: Number of users to return
+            email_search: Optional email substring to search for (fuzzy match)
 
         Returns:
             Tuple of (users list, total count)
         """
-        # Get total count (excluding deleted users)
-        count_result = await self.session.execute(
-            select(User).where(User.is_deleted == False)
-        )
+        # Base query (excluding deleted users)
+        base_query = select(User).where(User.is_deleted == False)
+
+        # Add email search filter if provided
+        if email_search:
+            base_query = base_query.where(User.email.ilike(f"%{email_search}%"))
+
+        # Get total count
+        count_result = await self.session.execute(base_query)
         total = len(count_result.scalars().all())
 
-        # Get paginated users (excluding deleted users)
-        result = await self.session.execute(
-            select(User).where(User.is_deleted == False).offset(skip).limit(limit)
-        )
+        # Get paginated users
+        result = await self.session.execute(base_query.offset(skip).limit(limit))
         users = list(result.scalars().all())
         return users, total
 

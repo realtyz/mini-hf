@@ -28,7 +28,6 @@ class Settings(BaseSettings):
     PG_DATABASE: str
 
     # Application settings
-    APP_NAME: str
     DEBUG: bool = False
     APP_HF_SERVER_URL: str
 

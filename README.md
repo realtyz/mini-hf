@@ -92,7 +92,7 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
    ```
 
 4. **Access the services**
-   - Web UI: http://localhost
+   - Web UI: http://localhost:8080
    - Management API: http://localhost:9800/api/v1
    - HF API: http://localhost:9801
 
@@ -158,7 +158,6 @@ pnpm build
 | `PG_USERNAME` | PostgreSQL username | *(required)* |
 | `PG_PASSWORD` | PostgreSQL password | *(required)* |
 | `PG_DATABASE` | PostgreSQL database name | *(required)* |
-| `APP_NAME` | Application name | *(required)* |
 | `DEBUG` | Debug mode | `false` |
 | `REDIS_URL` | Redis connection URL | *(required)* |
 | `S3_ENDPOINT` | S3-compatible storage endpoint | *(required)* |
@@ -175,7 +174,7 @@ pnpm build
 Create `frontend/.env`:
 
 ```bash
-VITE_API_BASE_URL=http://localhost:9800/api/v1
+APP_API_BASE_URL=http://localhost:9800/api/v1
 ```
 
 ## API Reference

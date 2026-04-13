@@ -1,6 +1,6 @@
 """User management endpoints."""
 
-from typing import Annotated
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
@@ -164,6 +164,7 @@ async def list_users(
     user_service: UserServiceDep,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    email_search: Annotated[Optional[str], Query(description="Fuzzy search by email substring")] = None,
 ) -> UserListResponse:
     """List all users (admin only).
 
@@ -172,11 +173,12 @@ async def list_users(
         user_service: User service dependency
         skip: Number of users to skip (pagination)
         limit: Number of users to return (pagination)
+        email_search: Optional email substring to search for (fuzzy match, case-insensitive)
 
     Returns:
         List of users with total count
     """
-    users, total = await user_service.list_users(skip=skip, limit=limit)
+    users, total = await user_service.list_users(skip=skip, limit=limit, email_search=email_search)
     return UserListResponse(
         data=[UserResponse.model_validate(user) for user in users],
         total=total,

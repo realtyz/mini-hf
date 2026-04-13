@@ -120,19 +120,20 @@ class UserService:
         return user
 
     async def list_users(
-        self, skip: int = 0, limit: int = 20
+        self, skip: int = 0, limit: int = 20, email_search: Optional[str] = None
     ) -> tuple[list[User], int]:
-        """List users with pagination.
+        """List users with pagination and optional email fuzzy search.
 
         Args:
             skip: Number of users to skip
             limit: Number of users to return
+            email_search: Optional email substring to search for (fuzzy match)
 
         Returns:
             Tuple of (users list, total count)
         """
-        logger.debug("Listing users with skip=%s, limit=%s", skip, limit)
-        return await self._repo.list_users(skip=skip, limit=limit)
+        logger.debug("Listing users with skip=%s, limit=%s, email_search=%s", skip, limit, email_search)
+        return await self._repo.list_users(skip=skip, limit=limit, email_search=email_search)
 
     async def update_user(
         self,

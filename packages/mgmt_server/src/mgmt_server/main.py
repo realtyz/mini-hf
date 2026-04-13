@@ -27,7 +27,7 @@ async def lifespan(app: FastAPI):
         # Continue starting the server even if init fails
     yield
     # Shutdown
-    logger.info("Shutting down MiniHF MANAGEMENT API Server...", settings.APP_NAME)
+    logger.info("Shutting down MiniHF MANAGEMENT API Server...")
 
 
 app = FastAPI(
