@@ -343,7 +343,7 @@ async def _execute_hf_task_preview(
             "repo_type": repo_type,
             "revision": revision,
             "commit_hash": commit_hash,
-            "hf_endpoint": actual_endpoint,
+            "hf_endpoint": hf_endpoint,  # Save original value (None if not provided)
             "access_token": encoded_token,
             "total_storage": total_storage,
             "total_file_count": total_file_count,
@@ -363,7 +363,7 @@ async def _execute_hf_task_preview(
             "repo_type": repo_type,
             "revision": revision,
             "commit_hash": commit_hash,
-            "hf_endpoint": actual_endpoint,
+            "hf_endpoint": hf_endpoint,  # Save original value (None if not provided)
             "total_storage": total_storage,
             "total_file_count": total_file_count,
             "required_storage": required_storage,
@@ -706,7 +706,7 @@ async def preview_task(
         full_download=request.full_download,
         allow_patterns=request.allow_patterns,
         ignore_patterns=request.ignore_patterns,
-        hf_endpoint=actual_endpoint,
+        hf_endpoint=request.hf_endpoint,
     )
 
     logger.debug("[PreviewTask {}] Background execution started", task_id)

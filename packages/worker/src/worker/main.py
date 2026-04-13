@@ -30,7 +30,9 @@ from worker.handlers import register_handlers
 # Parse arguments before importing other modules to ensure DEBUG is set
 # before database engine is created
 @click.command()
-@click.option("--debug", is_flag=True, help="Enable debug mode (SQL echo)")
+@click.option(
+    "--debug", is_flag=True, help="Enable debug mode (SQL echo and debug logging)"
+)
 def cli(debug: bool) -> None:
     """Worker entry point."""
     if debug:
