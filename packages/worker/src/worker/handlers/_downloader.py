@@ -76,6 +76,7 @@ class HttpFileDownloader:
         retry_base_delay: float = 5.0,
         retry_max_delay: float = 30.0,
         chunk_size: int = 8192,
+        client: httpx.AsyncClient | None = None,
     ):
         self.temp_dir = Path(temp_dir)
         self.progress_callback = progress_callback
@@ -87,14 +88,17 @@ class HttpFileDownloader:
 
         self._cancel_event = asyncio.Event()
         self._client: httpx.AsyncClient | None = None
+        self._external_client = client
 
     @property
     def client(self) -> httpx.AsyncClient:
-        """延迟初始化 httpx client"""
+        """延迟初始化 httpx client，优先使用外部注入的 client"""
+        if self._external_client is not None:
+            return self._external_client
         if self._client is None:
             self._client = httpx.AsyncClient(
                 follow_redirects=True,
-                timeout=httpx.Timeout(30.0, connect=10.0),
+                timeout=30.0,
             )
         return self._client
 
@@ -107,7 +111,7 @@ class HttpFileDownloader:
         self._cancel_event.clear()
 
     async def close(self) -> None:
-        """关闭下载器，释放资源。"""
+        """关闭下载器，释放资源。仅关闭内部创建的 client，外部注入的 client 由调用方管理。"""
         if self._client is not None:
             await self._client.aclose()
             self._client = None

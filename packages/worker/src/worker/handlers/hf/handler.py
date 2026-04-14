@@ -30,7 +30,6 @@ from .._downloader import DownloadCancelledError
 
 async def _save_download_stats(
     task_id: int,
-    task_repo: TaskRepository,
     progress_tracker: TaskProgressTracker,
 ) -> tuple[int, int]:
     """Save download progress stats to the task row.
@@ -47,11 +46,13 @@ async def _save_download_stats(
         pass
 
     try:
-        await task_repo.update_download_stats(
-            task_id=task_id,
-            downloaded_file_count=downloaded_file_count,
-            downloaded_bytes=downloaded_bytes,
-        )
+        async with get_session() as session:
+            task_repo = TaskRepository(session)
+            await task_repo.update_download_stats(
+                task_id=task_id,
+                downloaded_file_count=downloaded_file_count,
+                downloaded_bytes=downloaded_bytes,
+            )
     except Exception as stats_error:
         logger.warning("  -> Failed to save downloaded stats: {}", stats_error)
 
@@ -140,7 +141,9 @@ async def _restore_profile_on_failure(
             )
             logger.info("  -> Profile status set to INACTIVE for {}", repo_id)
     except Exception as status_error:
-        logger.error("  -> Failed to update profile status: {}", status_error)
+        logger.error(
+            "  -> Failed to update profile status: {}", status_error
+        )
 
 
 async def _restore_profile_on_cancel_externally(
@@ -206,6 +209,9 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
     - On start: create/update profile with UPDATING status
     - On success: set status to ACTIVE
     - On failure: set status to INACTIVE
+
+    Database sessions are kept short — only held during DB operations,
+    released during network I/O (downloading from HF, uploading to S3).
     """
     repo_id = task.repo_id
     repo_type = task.repo_type
@@ -232,93 +238,102 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
     )
 
     try:
+        # Step 1: Set profile status to UPDATING (short DB session)
         async with get_session() as session:
             profile_repo = HfRepoProfileRepository(session)
-            snapshot_repo = HfRepoSnapshotRepository(session)
-            tree_repo = HfRepoTreeRepository(session)
-            task_repo = TaskRepository(session)
+            repo_type_str = repo_type
 
-            endpoint = task.hf_endpoint
-            if not endpoint:
-                config_service = ConfigService(session)
-                endpoint = await config_service.get_hf_default_endpoint()
-            logger.info("  -> Using HF endpoint: {}", endpoint)
-
-            # Step 1: Get or create profile, set status to UPDATING
             await profile_repo.get_or_create_profile(
                 repo_id=repo_id,
-                repo_type=repo_type,
+                repo_type=repo_type_str,
                 initial_status=RepoStatus.UPDATING,
             )
             await profile_repo.set_profile_status(
                 repo_id=repo_id,
-                repo_type=repo_type,
+                repo_type=repo_type_str,
                 status=RepoStatus.UPDATING,
             )
             logger.info("  -> Profile status set to UPDATING for {}", repo_id)
 
-            # Step 2: Resolve commit hash
-            operator = HuggingfaceService(token=access_token, endpoint=endpoint)
-            repo_info = await operator.get_repo_info(repo_id, repo_type, revision)
-            new_commit_hash = repo_info.sha or ""
-            if not new_commit_hash:
-                raise ValueError(f"Could not resolve commit_hash for {repo_id}@{revision}")
-            logger.info(
-                "  -> Resolved {}@{} -> commit {}",
-                repo_id,
-                revision,
-                new_commit_hash[:8],
-            )
+        # Step 2: Resolve commit hash (network call, no DB session needed)
+        async with get_session() as session:
+            config_service = ConfigService(session)
+            endpoint = task.hf_endpoint or await config_service.get_hf_default_endpoint()
+        logger.info("  -> Using HF endpoint: {}", endpoint)
 
-            # Step 3: Check for existing active snapshot
+        operator = HuggingfaceService(token=access_token, endpoint=endpoint)
+        repo_info = await operator.get_repo_info(repo_id, repo_type, revision)
+        new_commit_hash = repo_info.sha or ""
+        if not new_commit_hash:
+            raise ValueError(f"Could not resolve commit_hash for {repo_id}@{revision}")
+        logger.info(
+            "  -> Resolved {}@{} -> commit {}",
+            repo_id,
+            revision,
+            new_commit_hash[:8],
+        )
+
+        # Step 3: Check for existing active snapshot (short DB session)
+        async with get_session() as session:
+            snapshot_repo = HfRepoSnapshotRepository(session)
             existing_snapshot = await snapshot_repo.get_active_snapshot(
                 repo_id, repo_type, revision
             )
 
-            if existing_snapshot and existing_snapshot.commit_hash == new_commit_hash:
-                logger.info(
-                    "  -> Snapshot already active for {}@{} ({})",
-                    repo_id,
-                    revision,
-                    new_commit_hash[:8],
-                )
-                return
+        if existing_snapshot and existing_snapshot.commit_hash == new_commit_hash:
+            logger.info(
+                "  -> Snapshot already active for {}@{} ({})",
+                repo_id,
+                revision,
+                new_commit_hash[:8],
+            )
+            return
 
-            # Step 4: Download files (shared logic for both paths)
-            files_to_download: list[RepoFile]
-            old_commit_hash: str | None = None
+        # Step 4: Download files (shared logic for both paths)
+        files_to_download: list[RepoFile]
+        old_commit_hash: str | None = None
 
-            if existing_snapshot:
-                # Incremental update
-                logger.info(
-                    "  -> Updating {}@{}: {} -> {}",
-                    repo_id,
-                    revision,
-                    existing_snapshot.commit_hash[:8],
-                    new_commit_hash[:8],
-                )
-                old_commit_hash = existing_snapshot.commit_hash
+        if existing_snapshot:
+            # Incremental update
+            logger.info(
+                "  -> Updating {}@{}: {} -> {}",
+                repo_id,
+                revision,
+                existing_snapshot.commit_hash[:8],
+                new_commit_hash[:8],
+            )
+            old_commit_hash = existing_snapshot.commit_hash
 
+            # Get old tree from DB (short session)
+            async with get_session() as session:
+                tree_repo = HfRepoTreeRepository(session)
                 old_tree = await tree_repo.get_file_tree(existing_snapshot.commit_hash)
-                new_tree_items = await operator.get_tree(repo_id, repo_type, revision)
-                new_files = [f for f in new_tree_items if isinstance(f, RepoFile)]
 
-                diff = calculate_file_diff(old_tree, new_files)
-                logger.info(
-                    "  -> File diff: {} keep, {} download, {} update, {} delete",
-                    len(diff.keep),
-                    len(diff.download),
-                    len(diff.update),
-                    len(diff.delete),
-                )
+            # Get new tree from HF (network call, no DB session)
+            new_tree_items = await operator.get_tree(repo_id, repo_type, revision)
+            new_files = [f for f in new_tree_items if isinstance(f, RepoFile)]
 
-                files_to_download = [
-                    f
-                    for f in diff.download + [item for _, item in diff.update]
-                    if f.path in required_file_paths
-                ]
+            diff = calculate_file_diff(old_tree, new_files)
+            logger.info(
+                "  -> File diff: {} keep, {} download, {} update, {} delete",
+                len(diff.keep),
+                len(diff.download),
+                len(diff.update),
+                len(diff.delete),
+            )
 
+            files_to_download = [
+                f
+                for f in diff.download + [item for _, item in diff.update]
+                if f.path in required_file_paths
+            ]
+
+            # Save tree to DB (short session)
+            async with get_session() as session:
+                snapshot_repo = HfRepoSnapshotRepository(session)
+                tree_repo = HfRepoTreeRepository(session)
                 await save_repo_tree(
+                    session=session,
                     snapshot_repo=snapshot_repo,
                     tree_repo=tree_repo,
                     tree_items=new_tree_items,
@@ -328,36 +343,46 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
                     commit_hash=new_commit_hash,
                     committed_at=repo_info.last_modified,
                 )
-                await session.commit()
                 logger.info(
-                    "  -> Committed snapshot and tree items for {}@{}",
+                    "  -> Saved snapshot and tree items for {}@{}",
                     repo_id,
                     new_commit_hash[:8],
                 )
 
-                if files_to_download:
-                    logger.info(
-                        "  -> Downloading {} files (filtered from {})",
-                        len(files_to_download),
-                        len(diff.download) + len(diff.update),
-                    )
-                    total_bytes = sum(f.size for f in files_to_download)
-                    await progress_tracker.init_task(
-                        total_files=len(files_to_download),
-                        total_bytes=total_bytes,
-                    )
-                    await download_and_upload_files(
-                        repo_id=repo_id,
-                        repo_type=repo_type,
-                        commit_hash=new_commit_hash,
-                        files=files_to_download,
-                        access_token=access_token,
-                        cancel_event=cancel_event,
-                        tree_repo=tree_repo,
-                        progress_tracker=progress_tracker,
-                        endpoint=endpoint,
-                    )
+            if files_to_download:
+                logger.info(
+                    "  -> Downloading {} files (filtered from {})",
+                    len(files_to_download),
+                    len(diff.download) + len(diff.update),
+                )
+                total_bytes = sum(f.size for f in files_to_download)
+                await progress_tracker.init_task(
+                    total_files=len(files_to_download),
+                    total_bytes=total_bytes,
+                )
+                # Pure IO — no DB session held during download/upload
+                successful_results = await download_and_upload_files(
+                    repo_id=repo_id,
+                    repo_type=repo_type,
+                    commit_hash=new_commit_hash,
+                    files=files_to_download,
+                    access_token=access_token,
+                    cancel_event=cancel_event,
+                    progress_tracker=progress_tracker,
+                    endpoint=endpoint,
+                )
+                # Update DB with cached status (short session)
+                async with get_session() as session:
+                    tree_repo = HfRepoTreeRepository(session)
+                    for result in successful_results:
+                        await tree_repo.set_item_cached(
+                            commit_hash=new_commit_hash,
+                            path=result["path"],
+                        )
 
+            # Cleanup deleted files (involves both DB and S3)
+            async with get_session() as session:
+                tree_repo = HfRepoTreeRepository(session)
                 await cleanup_deleted_files(
                     repo_id=repo_id,
                     repo_type=repo_type,
@@ -366,28 +391,34 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
                     tree_repo=tree_repo,
                 )
 
-                await _activate_and_archive(
-                    repo_id=repo_id,
-                    repo_type=repo_type,
-                    revision=revision,
-                    new_commit_hash=new_commit_hash,
-                    old_commit_hash=old_commit_hash,
-                    snapshot_repo=snapshot_repo,
-                )
-            else:
-                # First download
-                logger.info(
-                    "  -> First time caching {}@{} ({})",
-                    repo_id,
-                    revision,
-                    new_commit_hash[:8],
-                )
+            await _activate_and_archive(
+                repo_id=repo_id,
+                repo_type=repo_type,
+                revision=revision,
+                new_commit_hash=new_commit_hash,
+                old_commit_hash=old_commit_hash,
+            )
 
-                tree_items = await operator.get_tree(repo_id, repo_type, revision)
-                files = [f for f in tree_items if isinstance(f, RepoFile)]
-                files_to_download = [f for f in files if f.path in required_file_paths]
+        else:
+            # First download
+            logger.info(
+                "  -> First time caching {}@{} ({})",
+                repo_id,
+                revision,
+                new_commit_hash[:8],
+            )
 
+            # Get tree from HF (network call, no DB session)
+            tree_items = await operator.get_tree(repo_id, repo_type, revision)
+            files = [f for f in tree_items if isinstance(f, RepoFile)]
+            files_to_download = [f for f in files if f.path in required_file_paths]
+
+            # Save tree to DB (short session)
+            async with get_session() as session:
+                snapshot_repo = HfRepoSnapshotRepository(session)
+                tree_repo = HfRepoTreeRepository(session)
                 await save_repo_tree(
+                    session=session,
                     snapshot_repo=snapshot_repo,
                     tree_repo=tree_repo,
                     tree_items=tree_items,
@@ -397,61 +428,60 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
                     commit_hash=new_commit_hash,
                     committed_at=repo_info.last_modified,
                 )
-                await session.commit()
                 logger.info(
-                    "  -> Committed snapshot and tree items for {}@{}",
+                    "  -> Saved snapshot and tree items for {}@{}",
                     repo_id,
                     new_commit_hash[:8],
                 )
 
-                if files_to_download:
-                    logger.info(
-                        "  -> Downloading {} files for new snapshot",
-                        len(files_to_download),
-                    )
-                    total_bytes = sum(f.size for f in files_to_download)
-                    await progress_tracker.init_task(
-                        total_files=len(files_to_download),
-                        total_bytes=total_bytes,
-                    )
-                    await download_and_upload_files(
-                        repo_id=repo_id,
-                        repo_type=repo_type,
-                        commit_hash=new_commit_hash,
-                        files=files_to_download,
-                        access_token=access_token,
-                        cancel_event=cancel_event,
-                        tree_repo=tree_repo,
-                        progress_tracker=progress_tracker,
-                        endpoint=endpoint,
-                    )
-
-                await _activate_and_archive(
+            if files_to_download:
+                logger.info(
+                    "  -> Downloading {} files for new snapshot",
+                    len(files_to_download),
+                )
+                total_bytes = sum(f.size for f in files_to_download)
+                await progress_tracker.init_task(
+                    total_files=len(files_to_download),
+                    total_bytes=total_bytes,
+                )
+                # Pure IO — no DB session held during download/upload
+                successful_results = await download_and_upload_files(
                     repo_id=repo_id,
                     repo_type=repo_type,
-                    revision=revision,
-                    new_commit_hash=new_commit_hash,
-                    old_commit_hash=None,
-                    snapshot_repo=snapshot_repo,
+                    commit_hash=new_commit_hash,
+                    files=files_to_download,
+                    access_token=access_token,
+                    cancel_event=cancel_event,
+                    progress_tracker=progress_tracker,
+                    endpoint=endpoint,
                 )
+                # Update DB with cached status (short session)
+                async with get_session() as session:
+                    tree_repo = HfRepoTreeRepository(session)
+                    for result in successful_results:
+                        await tree_repo.set_item_cached(
+                            commit_hash=new_commit_hash,
+                            path=result["path"],
+                        )
 
-            logger.info("  -> Task completed: TaskId {} ({})", task.id, repo_id)
-
-            # Save final download stats
-            (
-                downloaded_file_count,
-                downloaded_bytes,
-            ) = await progress_tracker.get_progress_snapshot()
-            await progress_tracker.complete_task()
-            await progress_tracker.clear()
-
-            await task_repo.update_download_stats(
-                task_id=task.id,
-                downloaded_file_count=downloaded_file_count,
-                downloaded_bytes=downloaded_bytes,
+            await _activate_and_archive(
+                repo_id=repo_id,
+                repo_type=repo_type,
+                revision=revision,
+                new_commit_hash=new_commit_hash,
+                old_commit_hash=None,
             )
 
-            # Update profile status to ACTIVE
+        logger.info("  -> Task completed: TaskId {} ({})", task.id, repo_id)
+
+        # Save final download stats (short DB session)
+        await progress_tracker.complete_task()
+        await progress_tracker.clear()
+        await _save_download_stats(task.id, progress_tracker)
+
+        # Update profile status to ACTIVE (short DB session)
+        async with get_session() as session:
+            profile_repo = HfRepoProfileRepository(session)
             pipeline_tag = getattr(repo_info, "pipeline_tag", None)
             await profile_repo.update_profile_on_cache(
                 repo_id=repo_id,
@@ -465,12 +495,7 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
     except DownloadCancelledError:
         logger.info("  -> Download cancelled by user for {}", repo_id)
         await _fail_progress(progress_tracker, "Cancelled by user")
-        try:
-            async with get_session() as session:
-                task_repo = TaskRepository(session)
-                await _save_download_stats(task.id, task_repo, progress_tracker)
-        except Exception:
-            pass
+        await _save_download_stats(task.id, progress_tracker)
         await _restore_profile_on_cancel_externally(
             repo_id=repo_id,
             repo_type=repo_type,
@@ -482,12 +507,7 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
     except Exception as e:
         logger.exception("  -> Download failed for {}: {}", repo_id, e)
         await _fail_progress(progress_tracker, str(e))
-        try:
-            async with get_session() as session:
-                task_repo = TaskRepository(session)
-                await _save_download_stats(task.id, task_repo, progress_tracker)
-        except Exception:
-            pass
+        await _save_download_stats(task.id, progress_tracker)
         await _restore_profile_on_failure_externally(
             repo_id=repo_id,
             repo_type=repo_type,
@@ -513,33 +533,37 @@ async def _activate_and_archive(
     revision: str,
     new_commit_hash: str,
     old_commit_hash: str | None,
-    snapshot_repo: HfRepoSnapshotRepository,
 ) -> None:
-    """Activate the new snapshot and optionally archive the old one."""
-    activated = await snapshot_repo.activate_snapshot(
-        repo_id=repo_id,
-        repo_type=repo_type,
-        revision=revision,
-        commit_hash=new_commit_hash,
-    )
-    if activated:
-        logger.info(
-            "  -> Activated new snapshot {}@{} ({})",
-            repo_id,
-            revision,
-            new_commit_hash[:8],
-        )
+    """Activate the new snapshot and optionally archive the old one.
 
-    if old_commit_hash:
-        await snapshot_repo.archive_snapshot(
+    Uses a short-lived database session for these quick DB operations.
+    """
+    async with get_session() as session:
+        snapshot_repo = HfRepoSnapshotRepository(session)
+        activated = await snapshot_repo.activate_snapshot(
             repo_id=repo_id,
             repo_type=repo_type,
             revision=revision,
-            archive_commit_hash=old_commit_hash,
+            commit_hash=new_commit_hash,
         )
-        logger.info(
-            "  -> Archived old snapshot {}@{} ({})",
-            repo_id,
-            revision,
-            old_commit_hash[:8],
-        )
+        if activated:
+            logger.info(
+                "  -> Activated new snapshot {}@{} ({})",
+                repo_id,
+                revision,
+                new_commit_hash[:8],
+            )
+
+        if old_commit_hash:
+            await snapshot_repo.archive_snapshot(
+                repo_id=repo_id,
+                repo_type=repo_type,
+                revision=revision,
+                archive_commit_hash=old_commit_hash,
+            )
+            logger.info(
+                "  -> Archived old snapshot {}@{} ({})",
+                repo_id,
+                revision,
+                old_commit_hash[:8],
+            )

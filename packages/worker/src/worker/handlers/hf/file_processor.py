@@ -5,10 +5,10 @@ from pathlib import Path
 
 from services.huggingface import hf_url
 from huggingface_hub import RepoFile
+import httpx
 from loguru import logger
 
 from core import settings
-from database.db_repositories import HfRepoTreeRepository
 from worker.handlers._downloader import (
     HttpFileDownloader,
     ProgressInfo,
@@ -25,7 +25,7 @@ DEFAULT_CONCURRENT_DOWNLOADS = 3
 DEFAULT_CONCURRENT_UPLOADS = 5
 
 # Progress reporting interval (seconds)
-PROGRESS_INTERVAL = 1.0
+PROGRESS_INTERVAL = 2.0
 
 
 async def download_and_upload_files(
@@ -35,28 +35,46 @@ async def download_and_upload_files(
     files: list[RepoFile],
     access_token: str | None,
     cancel_event: asyncio.Event,
-    tree_repo: HfRepoTreeRepository,
     progress_tracker: TaskProgressTracker | None = None,
     endpoint: str | None = None,
-) -> None:
+) -> list[dict]:
     """Download files concurrently to local temp directory and upload to S3.
 
-    Separates IO operations (download/upload) from database operations.
-    All files are downloaded concurrently, then database updates are performed
-    sequentially in a single transaction.
+    This function performs pure IO (download + upload) and returns the list of
+    successful results. Database updates are the caller's responsibility.
 
     Args:
         repo_id: Repository ID
         repo_type: Repository type
-        commit_hash: Commit hash for updating cache status
+        commit_hash: Commit hash (used for constructing download URLs)
         files: List of RepoFile objects to download
         access_token: Optional access token for authentication
         cancel_event: Event to signal cancellation
-        tree_repo: Tree repository instance
+        progress_tracker: Optional progress tracker
         endpoint: Optional HF endpoint URL to use for downloads
+
+    Returns:
+        List of result dicts for successfully processed files. Each dict has:
+        - status: "uploaded" | "exists"
+        - path: File path
+        - blob_id: Blob ID
+        - size: File size
+
+    Raises:
+        DownloadError: If any files fail to process
     """
     if endpoint is None:
         endpoint = "https://huggingface.co"
+
+    # Step 0: Create a shared AsyncClient for connection reuse across all downloads
+    shared_client = httpx.AsyncClient(
+        follow_redirects=True,
+        timeout=30.0,
+        limits=httpx.Limits(
+            max_connections=DEFAULT_CONCURRENT_DOWNLOADS + DEFAULT_CONCURRENT_UPLOADS + 2,
+            max_keepalive_connections=DEFAULT_CONCURRENT_DOWNLOADS + 2,
+        ),
+    )
 
     # Use separate semaphores for download and upload concurrency
     # Download semaphore is released after download completes, allowing other tasks to start
@@ -84,14 +102,18 @@ async def download_and_upload_files(
             cancel_event=cancel_event,
             progress_tracker=progress_tracker,
             endpoint=endpoint,
+            shared_client=shared_client,
         )
         for repo_file in files
     ]
 
     # Wait for all tasks to complete, collect results
-    logger.debug("Waiting for {} download tasks to complete...", len(download_tasks))
-    results = await asyncio.gather(*download_tasks, return_exceptions=True)
-    logger.debug("All download tasks completed, processing results...")
+    try:
+        logger.debug("Waiting for {} download tasks to complete...", len(download_tasks))
+        results = await asyncio.gather(*download_tasks, return_exceptions=True)
+        logger.debug("All download tasks completed, processing results...")
+    finally:
+        await shared_client.aclose()
 
     # Step 2: Categorize results
     successful_results: list[dict] = []
@@ -118,25 +140,15 @@ async def download_and_upload_files(
         len(files),
     )
 
-    # Step 3: Batch execute database updates (sequential, no concurrency conflicts)
-    for result in successful_results:
-        await tree_repo.set_item_cached(
-            commit_hash=commit_hash,
-            path=result["path"],
-        )
-        logger.debug(
-            "Updated database for {} ({})",
-            result["path"],
-            result["blob_id"][:12],
-        )
-
-    # Step 4: If there are failures, raise exception
+    # Step 3: If there are failures, raise exception
     if failures:
         failed_paths = [f[0] for f in failures]
         raise DownloadError(
             f"Failed to process {len(failures)} files: {', '.join(failed_paths[:3])}"
             f"{'...' if len(failures) > 3 else ''}"
         )
+
+    return successful_results
 
 
 async def _process_single_file(
@@ -150,6 +162,7 @@ async def _process_single_file(
     cancel_event: asyncio.Event,
     progress_tracker: TaskProgressTracker | None = None,
     endpoint: str | None = None,
+    shared_client: httpx.AsyncClient | None = None,
 ) -> dict:
     """Process a single file: download from HF and upload to S3.
 
@@ -319,11 +332,12 @@ async def _process_single_file(
                 except Exception as e:
                     logger.debug("Failed to update progress: {}", e)
 
-        # Create downloader instance (each file is independent, supports independent progress callback)
+        # Create downloader instance, reusing shared client if available
         async with HttpFileDownloader(
             temp_dir=settings.INCOMPLETE_FILE_PATH,
             progress_callback=progress_callback,
             progress_interval=PROGRESS_INTERVAL,
+            client=shared_client,
         ) as downloader:
             # Download file
             url = hf_url(

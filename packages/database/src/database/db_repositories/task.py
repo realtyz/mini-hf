@@ -68,7 +68,7 @@ class TaskRepository:
             required_storage=required_storage,
         )
         self.session.add(task)
-        await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(task)
         return task
 
@@ -124,7 +124,7 @@ class TaskRepository:
                 updated_at=now,
             )
         )
-        await self.session.flush()
+        await self.session.commit()
 
         # Refresh all tasks in a single query
         result = await self.session.execute(select(Task).where(Task.id.in_(task_ids)))
@@ -172,6 +172,7 @@ class TaskRepository:
         await self.session.execute(
             update(Task).where(Task.id == task_id).values(**values)
         )
+        await self.session.commit()
 
     async def list_tasks(
         self,
@@ -357,3 +358,4 @@ class TaskRepository:
                 updated_at=now,
             )
         )
+        await self.session.commit()

@@ -5,12 +5,14 @@ from datetime import datetime
 from huggingface_hub import RepoFile, RepoFolder
 from loguru import logger
 from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.db_models import HfRepoSnapshot, HfRepoTreeItem, SnapshotStatus, TreeItemType
 from database.db_repositories import HfRepoSnapshotRepository, HfRepoTreeRepository
 
 
 async def save_repo_tree(
+    session: AsyncSession,
     snapshot_repo: HfRepoSnapshotRepository,
     tree_repo: HfRepoTreeRepository,
     tree_items: list[RepoFile | RepoFolder],
@@ -22,10 +24,12 @@ async def save_repo_tree(
 ) -> bool:
     """Save repo tree to database atomically.
 
-    Creates new snapshot and tree items in a single transaction.
-    Both operations must succeed together, or both will be rolled back.
+    Creates new snapshot and tree items in a single transaction,
+    then commits. Both operations must succeed together, or both
+    will be rolled back.
 
     Args:
+        session: Database session for the transaction
         snapshot_repo: Snapshot repository instance
         tree_repo: Tree repository instance
         tree_items: List of RepoFile/RepoFolder objects
@@ -58,10 +62,6 @@ async def save_repo_tree(
         )
         return False
 
-    # Get shared session for atomic transaction
-    session = snapshot_repo._session
-
-    # 处理带时区的 datetime - 转换为无时区（假设 UTC）
     if committed_at is not None and committed_at.tzinfo is not None:
         committed_at = committed_at.replace(tzinfo=None)
 
@@ -75,7 +75,6 @@ async def save_repo_tree(
         status=SnapshotStatus.INACTIVE,
     )
     session.add(snapshot)
-    # Note: Not committing here - will be committed with tree items together
 
     # Convert to database items
     items = []
@@ -139,13 +138,13 @@ async def save_repo_tree(
         result = await session.execute(stmt)
         total_inserted += result.rowcount  # type: ignore[attr-defined]
 
-    # Note: We don't commit here - caller will commit the entire transaction
-    # This ensures snapshot and tree items are saved atomically
+    # Commit snapshot and tree items atomically
+    await session.commit()
 
     files_count = sum(1 for item in items if item["item_type"] == "file")
     folders_count = sum(1 for item in items if item["item_type"] == "directory")
     logger.info(
-        "  -> Prepared repo tree: {}@{} - {} files, {} directories (pending commit)",
+        "  -> Saved repo tree: {}@{} - {} files, {} directories",
         repo_id,
         commit_hash,
         files_count,
