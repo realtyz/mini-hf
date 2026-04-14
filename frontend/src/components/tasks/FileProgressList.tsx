@@ -87,7 +87,7 @@ function FileProgressRow({
       <div className="flex-1 min-w-0 overflow-hidden">
         <div className="flex items-center justify-between mb-1">
           <span
-            className="text-xs truncate group-hover:text-foreground transition-colors"
+            className="text-xs truncate group-hover:text-foreground transition-colors min-w-0"
             title={file.path}
           >
             {file.path}

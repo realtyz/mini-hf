@@ -63,7 +63,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/hooks/api/use-auth-queries";
 import { useAuthStore } from "@/stores/auth-store";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "@/components/use-theme";
 import { queryClient } from "@/lib/query-client";
 
 // =============================================================================

@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
+import { PaginatedNavigation } from "@/components/paginated-navigation";
 import {
   Table,
   TableBody,
@@ -21,14 +22,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import type { TaskResponse } from "@/lib/api-types";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
@@ -223,45 +216,12 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
             )}
           </p>
           {totalPages > 1 && (
-            <Pagination className="mx-0 w-auto">
-              <PaginationContent className="gap-1">
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    className={`h-8 px-2 transition-colors ${
-                      currentPage === 1
-                        ? "pointer-events-none opacity-40"
-                        : "cursor-pointer hover:bg-muted"
-                    }`}
-                  />
-                </PaginationItem>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      onClick={() => setCurrentPage(page)}
-                      isActive={currentPage === page}
-                      className="h-8 w-8 cursor-pointer text-xs"
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() =>
-                      setCurrentPage(Math.min(totalPages, currentPage + 1))
-                    }
-                    className={`h-8 px-2 transition-colors ${
-                      currentPage === totalPages
-                        ? "pointer-events-none opacity-40"
-                        : "cursor-pointer hover:bg-muted"
-                    }`}
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <PaginatedNavigation
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              className="mx-0 w-auto"
+            />
           )}
         </div>
       )}

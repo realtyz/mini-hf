@@ -21,7 +21,7 @@ import { ThemeToggle } from "@/components/shared/ThemeToggle";
 import { landingContent } from "@/constants/landing";
 import { useAuthStore } from "@/stores/auth-store";
 import { useCurrentUser } from "@/hooks/api/use-auth-queries";
-import { useTheme } from "@/components/theme-provider";
+import { useTheme } from "@/components/use-theme";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,

@@ -18,14 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { PaginatedNavigation } from "@/components/paginated-navigation";
 import {
   Table,
   TableBody,
@@ -163,13 +156,7 @@ export function Tasks() {
     setPage(1);
   }, []);
 
-  const handlePreviousPage = useCallback(() => {
-    setPage((p) => Math.max(1, p - 1));
-  }, []);
-
-  const handleNextPage = useCallback(() => {
-    setPage((p) => Math.min(totalPages, p + 1));
-  }, [totalPages]);
+  
 
   const handlePinTask = useCallback(
     async (task: TaskResponse) => {
@@ -593,51 +580,12 @@ export function Tasks() {
               条
             </p>
             {totalPages > 1 && (
-              <Pagination className="mx-0 w-auto">
-                <PaginationContent>
-                  <PaginationItem>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <PaginationPrevious
-                        onClick={handlePreviousPage}
-                        className={
-                          page <= 1
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </motion.div>
-                  </PaginationItem>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                    (p) => (
-                      <PaginationItem key={p}>
-                        <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.95 }}>
-                          <PaginationLink
-                            onClick={() => setPage(p)}
-                            isActive={page === p}
-                            className="cursor-pointer"
-                          >
-                            {p}
-                          </PaginationLink>
-                        </motion.div>
-                      </PaginationItem>
-                    ),
-                  )}
-
-                  <PaginationItem>
-                    <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                      <PaginationNext
-                        onClick={handleNextPage}
-                        className={
-                          page >= totalPages
-                            ? "pointer-events-none opacity-50"
-                            : "cursor-pointer"
-                        }
-                      />
-                    </motion.div>
-                  </PaginationItem>
-                </PaginationContent>
-              </Pagination>
+              <PaginatedNavigation
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                className="mx-0 w-auto"
+              />
             )}
           </motion.div>
         )}

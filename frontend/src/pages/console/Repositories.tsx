@@ -10,14 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { PaginatedNavigation } from "@/components/paginated-navigation";
 import { RepoGrid } from "@/components/repo";
 import { useRepoList, PAGE_SIZE } from "@/hooks/useRepoList";
 import type { RepoProfile, RepoStatus } from "@/lib/api-types";
@@ -325,43 +318,12 @@ export function RepositoriesConsole() {
             共 <span className="font-medium text-foreground">{total}</span> 个仓库
           </p>
           {totalPages > 1 && (
-            <Pagination className="mx-0 w-auto">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious
-                    onClick={() => setPage((p) => Math.max(0, p - 1))}
-                    className={
-                      page === 0
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                  <PaginationItem key={p}>
-                    <PaginationLink
-                      onClick={() => setPage(p - 1)}
-                      isActive={page + 1 === p}
-                      className="cursor-pointer"
-                    >
-                      {p}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-
-                <PaginationItem>
-                  <PaginationNext
-                    onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                    className={
-                      page >= totalPages - 1
-                        ? "pointer-events-none opacity-50"
-                        : "cursor-pointer"
-                    }
-                  />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+            <PaginatedNavigation
+              currentPage={page + 1}
+              totalPages={totalPages}
+              onPageChange={(p) => setPage(p - 1)}
+              className="mx-0 w-auto"
+            />
           )}
         </div>
       )}

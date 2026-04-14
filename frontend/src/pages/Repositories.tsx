@@ -28,7 +28,8 @@ import type {
   RepoListResponse,
   RepoListParams,
 } from "@/lib/api-types";
-import { RepoGrid, RepoPagination } from "@/components/repo";
+import { RepoGrid } from "@/components/repo";
+import { PaginatedNavigation } from "@/components/paginated-navigation";
 
 const PAGE_SIZE = 16;
 
@@ -186,13 +187,26 @@ export function Repositories() {
       </div>
 
       {/* 分页 */}
-      <RepoPagination
-        page={page}
-        total={total}
-        totalPages={totalPages}
-        isLoading={isLoading}
-        onPageChange={setPage}
-      />
+      {totalPages > 1 && (
+        <div className="mt-6 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            共 {total} 个仓库
+          </p>
+          <PaginatedNavigation
+            currentPage={page + 1}
+            totalPages={totalPages}
+            onPageChange={(p) => setPage(p - 1)}
+            className="mx-0 w-auto"
+          />
+        </div>
+      )}
+      {totalPages <= 1 && total > 0 && (
+        <div className="mt-6">
+          <p className="text-sm text-muted-foreground">
+            共 {total} 个仓库
+          </p>
+        </div>
+      )}
     </div>
   );
 }
