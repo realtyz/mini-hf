@@ -28,7 +28,7 @@ COPY packages/mgmt_server/ packages/mgmt_server/
 COPY packages/hf_server/ packages/hf_server/
 COPY packages/worker/ packages/worker/
 
-RUN uv sync --locked --all-packages
+RUN uv sync --all-packages
 
 # 暴露两个服务端口（worker 不需要端口）
 EXPOSE 9800 9801

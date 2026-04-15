@@ -15,17 +15,13 @@ import type {
 /**
  * 获取用户列表（管理员）
  */
-export function useUsers(params?: { page?: number; page_size?: number; email_search?: string }) {
+export function useUsers(params?: { skip?: number; limit?: number; email_search?: string }) {
   return useQuery({
     queryKey: queryKeys.users.list(params),
     queryFn: async () => {
-      const pageSize = params?.page_size ?? 20
-      const page = params?.page ?? 1
-      const skip = (page - 1) * pageSize
-
       const searchParams = new URLSearchParams()
-      searchParams.append('skip', String(skip))
-      searchParams.append('limit', String(pageSize))
+      searchParams.append('skip', String(params?.skip ?? 0))
+      searchParams.append('limit', String(params?.limit ?? 20))
       if (params?.email_search) {
         searchParams.append('email_search', params.email_search)
       }

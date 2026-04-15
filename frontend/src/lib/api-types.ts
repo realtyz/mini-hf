@@ -17,16 +17,8 @@ export interface ApiError {
 }
 
 export interface PaginationParams {
-  page?: number
-  page_size?: number
-}
-
-export interface PaginatedResponse<T> {
-  items: T[]
-  total: number
-  page: number
-  page_size: number
-  pages: number
+  skip?: number
+  limit?: number
 }
 
 // ==================== 认证 ====================

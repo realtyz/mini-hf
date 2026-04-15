@@ -22,7 +22,10 @@ from storage import s3_client, build_blob_key
 DEFAULT_CONCURRENT_DOWNLOADS = 3
 
 # Default concurrent upload count (can be higher than download as uploads are usually faster)
-DEFAULT_CONCURRENT_UPLOADS = 5
+DEFAULT_CONCURRENT_UPLOADS = 3
+
+# Default concurrent S3 existence checks
+DEFAULT_CONCURRENT_CHECKS = 5
 
 # Progress reporting interval (seconds)
 PROGRESS_INTERVAL = 2.0
@@ -81,6 +84,8 @@ async def download_and_upload_files(
     # Upload uses separate semaphore, allowing download and upload to run in parallel
     download_semaphore = asyncio.Semaphore(DEFAULT_CONCURRENT_DOWNLOADS)
     upload_semaphore = asyncio.Semaphore(DEFAULT_CONCURRENT_UPLOADS)
+    # Semaphore for S3 existence checks (runs before download/upload, can overwhelm S3 if unbounded)
+    check_semaphore = asyncio.Semaphore(DEFAULT_CONCURRENT_CHECKS)
 
     # Step 1: Initialize all files' progress to pending
     if progress_tracker:
@@ -94,6 +99,7 @@ async def download_and_upload_files(
         _process_single_file(
             download_semaphore=download_semaphore,
             upload_semaphore=upload_semaphore,
+            check_semaphore=check_semaphore,
             repo_id=repo_id,
             repo_type=repo_type,
             commit_hash=commit_hash,
@@ -154,6 +160,7 @@ async def download_and_upload_files(
 async def _process_single_file(
     download_semaphore: asyncio.Semaphore,
     upload_semaphore: asyncio.Semaphore,
+    check_semaphore: asyncio.Semaphore,
     repo_id: str,
     repo_type: str,
     commit_hash: str,
@@ -175,6 +182,7 @@ async def _process_single_file(
     Args:
         download_semaphore: Semaphore for controlling download concurrency
         upload_semaphore: Semaphore for controlling upload concurrency
+        check_semaphore: Semaphore for controlling S3 existence check concurrency
         repo_id: Repository ID
         repo_type: Repository type
         commit_hash: Commit hash (for logging)
@@ -207,8 +215,11 @@ async def _process_single_file(
     # Build S3 key (based on blob_id)
     s3_key = build_blob_key(repo_id, repo_type, blob_id)
 
-    # Check if blob already exists in S3 (check outside semaphore to reduce wait)
-    if await s3_client.file_exists(s3_key):
+    # Check if blob already exists in S3 (throttled to avoid overwhelming S3 connection pool)
+    async with check_semaphore:
+        exists = await s3_client.file_exists(s3_key)
+
+    if exists:
         logger.debug(
             "Blob already exists in S3: {} ({})",
             repo_file.path,

@@ -686,8 +686,8 @@ export function Users() {
   );
 
   const { data, isLoading, error, refetch } = useUsers({
-    page,
-    page_size: PAGE_SIZE,
+    skip: (page - 1) * PAGE_SIZE,
+    limit: PAGE_SIZE,
     email_search: emailSearch,
   });
 
@@ -987,7 +987,7 @@ export function Users() {
               currentPage={page}
               totalPages={totalPages}
               onPageChange={setPage}
-              className="w-auto justify-end"
+              className="w-auto justify-end mx-0"
             />
           )}
         </motion.div>

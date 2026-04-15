@@ -107,12 +107,12 @@ export function RepositoriesConsole() {
   const [statuses, setStatuses] = useState<RepoStatus[]>(savedState?.statuses ?? DEFAULT_STATUSES);
   const [sortBy, setSortBy] = useState<string>(savedState?.sortBy ?? "cache_updated_at");
   const [sortOrder, setSortOrder] = useState<string>(savedState?.sortOrder ?? "desc");
-  const [page, setPage] = useState(savedState?.page ?? 0);
+  const [page, setPage] = useState(savedState?.page ?? 1);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
-      setPage(0);
+      setPage(1);
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
@@ -130,7 +130,7 @@ export function RepositoriesConsole() {
 
   const { data, isLoading, error, refetch } = useRepoList({
     repoType,
-    skip: page * PAGE_SIZE,
+    skip: (page - 1) * PAGE_SIZE,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
     statuses: statuses.length > 0 ? statuses : undefined,
@@ -149,12 +149,12 @@ export function RepositoriesConsole() {
         ? prev.filter((s) => s !== status)
         : [...prev, status],
     );
-    setPage(0);
+    setPage(1);
   };
 
   const handleRepoTypeChange = (value: string) => {
     setRepoType(value as RepoTypeFilter);
-    setPage(0);
+    setPage(1);
   };
 
   const handleViewDetail = (repo: RepoProfile) => {
@@ -319,9 +319,9 @@ export function RepositoriesConsole() {
           </p>
           {totalPages > 1 && (
             <PaginatedNavigation
-              currentPage={page + 1}
+              currentPage={page}
               totalPages={totalPages}
-              onPageChange={(p) => setPage(p - 1)}
+              onPageChange={setPage}
               className="mx-0 w-auto"
             />
           )}
