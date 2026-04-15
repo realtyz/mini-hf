@@ -1,3 +1,5 @@
+import { config } from '@/lib/runtime-config'
+
 export const landingContent = {
   header: {
     brand: "MiniHF",
@@ -69,7 +71,7 @@ export const landingContent = {
 pip install huggingface_hub
 
 # 2. 设置 HF_ENDPOINT
-export HF_ENDPOINT=${import.meta.env.VITE_HF_SERVER_URL ?? "http://your-mini-hf-server"}
+export HF_ENDPOINT=${config.HF_SERVER_URL}
 
 # 3. 照常下载模型
 hf download Qwen/Qwen3.5-4B`,

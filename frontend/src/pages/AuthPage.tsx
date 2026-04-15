@@ -12,6 +12,7 @@ import {
   LogIn,
 } from "lucide-react";
 import { toast } from "sonner";
+import { config } from "@/lib/runtime-config";
 
 import { Button } from "@/components/ui/button";
 import { CardContent } from "@/components/ui/card";
@@ -393,7 +394,7 @@ function LoginForm({ onFlip }: FormProps) {
           <Input
             id="email"
             type="email"
-            placeholder={`name@${import.meta.env.APP_EMAIL_DOMAIN || "example.com"}`}
+            placeholder={`name@${config.EMAIL_DOMAIN}`}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -705,7 +706,7 @@ function RegisterForm({ onFlip }: FormProps) {
               <Input
                 id="reg-email"
                 type="email"
-                placeholder={`name@${import.meta.env.APP_EMAIL_DOMAIN || "example.com"}`}
+                placeholder={`name@${config.EMAIL_DOMAIN}`}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required

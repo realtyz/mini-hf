@@ -2,12 +2,13 @@ import axios, { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import type { ApiError, ApiResponse } from '@/lib/api-types'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryClient } from '@/lib/query-client'
+import { config } from '@/lib/runtime-config'
 
 /**
  * API 客户端配置
  *
  * 功能：
- * 1. 自动添加 baseURL (从环境变量 APP_API_BASE_URL 读取)
+ * 1. 自动添加 baseURL (从运行时配置读取)
  * 2. 请求拦截器自动注入 JWT token
  * 3. 响应拦截器处理 401 未授权，自动跳转登录
  * 4. 自动刷新 token (当 token 即将过期时)
@@ -28,7 +29,7 @@ let isRefreshing = false
 let refreshSubscribers: ((token: string) => void)[] = []
 
 const api = axios.create({
-  baseURL: import.meta.env.APP_API_BASE_URL || "http://localhost:9800/api/v1",
+  baseURL: config.API_BASE_URL,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
@@ -51,7 +52,7 @@ async function refreshAccessToken(): Promise<string | null> {
       token_type: string
       expires_in: number
     }>(
-      `${import.meta.env.APP_API_BASE_URL || "http://localhost:9800"}/api/v1/auth/refresh`,
+      `${config.API_BASE_URL}/auth/refresh`,
       {},
       {
         headers: {

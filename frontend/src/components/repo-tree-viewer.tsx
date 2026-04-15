@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/api";
+import { config } from "@/lib/runtime-config";
 import type { RepoTreeResponse, RepoTreeItem } from "@/lib/api-types";
 import { cn } from "@/lib/utils";
 
@@ -405,7 +406,7 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
                   {item.type === "file" &&
                     (item.is_cached ? (
                       <a
-                        href={`${import.meta.env.APP_API_BASE_URL}/hf_repo/${encodeURIComponent(repoId)}/file?commit_hash=${encodeURIComponent(commitHash)}&path=${encodeURIComponent(item.path)}`}
+                        href={`${config.API_BASE_URL}/hf_repo/${encodeURIComponent(repoId)}/file?commit_hash=${encodeURIComponent(commitHash)}&path=${encodeURIComponent(item.path)}`}
                         download={item.name}
                         title="下载文件"
                         onClick={(e) => e.stopPropagation()}

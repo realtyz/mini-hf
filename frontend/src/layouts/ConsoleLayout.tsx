@@ -5,6 +5,7 @@
 
 import { Outlet, Link, useLocation, useNavigate } from "react-router";
 import { useMemo } from "react";
+import { config } from "@/lib/runtime-config";
 import {
   LayoutDashboard,
   Box,
@@ -492,8 +493,8 @@ function NavItem({ item }: { item: MenuItem }) {
  * 版本与版权信息
  */
 function VersionInfo() {
-  const version = import.meta.env.VITE_APP_VERSION || '1.0.0';
-  const copyright = import.meta.env.VITE_APP_COPYRIGHT || '© 2025 Mini-HF Team';
+  const version = config.APP_VERSION;
+  const copyright = config.APP_COPYRIGHT;
 
   return (
     <div className="rounded-lg bg-muted/40 border border-border/50 p-3 group-data-[collapsible=icon]:hidden">

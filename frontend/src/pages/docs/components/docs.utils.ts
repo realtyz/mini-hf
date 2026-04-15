@@ -1,6 +1,7 @@
 import type { DocMeta, TocItem } from './docs.types'
 import { defaultDocs } from './docs.data'
 import { default as Slugger } from 'github-slugger'
+import { config } from '@/lib/runtime-config'
 
 export function getDocList(): DocMeta[] {
   return defaultDocs.sort((a, b) => a.order - b.order)
@@ -23,7 +24,7 @@ export async function loadDocContent(slug: string): Promise<string> {
     let content = await loader() as string
 
     // 模板变量替换
-    const hfEndpoint = import.meta.env.APP_HF_SERVER_URL ?? 'http://your-server:9801'
+    const hfEndpoint = config.HF_SERVER_URL
     content = content.replace(/{{HF_ENDPOINT}}/g, hfEndpoint)
 
     return content

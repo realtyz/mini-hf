@@ -7,18 +7,6 @@ RUN npm install -g pnpm
 # 设置工作目录
 WORKDIR /app
 
-# 定义构建参数
-ARG APP_HF_SERVER_URL
-ARG APP_API_BASE_URL
-ARG APP_VERSION=1.0.0
-ARG APP_COPYRIGHT='© 2025 by realtyz'
-
-# 设置为环境变量供构建使用
-ENV APP_HF_SERVER_URL=${APP_HF_SERVER_URL}
-ENV APP_API_BASE_URL=${APP_API_BASE_URL}
-ENV APP_VERSION=${APP_VERSION}
-ENV APP_COPYRIGHT=${APP_COPYRIGHT}
-
 # 复制 package.json 和 pnpm-lock.yaml
 COPY package.json pnpm-lock.yaml ./
 
@@ -40,8 +28,18 @@ COPY --from=builder /app/dist /usr/share/nginx/html
 # 复制 nginx 配置
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# 暴露端口
+# 复制 entrypoint 脚本
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# 运行时环境变量（无需重新构建镜像即可修改）：
+#   API_BASE_URL    - 管理 API 地址（默认 http://localhost:9800/api/v1）
+#   HF_SERVER_URL   - HF 服务地址（默认 http://localhost:9801）
+#   APP_VERSION     - 版本号（默认 1.0.0）
+#   APP_COPYRIGHT   - 版权信息（默认 © 2026 Mini-HF Project）
+#   EMAIL_DOMAIN    - 邮箱域名占位符（默认 example.com）
+
 EXPOSE 80
 
-# 启动 nginx
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["nginx", "-g", "daemon off;"]

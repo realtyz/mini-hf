@@ -84,13 +84,13 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      args:
-        - APP_API_BASE_URL=/api/v1
-        - APP_EMAIL_DOMAIN=minihf.com
-        - APP_HF_SERVER_URL=http://localhost:9801
     image: mini-hf/frontend:${VERSION:-latest}
     ports:
       - "8080:80"
+    environment:
+      - API_BASE_URL=${API_BASE_URL:-/api/v1}
+      - EMAIL_DOMAIN=${EMAIL_DOMAIN:-minihf.com}
+      - HF_SERVER_URL=${HF_SERVER_URL:-http://localhost:9801}
     depends_on:
       - mgmt-server
       - hf-server
