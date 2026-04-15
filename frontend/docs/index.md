@@ -33,7 +33,7 @@ pip install huggingface_hub
 在终端中执行以下命令：
 
 ```bash
-export HF_ENDPOINT=http://your-server:9801
+export HF_ENDPOINT='{{HF_ENDPOINT}}'
 ```
 
 如需永久生效，请将上述命令添加到 `~/.bashrc` 或 `~/.zshrc` 文件中。
@@ -43,13 +43,13 @@ export HF_ENDPOINT=http://your-server:9801
 **命令提示符 (CMD)：**
 
 ```cmd
-set HF_ENDPOINT=http://your-server:9801
+set HF_ENDPOINT='{{HF_ENDPOINT}}'
 ```
 
 **PowerShell：**
 
 ```powershell
-$env:HF_ENDPOINT = "http://your-server:9801"
+$env:HF_ENDPOINT = '{{HF_ENDPOINT}}'
 ```
 
 如需永久生效，可在「系统属性 → 环境变量」中添加用户变量或系统变量。

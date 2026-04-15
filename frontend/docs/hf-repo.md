@@ -15,7 +15,7 @@
 
 ```bash
 # 设置环境变量
-export HF_ENDPOINT={{HF_ENDPOINT}}
+export HF_ENDPOINT='{{HF_ENDPOINT}}'
 
 # 下载模型
 hf download Qwen/Qwen3.5-4B

@@ -57,7 +57,7 @@ def _build_link_header(
     query_params["cursor"] = next_cursor
     query_params["limit"] = str(limit)
 
-    next_url = f"{settings.APP_HF_SERVER_URL.rstrip('/')}{request.url.path}?{urlencode(query_params)}"
+    next_url = f"{settings.HF_SERVER_URL.rstrip('/')}{request.url.path}?{urlencode(query_params)}"
     return f'<{next_url}>; rel="next"'
 
 
