@@ -259,7 +259,7 @@ export function Tasks() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 w-24"
+              className="gap-2 w-24 cursor-pointer"
               onClick={() => refetch()}
             >
               <RefreshCw className="size-4" />
@@ -269,7 +269,7 @@ export function Tasks() {
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
               size="sm"
-              className="gap-2 w-24"
+              className="gap-2 w-24 cursor-pointer"
               onClick={() => setCreateDialogOpen(true)}
             >
               <Plus className="size-4" />

@@ -190,7 +190,9 @@ export function Repositories() {
       {totalPages > 1 && (
         <div className="mt-6 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            共 {total} 个仓库
+            显示{" "}
+            {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, total)}{" "}
+            个，共 {total} 个仓库
           </p>
           <PaginatedNavigation
             currentPage={page + 1}
@@ -203,7 +205,7 @@ export function Repositories() {
       {totalPages <= 1 && total > 0 && (
         <div className="mt-6">
           <p className="text-sm text-muted-foreground">
-            共 {total} 个仓库
+            显示 1-{total} 个，共 {total} 个仓库
           </p>
         </div>
       )}

@@ -27,7 +27,9 @@ import {
   TaskHistoryTable,
 } from "@/components/tasks";
 import { useAuthStore } from "@/stores/auth-store";
-import { useTaskList } from "@/hooks/useTaskList";
+import { useActiveTasks, useTaskList } from "@/hooks/useTaskList";
+import { queryKeys } from "@/lib/query-keys";
+import { useQueryClient } from "@tanstack/react-query";
 
 // Skeleton with shimmer animation
 function ShimmerSkeleton({ className }: { className?: string }) {
@@ -77,6 +79,7 @@ const COUNTDOWN_SECONDS = 5;
 
 export function TasksPublic() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   // 用户手动选择的任务 ID（null 表示自动选择模式）
   const [manuallySelectedId, setManuallySelectedId] = useState<number | null>(null);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
@@ -131,52 +134,44 @@ export function TasksPublic() {
     setShowLoginDialog(false);
   };
 
-  // 使用统一封装的useTaskList获取公共任务列表，自动适配skip/limit参数和轮询逻辑
-  const { data, isLoading, isRefetching, error, refetch } = useTaskList({
+  // 活跃任务：使用专用端点，高频轮询
+  const {
+    data: activeData,
+    isLoading: isActiveLoading,
+    error: activeError,
+  } = useActiveTasks({ enablePolling: true });
+
+  // 历史任务：使用公共列表端点，不轮询
+  const {
+    data: historyData,
+    isLoading: isHistoryLoading,
+    isRefetching: isHistoryRefetching,
+    error: historyError,
+    refetch: refetchHistory,
+  } = useTaskList({
     public: true,
     hours: 168,
-    limit: 1000,
-    enablePolling: true,
+    limit: 50,
+    enablePolling: false,
   });
 
-  // 按状态分组任务
-  const { activeTasks, runningTasks, completedTasks } = useMemo(() => {
-    const taskList = data?.data || [];
+  // 活跃任务列表（来自专用端点，仅包含 running/pending/pending_approval/canceling）
+  const activeTasks = useMemo(() => activeData?.data ?? [], [activeData?.data]);
+  const runningTasks = useMemo(
+    () => activeTasks.filter((t) => t.status?.toLowerCase() === "running"),
+    [activeTasks],
+  );
 
-    // 进行中和排队中的任务（左侧列表显示）
-    const active = taskList.filter(
-      (t) =>
-        t.status?.toLowerCase() === "running" ||
-        t.status?.toLowerCase() === "pending",
-    );
-
-    // 运行中的任务（用于自动选择）
-    const running = taskList.filter(
-      (t) => t.status?.toLowerCase() === "running",
-    );
-
-    // 已完成和失败的任务（底部表格显示）
-    const completed = taskList
-      .filter(
-        (t) =>
-          t.status?.toLowerCase() === "completed" ||
-          t.status?.toLowerCase() === "failed" ||
-          t.status?.toLowerCase() === "cancelled" ||
-          t.status?.toLowerCase() === "canceling" ||
-          t.status?.toLowerCase() === "pending_approval",
-      )
-      .sort(
+  // 历史任务列表（来自公共列表端点，包含 completed/failed/cancelled 等）
+  const completedTasks = useMemo(
+    () =>
+      (historyData?.data ?? []).sort(
         (a, b) =>
           new Date(b.completed_at || b.updated_at).getTime() -
           new Date(a.completed_at || a.updated_at).getTime(),
-      );
-
-    return {
-      activeTasks: active,
-      runningTasks: running,
-      completedTasks: completed,
-    };
-  }, [data?.data]);
+      ),
+    [historyData?.data],
+  );
 
   // 派生选中的任务 ID：优先使用手动选择，否则自动选择第一个运行中的任务
   const selectedTaskId = useMemo(() => {
@@ -206,14 +201,22 @@ export function TasksPublic() {
   // 获取选中的任务详情
   const selectedTask = useMemo(() => {
     if (selectedTaskId === null) return null;
-    const taskList = data?.data || [];
-    return taskList.find((t) => t.id === selectedTaskId) || null;
-  }, [data?.data, selectedTaskId]);
+    return activeTasks.find((t) => t.id === selectedTaskId) || null;
+  }, [activeTasks, selectedTaskId]);
 
   // 用户手动选择任务
   const handleSelectTask = (taskId: number | null) => {
     setManuallySelectedId(taskId);
   };
+
+  // 刷新所有任务数据
+  const handleRefetch = () => {
+    queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
+  };
+
+  // 合并加载和错误状态
+  const isLoading = isActiveLoading && isHistoryLoading;
+  const error = activeError || historyError;
 
   return (
     <div className="container mx-auto flex flex-1 flex-col px-4 py-6 md:py-8">
@@ -237,12 +240,12 @@ export function TasksPublic() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetch()}
-              disabled={isLoading || isRefetching}
+              onClick={handleRefetch}
+              disabled={isLoading || isHistoryRefetching}
               className="w-24 cursor-pointer transition-all duration-200 hover:bg-primary/5"
             >
               <RefreshCw
-                className={`mr-2 h-4 w-4 ${isLoading || isRefetching ? "animate-spin" : ""}`}
+                className={`mr-2 h-4 w-4 ${isHistoryRefetching ? "animate-spin" : ""}`}
               />
               刷新
             </Button>
@@ -263,10 +266,7 @@ export function TasksPublic() {
             <StatusCard
               icon={Activity}
               label="运行中"
-              value={
-                activeTasks.filter((t) => t.status?.toLowerCase() === "running")
-                  .length
-              }
+              value={runningTasks.length}
               color="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
               delay={0.05}
             />
@@ -353,7 +353,7 @@ export function TasksPublic() {
             </p>
             <Button
               variant="outline"
-              onClick={() => refetch()}
+              onClick={handleRefetch}
               className="transition-transform active:scale-95"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
@@ -384,9 +384,7 @@ export function TasksPublic() {
                 <span className="text-sm text-muted-foreground">
                   （共 {activeTasks.length} 个）
                 </span>
-                {activeTasks.filter(
-                  (t) => t.status?.toLowerCase() === "running",
-                ).length > 0 && (
+                {runningTasks.length > 0 && (
                   <motion.div
                     initial={{ opacity: 0, scale: 0.8 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -394,12 +392,7 @@ export function TasksPublic() {
                   >
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     <span className="font-medium">
-                      {
-                        activeTasks.filter(
-                          (t) => t.status?.toLowerCase() === "running",
-                        ).length
-                      }{" "}
-                      个任务执行中
+                      {runningTasks.length} 个任务执行中
                     </span>
                   </motion.div>
                 )}

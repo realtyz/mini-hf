@@ -24,6 +24,7 @@ from mgmt_server.api.v1.schemas.configs import (
     SMTPConfigResponse,
 )
 from mgmt_server.api.v1.schemas.tasks import (
+    ActiveTaskListResponse,
     AsyncPreviewTaskData,
     AsyncPreviewTaskResponse,
     AsyncPreviewTaskStatusData,
@@ -66,6 +67,7 @@ __all__ = [
     "ConfigListResponse",
     "ConfigDetailResponse",
     "SMTPConfigResponse",
+    "ActiveTaskListResponse",
     "AsyncPreviewTaskData",
     "AsyncPreviewTaskResponse",
     "AsyncPreviewTaskStatusData",

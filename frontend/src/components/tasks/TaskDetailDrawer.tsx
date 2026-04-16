@@ -571,7 +571,7 @@ export function TaskDetailDrawer({
                       </span>
                     </div>
                     <ScrollArea className="h-60">
-                      <div className="px-3 py-1">
+                      <div className="px-3 py-1 min-w-0">
                         <FileProgressList
                           taskId={task.id}
                           files={progress.files}

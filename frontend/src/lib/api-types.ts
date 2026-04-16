@@ -160,7 +160,7 @@ export interface TaskResponse {
   total_storage: number
   required_file_count: number
   total_file_count: number
-  repo_items: unknown[]
+  repo_items?: unknown[]
   commit_hash: string | null
   downloaded_file_count: number | null
   downloaded_bytes: number | null
@@ -171,6 +171,12 @@ export interface TaskListResponse {
   message: string
   data: TaskResponse[]
   total: number
+}
+
+export interface ActiveTaskListResponse {
+  code: number
+  message: string
+  data: TaskResponse[]
 }
 
 export interface TaskListFilters {

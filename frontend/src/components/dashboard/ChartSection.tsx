@@ -17,20 +17,16 @@ import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { useState } from 'react'
 
-// Color palette aligned with system badge colors:
-// emerald=success, amber=pending, red=failed
+// Color palette for terminal task states only:
+// emerald=completed, red=failed/cancelled
 const chartConfig = {
   completed: {
     label: '已完成',
     color: 'hsl(160, 84%, 39%)', // emerald-500
   },
   failed: {
-    label: '失败',
+    label: '失败/取消',
     color: 'hsl(0, 84%, 60%)', // red-500
-  },
-  pending: {
-    label: '等待中',
-    color: 'hsl(38, 92%, 50%)', // amber-500
   },
 } as const
 
@@ -93,7 +89,6 @@ export function ChartSection() {
   const { trends, isLoading } = useTaskTrends()
   const [activeBars, setActiveBars] = useState<Record<string, boolean>>({
     completed: true,
-    pending: true,
     failed: true,
   })
 
@@ -105,10 +100,9 @@ export function ChartSection() {
   const totals = trends.reduce(
     (acc, day) => ({
       completed: acc.completed + day.completed,
-      pending: acc.pending + day.pending,
       failed: acc.failed + day.failed,
     }),
-    { completed: 0, pending: 0, failed: 0 }
+    { completed: 0, failed: 0 }
   )
 
   if (isLoading) {
@@ -137,7 +131,7 @@ export function ChartSection() {
             <div className="space-y-1">
               <CardTitle className="text-lg font-semibold">任务趋势</CardTitle>
               <CardDescription className="text-sm">
-                最近7天任务状态分布情况
+                最近7天已完成任务统计
               </CardDescription>
             </div>
 
@@ -150,14 +144,8 @@ export function ChartSection() {
                 onToggle={() => toggleBar('completed')}
               />
               <LegendItem
-                color="hsl(38, 92%, 50%)"
-                label="等待"
-                isActive={activeBars.pending}
-                onToggle={() => toggleBar('pending')}
-              />
-              <LegendItem
                 color="hsl(0, 84%, 60%)"
-                label="失败"
+                label="失败/取消"
                 isActive={activeBars.failed}
                 onToggle={() => toggleBar('failed')}
               />
@@ -172,12 +160,7 @@ export function ChartSection() {
               color="hsl(160, 84%, 39%)"
             />
             <StatBadge
-              label="待处理"
-              value={totals.pending}
-              color="hsl(38, 92%, 50%)"
-            />
-            <StatBadge
-              label="失败"
+              label="失败/取消"
               value={totals.failed}
               color="hsl(0, 84%, 60%)"
             />
@@ -228,14 +211,6 @@ export function ChartSection() {
                 <Bar
                   dataKey="completed"
                   fill="hsl(160, 84%, 39%)"
-                  radius={[4, 4, 0, 0]}
-                  maxBarSize={40}
-                />
-              )}
-              {activeBars.pending && (
-                <Bar
-                  dataKey="pending"
-                  fill="hsl(38, 92%, 50%)"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={40}
                 />

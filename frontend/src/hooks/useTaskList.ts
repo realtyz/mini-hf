@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
-import type { TaskListResponse, TaskListFilters, PaginationParams, TaskStatus } from '@/lib/api-types'
+import type { TaskListResponse, ActiveTaskListResponse, TaskListFilters, PaginationParams, TaskStatus } from '@/lib/api-types'
 
 export interface UseTaskListOptions {
   status?: TaskStatus
@@ -37,10 +37,11 @@ function hasActiveTasks(tasks: TaskListResponse['data'] | undefined): boolean {
 /**
  * 获取任务列表
  * 默认使用 /task/list 端点（需要认证），返回所有任务
- * 设置 public: true 时使用 /task/list_public 端点（无需认证），只返回最近 N 小时的任务
+ * 设置 public: true 时使用 /task/list-public 端点（无需认证），只返回最近 N 小时的任务
  *
  * 特性：
- * - 当列表中有活跃任务（running/pending/pending_approval/canceling）时，自动每 3 秒轮询
+ * - 认证模式（默认）：当列表中有活跃任务时，自动每 10 秒轮询
+ * - 公共模式：不轮询（活跃任务的轮询由 useActiveTasks 负责）
  */
 export function useTaskList(options: UseTaskListOptions = {}) {
   const { status, source, repo_type, hours = 168, limit = 100, skip = 0, public: isPublic = false, enablePolling = true, search } = options
@@ -61,6 +62,10 @@ export function useTaskList(options: UseTaskListOptions = {}) {
 
   const endpoint = isPublic ? '/task/list-public' : '/task/list'
 
+  // 公共模式下不轮询（活跃任务由 useActiveTasks 独立轮询）
+  // 认证模式下保持原有的活跃任务检测轮询逻辑
+  const shouldPoll = enablePolling && !isPublic
+
   return useQuery<TaskListResponse>({
     queryKey: queryKeys.tasks.list(filters, params),
     queryFn: async () => {
@@ -70,25 +75,48 @@ export function useTaskList(options: UseTaskListOptions = {}) {
               ...(status !== undefined && { status }),
               ...(hours !== undefined && { hours }),
               ...(limit !== undefined && { limit }),
-              ...(search !== undefined && { search }),
+              ...(search && { search }),
             }
           : {
               ...(status !== undefined && { status }),
               ...(limit !== undefined && { limit }),
               ...(skip !== undefined && { skip }),
-              ...(search !== undefined && { search }),
+              ...(search && { search }),
             },
       })
       return response
     },
-    // 当列表中有活跃任务时，每 10 秒自动轮询
-    refetchInterval: enablePolling
+    // 认证模式：当列表中有活跃任务时，每 10 秒自动轮询
+    // 公共模式：不轮询（由独立的 useActiveTasks 负责）
+    refetchInterval: shouldPoll
       ? (query) => {
           const data = query.state.data
           return hasActiveTasks(data?.data) ? 10000 : false
         }
       : false,
-    // 活跃任务的数据 10 秒后视为过期（以便轮询能正常工作）
+    staleTime: isPublic ? 60 * 1000 : (enablePolling ? 10000 : 60 * 1000),
+  })
+}
+
+/**
+ * 获取活跃任务列表（running/pending/pending_approval/canceling）
+ * 使用专用的 /task/active-public 端点，优化高频轮询
+ *
+ * 特性：
+ * - 每 10 秒自动轮询
+ * - 仅返回活跃状态的任务，数据量小
+ * - 无分页、无时间窗口
+ */
+export function useActiveTasks(options: { enablePolling?: boolean } = {}) {
+  const { enablePolling = true } = options
+
+  return useQuery<ActiveTaskListResponse>({
+    queryKey: queryKeys.tasks.active(),
+    queryFn: async () => {
+      const response = await api.get<ActiveTaskListResponse>('/task/active-public')
+      return response
+    },
+    refetchInterval: enablePolling ? 10000 : false,
     staleTime: enablePolling ? 10000 : 60 * 1000,
   })
 }

@@ -116,7 +116,7 @@ function FileProgressRow({
           </div>
         ) : null}
         {file.status === "failed" && file.error_message ? (
-          <div className="text-[10px] text-red-500 mt-0.5 truncate" title={file.error_message}>
+          <div className="text-[10px] text-red-500 mt-0.5 truncate max-w-full" title={file.error_message}>
             错误: {file.error_message}
           </div>
         ) : null}
@@ -163,7 +163,7 @@ export function FileProgressList({
   });
 
   return (
-    <div className="divide-y divide-border/30">
+    <div className="divide-y divide-border/30 min-w-0">
       {sortedFiles.map((file, index) => (
         <FileProgressRow
           key={`${taskId}-${file.path}`}

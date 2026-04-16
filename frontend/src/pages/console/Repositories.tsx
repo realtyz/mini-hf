@@ -315,7 +315,12 @@ export function RepositoriesConsole() {
       {!isLoading && totalPages > 0 && (
         <div className="mt-6 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            共 <span className="font-medium text-foreground">{total}</span> 个仓库
+            显示{" "}
+            <span className="font-medium text-foreground">
+              {Math.min((page - 1) * PAGE_SIZE + 1, total)}-
+              {Math.min(page * PAGE_SIZE, total)}
+            </span>{" "}
+            个，共 <span className="font-medium text-foreground">{total}</span> 个仓库
           </p>
           {totalPages > 1 && (
             <PaginatedNavigation

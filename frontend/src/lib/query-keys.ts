@@ -20,6 +20,7 @@ export const queryKeys = {
   },
   tasks: {
     all: ['tasks'] as const,
+    active: () => [...queryKeys.tasks.all, 'active'] as const,
     list: (filters?: TaskListFilters, params?: PaginationParams) =>
       [...queryKeys.tasks.all, 'list', { filters, params }] as const,
     detail: (id: number | null) =>

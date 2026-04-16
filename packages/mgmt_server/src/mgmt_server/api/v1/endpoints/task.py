@@ -20,6 +20,7 @@ from database.db_repositories.task import TaskRepository
 from mgmt_server.api.deps import CurrentUserToken, DbDep, UserServiceDep
 from mgmt_server.api.v1.endpoints.user import AdminUserDep, CurrentUserDep, get_current_user
 from mgmt_server.api.v1.schemas import (
+    ActiveTaskListResponse,
     AsyncPreviewTaskData,
     AsyncPreviewTaskResponse,
     AsyncPreviewTaskStatusData,
@@ -415,6 +416,7 @@ async def list_tasks(
     db: DbDep,
     user_service: UserServiceDep,
     status: str | None = None,
+    search: str | None = None,
     limit: Annotated[int, Query(ge=1, le=1000)] = 20,
     skip: Annotated[int, Query(ge=0)] = 0,
 ) -> TaskListResponse:
@@ -454,6 +456,8 @@ async def list_tasks(
         limit=limit,
         skip=skip,
         creator_user_id=creator_user_id,
+        search=search,
+        exclude_repo_items=True,
     )
 
     task_responses = [
@@ -477,7 +481,6 @@ async def list_tasks(
             total_storage=t.total_storage,
             required_file_count=t.required_file_count,
             total_file_count=t.total_file_count,
-            repo_items=t.repo_items or [],
             commit_hash=t.commit_hash,
         )
         for t in tasks
@@ -486,9 +489,52 @@ async def list_tasks(
     return TaskListResponse(data=task_responses, total=total)
 
 
+@router.get("/active-public", response_model=ActiveTaskListResponse)
+async def list_active_public_tasks() -> ActiveTaskListResponse:
+    """List active tasks (running/pending/pending_approval/canceling) - public, no auth required.
+
+    Optimized for high-frequency polling:
+    - No pagination (typically <20 active tasks)
+    - No time window (active tasks are inherently recent)
+    - Simple sort order
+    - No repo_items in response
+    """
+    task_service = TaskService()
+    tasks = await task_service.list_active_tasks(exclude_repo_items=True)
+
+    task_responses = [
+        TaskResponse(
+            id=t.id,
+            source=t.source,
+            repo_id=t.repo_id,
+            repo_type=t.repo_type,
+            revision=t.revision,
+            hf_endpoint=t.hf_endpoint,
+            status=t.status.value,
+            error_message=t.error_message,
+            created_at=t.created_at,
+            reviewed_at=t.reviewed_at,
+            updated_at=t.updated_at,
+            started_at=t.started_at,
+            completed_at=t.completed_at,
+            pinned_at=t.pinned_at,
+            required_storage=t.required_storage,
+            creator_user_id=t.creator_user_id,
+            total_storage=t.total_storage,
+            required_file_count=t.required_file_count,
+            total_file_count=t.total_file_count,
+            commit_hash=t.commit_hash,
+        )
+        for t in tasks
+    ]
+
+    return ActiveTaskListResponse(data=task_responses)
+
+
 @router.get("/list-public", response_model=TaskListResponse)
 async def list_public_tasks(
     status: str | None = None,
+    search: str | None = None,
     limit: Annotated[int, Query(ge=1, le=1000)] = 20,
     skip: Annotated[int, Query(ge=0)] = 0,
     hours: int = 24,
@@ -515,7 +561,8 @@ async def list_public_tasks(
     since = datetime.now() - timedelta(hours=hours)
 
     total, tasks = await task_service.list_tasks(
-        status=status_filter, limit=limit, skip=skip, since=since
+        status=status_filter, limit=limit, skip=skip, since=since, search=search,
+        exclude_repo_items=True,
     )
 
     task_responses = [
@@ -539,7 +586,6 @@ async def list_public_tasks(
             total_storage=t.total_storage,
             required_file_count=t.required_file_count,
             total_file_count=t.total_file_count,
-            repo_items=t.repo_items or [],
             commit_hash=t.commit_hash,
         )
         for t in tasks

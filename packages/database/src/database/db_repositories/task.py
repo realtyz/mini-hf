@@ -5,6 +5,7 @@ from typing import List, Optional
 
 from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import defer
 
 from database.db_models import Task, TaskStatus
 
@@ -181,15 +182,29 @@ class TaskRepository:
         offset: int = 0,
         since: Optional[datetime] = None,
         creator_user_id: Optional[int] = None,
+        search: Optional[str] = None,
+        exclude_repo_items: bool = False,
     ) -> tuple[int, List[Task]]:
         """List tasks with optional filtering and pagination.
+
+        Args:
+            status: Filter by task status
+            limit: Maximum results
+            offset: Number of records to skip (pagination)
+            since: Filter tasks created after this datetime
+            creator_user_id: Filter by creator user ID
+            search: Search term for repo_id (case-insensitive partial match)
+            exclude_repo_items: If True, skip loading the repo_items JSONB column
+                to reduce database transfer overhead for list endpoints.
 
         Returns:
             Tuple of (total_count, tasks_list)
         """
-        
-        # Build base query
+
+        # Build base query — optionally defer the large repo_items column
         base_stmt = select(Task)
+        if exclude_repo_items:
+            base_stmt = base_stmt.options(defer(Task.repo_items))
         count_stmt = select(func.count()).select_from(Task)
 
         # Apply filters to both queries
@@ -204,6 +219,10 @@ class TaskRepository:
         if creator_user_id:
             base_stmt = base_stmt.where(Task.creator_user_id == creator_user_id)
             count_stmt = count_stmt.where(Task.creator_user_id == creator_user_id)
+
+        if search:
+            base_stmt = base_stmt.where(Task.repo_id.ilike(f"%{search}%"))
+            count_stmt = count_stmt.where(Task.repo_id.ilike(f"%{search}%"))
 
         # Get total count
         total_result = await self.session.execute(count_stmt)
@@ -261,6 +280,59 @@ class TaskRepository:
         tasks = list(result.scalars().all())
 
         return total, tasks
+
+    async def list_active_tasks(
+        self,
+        exclude_repo_items: bool = True,
+    ) -> List[Task]:
+        """List active tasks only (running/pending/pending_approval/canceling).
+
+        Optimized for high-frequency polling:
+        - No COUNT query (total is implicit from result length)
+        - No time window filter (active tasks are inherently recent)
+        - No pagination (typically <20 active tasks)
+        - Simple ORDER BY (status priority + created_at)
+        - Uses ix_task_list_status_created composite index
+
+        Args:
+            exclude_repo_items: If True, skip loading repo_items JSONB column
+
+        Returns:
+            List of active tasks, ordered by status priority
+        """
+        active_statuses = [
+            TaskStatus.RUNNING,
+            TaskStatus.PENDING,
+            TaskStatus.PENDING_APPROVAL,
+            TaskStatus.CANCELING,
+        ]
+
+        stmt = select(Task).where(Task.status.in_(active_statuses))
+
+        if exclude_repo_items:
+            stmt = stmt.options(defer(Task.repo_items))
+
+        # Simple ordering: RUNNING first, then pinned, then by status priority and created_at
+        stmt = stmt.order_by(
+            # RUNNING tasks first
+            case(
+                (Task.status == TaskStatus.RUNNING, 0),
+                else_=1,
+            ).asc(),
+            # Pinned tasks next
+            Task.pinned_at.desc().nulls_last(),
+            # Status priority: PENDING_APPROVAL > PENDING > CANCELING
+            case(
+                (Task.status == TaskStatus.PENDING_APPROVAL, 0),
+                (Task.status == TaskStatus.PENDING, 1),
+                else_=2,
+            ).asc(),
+            # Within same status, oldest first
+            Task.created_at.asc(),
+        )
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
 
     async def has_active_download_task(self, repo_id: str) -> bool:
         """Check if repository has an active download task.

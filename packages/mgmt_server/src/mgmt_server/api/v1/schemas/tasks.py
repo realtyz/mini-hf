@@ -42,7 +42,7 @@ class TaskResponse(BaseModel):
     total_storage: int
     required_file_count: int
     total_file_count: int
-    repo_items: list = []
+    repo_items: list | None = None
     commit_hash: str | None
 
     # 实际下载统计（任务完成或失败后填充）
@@ -54,6 +54,12 @@ class TaskListResponse(BaseResponse[list[TaskResponse]]):
     """Task list response schema."""
 
     total: int
+
+
+class ActiveTaskListResponse(BaseResponse[list[TaskResponse]]):
+    """Active task list response schema — no pagination, no total."""
+
+    pass
 
 
 class TaskDetailResponse(BaseResponse[TaskResponse]):

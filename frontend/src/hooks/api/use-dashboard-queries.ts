@@ -29,14 +29,12 @@ export function useDashboardStats() {
 }
 
 /**
- * 任务趋势数据（最近7天）
+ * 任务趋势数据（最近7天，仅展示已完成和失败/取消的历史数据）
  */
 export interface TaskTrendData {
   date: string
   completed: number
   failed: number
-  running: number
-  pending: number
 }
 
 export function useTaskTrends() {
@@ -49,17 +47,17 @@ export function useTaskTrends() {
     if (!data?.data) return []
 
     const tasks = data.data as TaskResponse[]
-    const grouped = new Map<string, { completed: number; failed: number; running: number; pending: number }>()
+    const grouped = new Map<string, { completed: number; failed: number }>()
 
     // 初始化最近7天的日期
     for (let i = 6; i >= 0; i--) {
       const date = new Date()
       date.setDate(date.getDate() - i)
       const dateStr = date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-      grouped.set(dateStr, { completed: 0, failed: 0, running: 0, pending: 0 })
+      grouped.set(dateStr, { completed: 0, failed: 0 })
     }
 
-    // 统计任务
+    // 仅统计已结束的任务（成功、失败/取消）
     tasks.forEach((task: TaskResponse) => {
       const taskDate = new Date(task.created_at)
       const dateStr = taskDate.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
@@ -71,14 +69,8 @@ export function useTaskTrends() {
             stats.completed++
             break
           case 'failed':
+          case 'cancelled':
             stats.failed++
-            break
-          case 'running':
-            stats.running++
-            break
-          case 'pending':
-          case 'pending_approval':
-            stats.pending++
             break
         }
       }

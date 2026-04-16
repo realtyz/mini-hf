@@ -308,6 +308,8 @@ class TaskService:
         skip: int | None = None,
         since: Optional[datetime] = None,
         creator_user_id: Optional[int] = None,
+        search: Optional[str] = None,
+        exclude_repo_items: bool = False,
     ) -> tuple[int, List[Task]]:
         """List tasks with optional filtering and pagination.
 
@@ -318,6 +320,8 @@ class TaskService:
             skip: Number of records to skip (pagination)
             since: Filter tasks created after this datetime
             creator_user_id: Filter by creator user ID
+            search: Search term for repo_id (case-insensitive partial match)
+            exclude_repo_items: If True, skip loading repo_items JSONB column
 
         Returns:
             Tuple of (total_count, tasks_list)
@@ -333,6 +337,28 @@ class TaskService:
                 offset=offset_val,
                 since=since,
                 creator_user_id=creator_user_id,
+                search=search,
+                exclude_repo_items=exclude_repo_items,
+            )
+
+    async def list_active_tasks(
+        self,
+        exclude_repo_items: bool = True,
+    ) -> List[Task]:
+        """List active tasks only (running/pending/pending_approval/canceling).
+
+        Optimized for high-frequency polling endpoints.
+
+        Args:
+            exclude_repo_items: If True, skip loading repo_items JSONB column
+
+        Returns:
+            List of active tasks
+        """
+        async with self._session_ctx() as session:
+            repo = self._get_repo(session)
+            return await repo.list_active_tasks(
+                exclude_repo_items=exclude_repo_items,
             )
 
     async def has_active_download_task(self, repo_id: str) -> bool:
