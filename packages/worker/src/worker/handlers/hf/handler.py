@@ -141,9 +141,7 @@ async def _restore_profile_on_failure(
             )
             logger.info("  -> Profile status set to INACTIVE for {}", repo_id)
     except Exception as status_error:
-        logger.error(
-            "  -> Failed to update profile status: {}", status_error
-        )
+        logger.error("  -> Failed to update profile status: {}", status_error)
 
 
 async def _restore_profile_on_cancel_externally(
@@ -258,7 +256,9 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
         # Step 2: Resolve commit hash (network call, no DB session needed)
         async with get_session() as session:
             config_service = ConfigService(session)
-            endpoint = task.hf_endpoint or await config_service.get_hf_default_endpoint()
+            endpoint = (
+                task.hf_endpoint or await config_service.get_hf_default_endpoint()
+            )
         logger.info("  -> Using HF endpoint: {}", endpoint)
 
         operator = HuggingfaceService(token=access_token, endpoint=endpoint)
@@ -280,15 +280,6 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
                 repo_id, repo_type, revision
             )
 
-        if existing_snapshot and existing_snapshot.commit_hash == new_commit_hash:
-            logger.info(
-                "  -> Snapshot already active for {}@{} ({})",
-                repo_id,
-                revision,
-                new_commit_hash[:8],
-            )
-            return
-
         # Step 4: Download files (shared logic for both paths)
         files_to_download: list[RepoFile]
         old_commit_hash: str | None = None
@@ -304,12 +295,12 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
             )
             old_commit_hash = existing_snapshot.commit_hash
 
-            # Get old tree from DB (short session)
+            # Get old tree from DB
             async with get_session() as session:
                 tree_repo = HfRepoTreeRepository(session)
                 old_tree = await tree_repo.get_file_tree(existing_snapshot.commit_hash)
 
-            # Get new tree from HF (network call, no DB session)
+            # Get new tree from HF
             new_tree_items = await operator.get_tree(repo_id, repo_type, revision)
             new_files = [f for f in new_tree_items if isinstance(f, RepoFile)]
 
@@ -328,7 +319,7 @@ async def handle_download_huggingface(task: Task, cancel_event: asyncio.Event) -
                 if f.path in required_file_paths
             ]
 
-            # Save tree to DB (short session)
+            # Save tree to DB
             async with get_session() as session:
                 snapshot_repo = HfRepoSnapshotRepository(session)
                 tree_repo = HfRepoTreeRepository(session)

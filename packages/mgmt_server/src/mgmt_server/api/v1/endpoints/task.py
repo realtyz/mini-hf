@@ -18,7 +18,11 @@ from mgmt_server.services.repo_service import RepoService
 from database.db_repositories.user import UserRepository
 from database.db_repositories.task import TaskRepository
 from mgmt_server.api.deps import CurrentUserToken, DbDep, UserServiceDep
-from mgmt_server.api.v1.endpoints.user import AdminUserDep, CurrentUserDep, get_current_user
+from mgmt_server.api.v1.endpoints.user import (
+    AdminUserDep,
+    CurrentUserDep,
+    get_current_user,
+)
 from mgmt_server.api.v1.schemas import (
     ActiveTaskListResponse,
     AsyncPreviewTaskData,
@@ -561,7 +565,11 @@ async def list_public_tasks(
     since = datetime.now() - timedelta(hours=hours)
 
     total, tasks = await task_service.list_tasks(
-        status=status_filter, limit=limit, skip=skip, since=since, search=search,
+        status=status_filter,
+        limit=limit,
+        skip=skip,
+        since=since,
+        search=search,
         exclude_repo_items=True,
     )
 
@@ -672,6 +680,18 @@ async def preview_task(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Source '{request.source}' is not supported for preview. Only 'huggingface' is supported.",
+        )
+
+    # Validate repo_id format: must be namespace/repo_name
+    if (
+        "/" not in request.repo_id
+        or request.repo_id.startswith("/")
+        or request.repo_id.endswith("/")
+        or request.repo_id.count("/") != 1
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid repo_id format: '{request.repo_id}'. Must be in 'namespace/repo_name' format (e.g., 'meta-llama/Llama-3.1-8B').",
         )
 
     # Validate conflicting parameters

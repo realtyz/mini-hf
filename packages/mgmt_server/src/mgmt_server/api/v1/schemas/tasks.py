@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from mgmt_server.api.v1.schemas.base import BaseResponse
 
@@ -90,6 +90,17 @@ class TaskPreviewRequest(BaseModel):
     full_download: bool = True
     allow_patterns: list[str] | None = None
     ignore_patterns: list[str] | None = None
+
+    @field_validator("repo_id")
+    @classmethod
+    def validate_repo_id_format(cls, v: str) -> str:
+        """Validate repo_id follows namespace/repo_name format."""
+        parts = v.split("/")
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            raise ValueError(
+                "repo_id must be in 'namespace/repo_name' format (e.g., 'meta-llama/Llama-3.3-70B-Instruct')"
+            )
+        return v
 
 
 class PreviewItem(BaseModel):

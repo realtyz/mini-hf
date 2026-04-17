@@ -424,9 +424,8 @@ function EditUserDialog({
           <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-4 py-3">
             <div className="flex items-center gap-3">
               <div
-                className={`flex h-9 w-9 items-center justify-center rounded-lg ${
-                  isActive ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"
-                }`}
+                className={`flex h-9 w-9 items-center justify-center rounded-lg ${isActive ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"
+                  }`}
               >
                 {isActive ? (
                   <CheckCircle2 className="h-4 w-4" />
@@ -754,7 +753,7 @@ export function Users() {
             <Button
               variant="outline"
               size="sm"
-              className="gap-2 w-24"
+              className="gap-2 w-24 cursor-pointer"
               onClick={() => refetch()}
               disabled={isLoading}
             >
@@ -763,7 +762,7 @@ export function Users() {
             </Button>
           </motion.div>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button size="sm" className="gap-2 w-24" onClick={() => setCreateOpen(true)}>
+            <Button size="sm" className="gap-2 w-24 cursor-pointer" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" />
               新建用户
             </Button>
@@ -900,11 +899,10 @@ export function Users() {
                       <TableCell className="text-center">
                         <Badge
                           variant={user.role === "admin" ? "default" : "secondary"}
-                          className={`${
-                            user.role === "admin"
+                          className={`${user.role === "admin"
                               ? "bg-violet-100 text-violet-700 hover:bg-violet-100 dark:bg-violet-950 dark:text-violet-300"
                               : "bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300"
-                          }`}
+                            }`}
                         >
                           {user.role === "admin" ? "管理员" : "普通用户"}
                         </Badge>
