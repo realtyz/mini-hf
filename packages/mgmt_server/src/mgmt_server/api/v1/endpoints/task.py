@@ -1605,16 +1605,16 @@ async def retry_task(
     db: DbDep,
     user_service: UserServiceDep,
 ) -> TaskDetailResponse:
-    """Retry a failed task by creating a new task with the same configuration.
+    """Retry a failed or cancelled task by creating a new task with the same configuration.
 
     The new task is automatically approved and does not require admin review.
 
     Requirements:
-    - Task status must be FAILED
+    - Task status must be FAILED or CANCELLED
     - Task must have completed within the last 7 days
 
     Args:
-        task_id: ID of the failed task to retry
+        task_id: ID of the failed or cancelled task to retry
         current_user: Current authenticated user
         db: Database session
         user_service: User service dependency
@@ -1623,7 +1623,7 @@ async def retry_task(
         Newly created task information
 
     Raises:
-        HTTPException: If task not found, not failed, or completed more than 7 days ago
+        HTTPException: If task not found, not failed or cancelled, or completed more than 7 days ago
     """
     # Resolve the current user entity
     user = await user_service.get_by_email(current_user.email)
@@ -1640,10 +1640,10 @@ async def retry_task(
         )
 
     # Validate task status
-    if original_task.status != TaskStatus.FAILED:
+    if original_task.status not in (TaskStatus.FAILED, TaskStatus.CANCELLED):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Task cannot be retried: status is '{original_task.status.value}', not 'failed'",
+            detail=f"Task cannot be retried: status is '{original_task.status.value}', must be 'failed' or 'cancelled'",
         )
 
     # Validate completion time (must be within 7 days)

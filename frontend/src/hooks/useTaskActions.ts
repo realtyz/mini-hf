@@ -219,7 +219,7 @@ export function useTaskActions() {
 
   /**
    * 重试任务
-   * 重试失败的任务（7天以内结束的），新任务自动审批
+   * 重试失败或已取消的任务（7天以内结束的），新任务自动审批
    */
   const retryTask = useMutation({
     mutationFn: async (taskId: number): Promise<TaskResponse> => {
