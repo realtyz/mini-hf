@@ -104,9 +104,9 @@ export function TaskRow({
     (task.status === "pending_approval" || task.status === "pending") &&
     (isAdmin || task.creator_user_id === user?.id);
 
-  // 是否可以重试（失败状态且7天内完成）
+  // 是否可以重试（失败或已取消状态且7天内完成/取消）
   const canRetry =
-    task.status === "failed" &&
+    (task.status === "failed" || task.status === "cancelled") &&
     isWithin7Days(task.completed_at) &&
     (isAdmin || task.creator_user_id === user?.id);
 
@@ -391,7 +391,9 @@ export function TaskRow({
                   仓库：<span className="font-medium">{task.repo_id}</span>
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  新任务将自动审批通过，无需管理员审核。
+                  {task.status === "failed"
+                    ? "原任务执行失败，新任务将自动审批通过，无需管理员审核。"
+                    : "原任务已被取消，新任务将自动审批通过，无需管理员审核。"}
                 </p>
               </AlertDialogDescription>
             </AlertDialogHeader>

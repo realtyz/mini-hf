@@ -120,7 +120,7 @@ const statusDisplayConfig: Record<
     fileListTitle: "请求文件列表",
     showStorageStats: false,
     showRealtimeProgress: false,
-    bottomActionType: "none",
+    bottomActionType: "cancelled",
   },
   pausing: {
     fileListTitle: "请求文件列表",
@@ -361,7 +361,7 @@ export function TaskDetailDrawer({
     taskId,
     task?.status === "running" || task?.status === "pausing",
   );
-  const { reviewTask, cancelTask, pauseTask, resumeTask } = useTaskActions();
+  const { reviewTask, cancelTask, pauseTask, resumeTask, retryTask } = useTaskActions();
   const [rejectNotes, setRejectNotes] = useState("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const { user } = useAuthStore();
@@ -370,6 +370,7 @@ export function TaskDetailDrawer({
   const canCancel = task ? isAdmin || user?.id === task.creator_user_id : false;
   const canPause = task ? (isAdmin || user?.id === task.creator_user_id) && (task.status === "running" || task.status === "pending") : false;
   const canResume = task ? (isAdmin || user?.id === task.creator_user_id) && task.status === "paused" : false;
+  const canRetry = task ? (isAdmin || user?.id === task.creator_user_id) && task.status === "cancelled" : false;
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -413,6 +414,16 @@ export function TaskDetailDrawer({
     if (!taskId) return;
     resumeTask.mutate(taskId, {
       onSuccess: () => refetchTask(),
+    });
+  };
+
+  const handleRetry = () => {
+    if (!taskId) return;
+    retryTask.mutate(taskId, {
+      onSuccess: () => {
+        // 重试成功后关闭当前详情页，跳转到新任务
+        onOpenChange(false);
+      },
     });
   };
 
@@ -803,6 +814,27 @@ export function TaskDetailDrawer({
                       )}
                     </div>
                   )}
+                  {statusConfig.bottomActionType === "cancelled" && (
+                    <div className="flex items-center justify-between bg-slate-50/60 dark:bg-slate-950/20 border border-slate-200/60 dark:border-slate-800/40 rounded-xl px-4 py-3 mt-1">
+                      <div className="flex items-center gap-2 text-[13px] text-slate-700 dark:text-slate-300 font-medium">
+                        <XCircle className="h-3.5 w-3.5" />
+                        <span>任务已取消</span>
+                      </div>
+                      <div className="flex gap-2">
+                        {canRetry && (
+                          <Button
+                            size="sm"
+                            onClick={handleRetry}
+                            disabled={retryTask.isPending}
+                            className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
+                          >
+                            <RefreshCw className="mr-1 h-3 w-3" />
+                            {retryTask.isPending ? "重试中..." : "重试任务"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -831,6 +863,8 @@ export function TaskDetailDrawer({
                       ? "任务已暂停，取消后需要重新创建任务。"
                       : task.status === "pausing"
                       ? "任务正在暂停中，取消后需要重新创建任务。"
+                      : task.status === "cancelled"
+                      ? "任务已取消，可以重试任务重新执行。"
                       : "任务正在排队中，取消后需要重新创建任务。"}
                   </p>
                 </>
