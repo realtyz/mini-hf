@@ -95,6 +95,26 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
     progressFill: 'bg-slate-400',
     gradient: 'from-slate-400/8 via-slate-400/3 to-transparent',
   },
+  pausing: {
+    label: '暂停中',
+    icon: <IconPlayerPause className="size-3.5" />,
+    badgeClass: 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300',
+    color: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+    dotClass: 'bg-orange-500',
+    progressBg: 'bg-orange-100 dark:bg-orange-950/70',
+    progressFill: 'bg-orange-500',
+    gradient: 'from-orange-500/8 via-orange-500/3 to-transparent',
+  },
+  paused: {
+    label: '已暂停',
+    icon: <IconPlayerPause className="size-3.5" />,
+    badgeClass: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-300',
+    color: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
+    dotClass: 'bg-yellow-500',
+    progressBg: 'bg-yellow-100 dark:bg-yellow-950/70',
+    progressFill: 'bg-yellow-500',
+    gradient: 'from-yellow-500/8 via-yellow-500/3 to-transparent',
+  },
 }
 
 // Helper function to get status config

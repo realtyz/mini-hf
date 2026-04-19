@@ -49,6 +49,18 @@ const statusConfig: Record<
     dotColor: "bg-slate-400",
     isActive: false,
   },
+  pausing: {
+    label: "暂停中",
+    variant: "warning",
+    dotColor: "bg-orange-500",
+    isActive: true,
+  },
+  paused: {
+    label: "已暂停",
+    variant: "warning",
+    dotColor: "bg-yellow-500",
+    isActive: false,
+  },
   completed: {
     label: "已完成",
     variant: "success",

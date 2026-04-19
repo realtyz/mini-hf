@@ -14,12 +14,20 @@ from loguru import logger
 from services import task_notification_service
 from services.task import TaskService, Task, TaskStatus
 from worker.handlers.hf.cleanup import cleanup_stale_incomplete_files
+from worker.handlers._downloader import DownloadCancelledError, DownloadPausedError
+from worker.handlers.base import TaskControl
 
-HandlerFunc = Callable[[Task, asyncio.Event], Awaitable[None]]
+HandlerFunc = Callable[[Task, TaskControl], Awaitable[None]]
 
 
 class CancelledError(Exception):
     """Exception raised when a task is cancelled by user."""
+
+    pass
+
+
+class PausedError(Exception):
+    """Exception raised when a task is paused by user."""
 
     pass
 
@@ -48,11 +56,11 @@ class Worker:
         self.poll_interval = poll_interval
         self.max_concurrent = max_concurrent
         self.cancel_check_interval = cancel_check_interval
-        self._handlers: dict[str, Callable[[Task, asyncio.Event], Awaitable[None]]] = {}
+        self._handlers: dict[str, HandlerFunc] = {}
         self._running = False
         self._logger = logger
         self._task_service = TaskService()
-        self._cancel_events: dict[int, asyncio.Event] = {}
+        self._task_controls: dict[int, TaskControl] = {}
 
     def register(self, name: str):
         """Register a task handler.
@@ -78,10 +86,17 @@ class Worker:
 
         cleanup_stale_incomplete_files()
 
-        # Register signal handlers for graceful shutdown (Windows compatible)
-        signal.signal(signal.SIGINT, lambda s, f: self._signal_handler())
-        if platform.system() != "Windows":
-            signal.signal(signal.SIGTERM, lambda s, f: self._signal_handler())
+        # Register signal handlers for graceful shutdown
+        loop = asyncio.get_running_loop()
+        try:
+            loop.add_signal_handler(signal.SIGINT, self._signal_handler)
+            if platform.system() != "Windows":
+                loop.add_signal_handler(signal.SIGTERM, self._signal_handler)
+        except NotImplementedError:
+            # Windows: fallback to signal.signal (add_signal_handler unsupported)
+            signal.signal(signal.SIGINT, lambda s, f: self._signal_handler())
+            if platform.system() != "Windows":
+                signal.signal(signal.SIGTERM, lambda s, f: self._signal_handler())
 
         semaphore = asyncio.Semaphore(self.max_concurrent)
         running_tasks: set[asyncio.Task] = set()
@@ -136,9 +151,9 @@ class Worker:
         """Stop the worker gracefully."""
         self._running = False
         # Signal all running tasks to cancel
-        for event in self._cancel_events.values():
-            event.set()
-        self._logger.info("Signalled {} task(s) to cancel", len(self._cancel_events))
+        for tc in self._task_controls.values():
+            tc.cancel_event.set()
+        self._logger.info("Signalled {} task(s) to cancel", len(self._task_controls))
 
     def _signal_handler(self) -> None:
         """Handle shutdown signals."""
@@ -166,56 +181,83 @@ class Worker:
             await task_manager.fail(task.id, f"No handler for source: {task.source}")
             return
 
-        # Create cancel event for this task
-        cancel_event = asyncio.Event()
-        self._cancel_events[task.id] = cancel_event
+        # Create task control for this task
+        task_control = TaskControl()
+        self._task_controls[task.id] = task_control
 
-        # Start watching for cancellation requests
+        # Start watching for task status changes (cancel/pause)
         watch_task = asyncio.create_task(
-            self._watch_for_cancellation(task_manager, task.id, cancel_event)
+            self._watch_for_task_status(task_manager, task.id, task_control)
         )
 
         try:
             self._logger.info(
                 "Processing task {}: {} ({})", task.id, task.repo_id, task.source
             )
-            await handler(task, cancel_event)
+            await handler(task, task_control)
 
-            # Check if cancelled before marking complete
-            if cancel_event.is_set():
+            # Check if cancelled or paused before marking complete
+            if task_control.cancel_event.is_set():
                 await task_manager.cancel(task.id)
                 self._logger.info("Task {} cancelled by user", task.id)
-                # Send cancellation notification
-                await task_notification_service.send_task_notification(
-                    task, "cancelled"
+                try:
+                    await task_notification_service.send_task_notification(
+                        task, "cancelled"
+                    )
+                except Exception:
+                    self._logger.warning("Failed to send cancellation notification")
+            elif task_control.pause_event.is_set():
+                # Handler completed normally despite pause being requested — all
+                # work finished before the pause could take effect
+                await task_manager.complete(task.id)
+                self._logger.info(
+                    "Task {} completed (pause request arrived after all work finished)",
+                    task.id,
                 )
+                try:
+                    await task_notification_service.send_task_notification(
+                        task, "completed"
+                    )
+                except Exception:
+                    self._logger.warning("Failed to send completion notification")
             else:
                 await task_manager.complete(task.id)
                 self._logger.info("Completed task {}", task.id)
-                # Send completion notification
-                await task_notification_service.send_task_notification(
-                    task, "completed"
-                )
+                try:
+                    await task_notification_service.send_task_notification(
+                        task, "completed"
+                    )
+                except Exception:
+                    self._logger.warning("Failed to send completion notification")
 
-        except CancelledError:
+        except (CancelledError, DownloadCancelledError):
             await task_manager.cancel(task.id)
             self._logger.info("Task {} cancelled by user", task.id)
-            # Send cancellation notification
-            await task_notification_service.send_task_notification(task, "cancelled")
+            try:
+                await task_notification_service.send_task_notification(
+                    task, "cancelled"
+                )
+            except Exception:
+                self._logger.warning("Failed to send cancellation notification")
+        except DownloadPausedError:
+            await task_manager.pause(task.id)
+            self._logger.info("Task {} paused by user", task.id)
         except Exception as e:
             self._logger.exception("Failed task {}: {}", task.id, e)
             try:
                 await task_manager.fail(task.id, str(e))
-                # Send failure notification
-                await task_notification_service.send_task_notification(
-                    task, "failed", str(e)
-                )
             except Exception as fail_error:
                 self._logger.error(
                     "Critical: Failed to update task {} status to FAILED: {}",
                     task.id,
                     fail_error,
                 )
+            try:
+                await task_notification_service.send_task_notification(
+                    task, "failed", str(e)
+                )
+            except Exception:
+                self._logger.warning("Failed to send failure notification")
         finally:
             # Stop the watch task
             watch_task.cancel()
@@ -224,24 +266,24 @@ class Worker:
             except asyncio.CancelledError:
                 pass
             # Clean up
-            self._cancel_events.pop(task.id, None)
+            self._task_controls.pop(task.id, None)
 
-    async def _watch_for_cancellation(
+    async def _watch_for_task_status(
         self,
         task_manager: TaskService,
         task_id: int,
-        cancel_event: asyncio.Event,
+        task_control: TaskControl,
     ) -> None:
-        """Watch for cancellation requests by polling the database.
+        """Watch for cancellation and pause requests by polling the database.
 
         This runs as a background task during task execution.
-        When the task status is changed to CANCELING, it sets the
-        cancel_event to signal the handler to terminate gracefully.
+        When the task status changes to CANCELING or PAUSING, it sets the
+        corresponding event to signal the handler to terminate gracefully.
 
         Args:
             task_manager: Task manager instance
             task_id: Task ID to watch
-            cancel_event: Event to set when cancellation is detected
+            task_control: Control object with cancel/pause events
         """
         while True:
             try:
@@ -253,15 +295,21 @@ class Worker:
 
                 # Query current task status
                 task = await task_manager.get_task(task_id)
-                if task and task.status == TaskStatus.CANCELING:
+                if not task:
+                    return
+                if task.status == TaskStatus.CANCELING:
                     self._logger.info(
                         "Detected cancellation request for task {}", task_id
                     )
-                    cancel_event.set()
+                    task_control.cancel_event.set()
+                    return
+                if task.status == TaskStatus.PAUSING:
+                    self._logger.info("Detected pause request for task {}", task_id)
+                    task_control.pause_event.set()
                     return
 
             except asyncio.CancelledError:
                 # Task was cancelled (normal during cleanup)
                 return
             except Exception as e:
-                self._logger.warning("Error checking cancellation status: {}", e)
+                self._logger.warning("Error checking task status: {}", e)

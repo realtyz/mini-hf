@@ -138,6 +138,46 @@ export function useTaskActions() {
   })
 
   /**
+   * 暂停任务
+   * 任务创建者或管理员可暂停 running / pending 状态的任务
+   */
+  const pauseTask = useMutation({
+    mutationFn: async (taskId: number): Promise<TaskResponse> => {
+      const response = await api.post<ReviewTaskResponse>(`/task/${taskId}/pause`)
+      return response.data
+    },
+    onSuccess: (_, taskId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
+    },
+    onError: (error: ApiError) => {
+      toast.error('暂停任务失败', {
+        description: error.message,
+      })
+    },
+  })
+
+  /**
+   * 恢复任务
+   * 任务创建者或管理员可恢复 paused 状态的任务
+   */
+  const resumeTask = useMutation({
+    mutationFn: async (taskId: number): Promise<TaskResponse> => {
+      const response = await api.post<ReviewTaskResponse>(`/task/${taskId}/resume`)
+      return response.data
+    },
+    onSuccess: (_, taskId) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
+    },
+    onError: (error: ApiError) => {
+      toast.error('恢复任务失败', {
+        description: error.message,
+      })
+    },
+  })
+
+  /**
    * 置顶任务
    * 管理员可将 pending 状态的任务置顶，提高执行优先级
    */
@@ -201,6 +241,8 @@ export function useTaskActions() {
     createTask,
     reviewTask,
     cancelTask,
+    pauseTask,
+    resumeTask,
     pinTask,
     unpinTask,
     retryTask,

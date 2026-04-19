@@ -1141,8 +1141,8 @@ async def cancel_task(
             detail="Permission denied: only the task creator or an admin can cancel this task",
         )
 
-    # Only running or pending tasks can be cancelled
-    if task.status not in (TaskStatus.RUNNING, TaskStatus.PENDING):
+    # Only running, pending, pausing or paused tasks can be cancelled
+    if task.status not in (TaskStatus.RUNNING, TaskStatus.PENDING, TaskStatus.PAUSING, TaskStatus.PAUSED):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Task cannot be cancelled in status '{task.status.value}'",
@@ -1162,6 +1162,221 @@ async def cancel_task(
         task=task,
         status="cancelled",
     )
+
+    # Return updated task
+    updated_task = await task_service.get_task(task_id)
+    if not updated_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found",
+        )
+    creator = await UserRepository(db).get_by_id(updated_task.creator_user_id)
+    if creator:
+        creator_user = TaskCreatorUser(
+            id=creator.id, name=creator.name, email=creator.email
+        )
+    else:
+        creator_user = None
+
+    return TaskDetailResponse(
+        data=TaskResponse(
+            id=updated_task.id,
+            source=updated_task.source,
+            repo_id=updated_task.repo_id,
+            repo_type=updated_task.repo_type,
+            revision=updated_task.revision,
+            hf_endpoint=updated_task.hf_endpoint,
+            status=updated_task.status.value,
+            error_message=updated_task.error_message,
+            created_at=updated_task.created_at,
+            reviewed_at=updated_task.reviewed_at,
+            updated_at=updated_task.updated_at,
+            started_at=updated_task.started_at,
+            completed_at=updated_task.completed_at,
+            pinned_at=updated_task.pinned_at,
+            required_storage=updated_task.required_storage,
+            creator_user_id=updated_task.creator_user_id,
+            creator_user=creator_user,
+            total_storage=updated_task.total_storage,
+            required_file_count=updated_task.required_file_count,
+            total_file_count=updated_task.total_file_count,
+            repo_items=updated_task.repo_items or [],
+            commit_hash=updated_task.commit_hash,
+        )
+    )
+
+
+@router.post("/{task_id}/pause", response_model=TaskDetailResponse)
+async def pause_task(
+    task_id: int,
+    current_user: CurrentUserToken,
+    db: DbDep,
+    user_service: UserServiceDep,
+) -> TaskDetailResponse:
+    """Pause a running or pending task.
+
+    The task creator or an admin can pause a task.
+    - running tasks: status → pausing (worker will gracefully stop after current file)
+    - pending tasks: status → paused (immediate)
+
+    Args:
+        task_id: Task ID to pause
+        current_user: Current authenticated user (email from JWT)
+        db: Database session
+        user_service: User service dependency
+
+    Returns:
+        Updated task information
+
+    Raises:
+        HTTPException: If task not found, not in a pausable state, or user lacks permission
+    """
+    task_service = TaskService()
+    task = await task_service.get_task(task_id)
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found",
+        )
+
+    # Resolve the current user entity
+    user = await user_service.get_by_email(current_user.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Permission: task creator or admin
+    is_admin = user.role == "admin"
+    is_creator = task.creator_user_id == user.id
+    if not (is_admin or is_creator):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: only the task creator or an admin can pause this task",
+        )
+
+    # Only running or pending tasks can be paused
+    if task.status not in (TaskStatus.RUNNING, TaskStatus.PENDING):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Task cannot be paused in status '{task.status.value}'",
+        )
+
+    success = await task_service.request_pause(task_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to pause task",
+        )
+
+    # Return updated task
+    updated_task = await task_service.get_task(task_id)
+    if not updated_task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found",
+        )
+    creator = await UserRepository(db).get_by_id(updated_task.creator_user_id)
+    if creator:
+        creator_user = TaskCreatorUser(
+            id=creator.id, name=creator.name, email=creator.email
+        )
+    else:
+        creator_user = None
+
+    return TaskDetailResponse(
+        data=TaskResponse(
+            id=updated_task.id,
+            source=updated_task.source,
+            repo_id=updated_task.repo_id,
+            repo_type=updated_task.repo_type,
+            revision=updated_task.revision,
+            hf_endpoint=updated_task.hf_endpoint,
+            status=updated_task.status.value,
+            error_message=updated_task.error_message,
+            created_at=updated_task.created_at,
+            reviewed_at=updated_task.reviewed_at,
+            updated_at=updated_task.updated_at,
+            started_at=updated_task.started_at,
+            completed_at=updated_task.completed_at,
+            pinned_at=updated_task.pinned_at,
+            required_storage=updated_task.required_storage,
+            creator_user_id=updated_task.creator_user_id,
+            creator_user=creator_user,
+            total_storage=updated_task.total_storage,
+            required_file_count=updated_task.required_file_count,
+            total_file_count=updated_task.total_file_count,
+            repo_items=updated_task.repo_items or [],
+            commit_hash=updated_task.commit_hash,
+        )
+    )
+
+
+@router.post("/{task_id}/resume", response_model=TaskDetailResponse)
+async def resume_task(
+    task_id: int,
+    current_user: CurrentUserToken,
+    db: DbDep,
+    user_service: UserServiceDep,
+) -> TaskDetailResponse:
+    """Resume a paused task.
+
+    The task creator or an admin can resume a paused task.
+    - paused tasks: status → pending (worker will pick it up)
+
+    Args:
+        task_id: Task ID to resume
+        current_user: Current authenticated user (email from JWT)
+        db: Database session
+        user_service: User service dependency
+
+    Returns:
+        Updated task information
+
+    Raises:
+        HTTPException: If task not found, not in PAUSED status, or user lacks permission
+    """
+    task_service = TaskService()
+    task = await task_service.get_task(task_id)
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Task {task_id} not found",
+        )
+
+    # Resolve the current user entity
+    user = await user_service.get_by_email(current_user.email)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    # Permission: task creator or admin
+    is_admin = user.role == "admin"
+    is_creator = task.creator_user_id == user.id
+    if not (is_admin or is_creator):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Permission denied: only the task creator or an admin can resume this task",
+        )
+
+    # Only paused tasks can be resumed
+    if task.status != TaskStatus.PAUSED:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Task cannot be resumed in status '{task.status.value}'",
+        )
+
+    success = await task_service.request_resume(task_id)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to resume task",
+        )
 
     # Return updated task
     updated_task = await task_service.get_task(task_id)

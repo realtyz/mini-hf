@@ -50,6 +50,8 @@ const STATUS_OPTIONS: {
     { value: "pending_approval", label: "等待审批", color: "text-amber-500" },
     { value: "pending", label: "排队中", color: "text-slate-500" },
     { value: "running", label: "进行中", color: "text-blue-500" },
+    { value: "pausing", label: "暂停中", color: "text-orange-500" },
+    { value: "paused", label: "已暂停", color: "text-yellow-500" },
     { value: "completed", label: "已完成", color: "text-emerald-500" },
     { value: "failed", label: "失败", color: "text-red-500" },
     { value: "cancelled", label: "已取消", color: "text-gray-500" },

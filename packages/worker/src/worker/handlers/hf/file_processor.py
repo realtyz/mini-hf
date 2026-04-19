@@ -12,7 +12,9 @@ from core import settings
 from worker.handlers._downloader import (
     HttpFileDownloader,
     ProgressInfo,
+    DownloadCancelledError,
     DownloadError,
+    DownloadPausedError,
 )
 from worker.services import TaskProgressTracker
 from storage import s3_client, build_blob_key
@@ -38,6 +40,7 @@ async def download_and_upload_files(
     files: list[RepoFile],
     access_token: str | None,
     cancel_event: asyncio.Event,
+    pause_event: asyncio.Event,
     progress_tracker: TaskProgressTracker | None = None,
     endpoint: str | None = None,
 ) -> list[dict]:
@@ -53,6 +56,8 @@ async def download_and_upload_files(
         files: List of RepoFile objects to download
         access_token: Optional access token for authentication
         cancel_event: Event to signal cancellation
+        pause_event: Event to signal pause (files already downloading will
+            complete, but no new files will start)
         progress_tracker: Optional progress tracker
         endpoint: Optional HF endpoint URL to use for downloads
 
@@ -65,6 +70,7 @@ async def download_and_upload_files(
 
     Raises:
         DownloadError: If any files fail to process
+        DownloadPausedError: If pause was requested and no real failures occurred
     """
     if endpoint is None:
         endpoint = "https://huggingface.co"
@@ -74,7 +80,9 @@ async def download_and_upload_files(
         follow_redirects=True,
         timeout=30.0,
         limits=httpx.Limits(
-            max_connections=DEFAULT_CONCURRENT_DOWNLOADS + DEFAULT_CONCURRENT_UPLOADS + 2,
+            max_connections=DEFAULT_CONCURRENT_DOWNLOADS
+            + DEFAULT_CONCURRENT_UPLOADS
+            + 2,
             max_keepalive_connections=DEFAULT_CONCURRENT_DOWNLOADS + 2,
         ),
     )
@@ -106,6 +114,7 @@ async def download_and_upload_files(
             repo_file=repo_file,
             access_token=access_token,
             cancel_event=cancel_event,
+            pause_event=pause_event,
             progress_tracker=progress_tracker,
             endpoint=endpoint,
             shared_client=shared_client,
@@ -115,7 +124,9 @@ async def download_and_upload_files(
 
     # Wait for all tasks to complete, collect results
     try:
-        logger.debug("Waiting for {} download tasks to complete...", len(download_tasks))
+        logger.debug(
+            "Waiting for {} download tasks to complete...", len(download_tasks)
+        )
         results = await asyncio.gather(*download_tasks, return_exceptions=True)
         logger.debug("All download tasks completed, processing results...")
     finally:
@@ -124,9 +135,16 @@ async def download_and_upload_files(
     # Step 2: Categorize results
     successful_results: list[dict] = []
     failures: list[tuple[str, Exception]] = []
+    paused_count = 0
 
     for repo_file, result in zip(files, results):
-        if isinstance(result, Exception):
+        if isinstance(result, DownloadPausedError):
+            paused_count += 1
+            logger.debug("File {} paused before starting", repo_file.path)
+        elif isinstance(result, DownloadCancelledError):
+            logger.info("Download cancelled for {}: {}", repo_file.path, result)
+            raise result
+        elif isinstance(result, Exception):
             failures.append((repo_file.path, result))
             logger.error("Failed to process {}: {}", repo_file.path, result)
             # Mark file as failed
@@ -141,17 +159,24 @@ async def download_and_upload_files(
             )
 
     logger.info(
-        "  -> Downloaded and uploaded {}/{} files successfully",
+        "  -> Downloaded and uploaded {}/{} files successfully ({} paused)",
         len(successful_results),
         len(files),
+        paused_count,
     )
 
-    # Step 3: If there are failures, raise exception
+    # Step 3: Handle failures or pause
     if failures:
         failed_paths = [f[0] for f in failures]
         raise DownloadError(
             f"Failed to process {len(failures)} files: {', '.join(failed_paths[:3])}"
             f"{'...' if len(failures) > 3 else ''}"
+        )
+
+    if paused_count > 0:
+        raise DownloadPausedError(
+            f"Paused after processing {len(successful_results)} files, "
+            f"{paused_count} files remaining"
         )
 
     return successful_results
@@ -167,6 +192,7 @@ async def _process_single_file(
     repo_file: RepoFile,
     access_token: str | None,
     cancel_event: asyncio.Event,
+    pause_event: asyncio.Event,
     progress_tracker: TaskProgressTracker | None = None,
     endpoint: str | None = None,
     shared_client: httpx.AsyncClient | None = None,
@@ -189,6 +215,7 @@ async def _process_single_file(
         repo_file: RepoFile object
         access_token: Optional access token
         cancel_event: Event to signal cancellation
+        pause_event: Event to signal pause
         progress_tracker: Progress tracker for reporting
 
     Returns:
@@ -200,6 +227,7 @@ async def _process_single_file(
 
     Raises:
         DownloadError: If download or upload fails
+        DownloadPausedError: If pause was requested before starting this file
     """
     # Calculate blob_id
     blob_id = (
@@ -266,7 +294,9 @@ async def _process_single_file(
                 try:
                     target_path.unlink(missing_ok=True)
                 except Exception as e:
-                    logger.warning("Failed to clean up temp file {}: {}", target_path, e)
+                    logger.warning(
+                        "Failed to clean up temp file {}: {}", target_path, e
+                    )
                 return {
                     "status": "exists",
                     "path": repo_file.path,
@@ -311,7 +341,9 @@ async def _process_single_file(
                 try:
                     target_path.unlink(missing_ok=True)
                 except Exception as e:
-                    logger.warning("Failed to clean up temp file {}: {}", target_path, e)
+                    logger.warning(
+                        "Failed to clean up temp file {}: {}", target_path, e
+                    )
 
         return {
             "status": "uploaded",
@@ -324,6 +356,10 @@ async def _process_single_file(
     logger.debug("Waiting for download semaphore: {}", repo_file.path)
     async with download_semaphore:
         logger.debug("Acquired download semaphore for: {}", repo_file.path)
+
+        # Check pause before starting this file
+        if pause_event.is_set():
+            raise DownloadPausedError
 
         # Mark file as downloading (from pending to downloading)
         if progress_tracker:
@@ -384,6 +420,9 @@ async def _process_single_file(
                 if progress_tracker:
                     await progress_tracker.complete_file(repo_file.path)
 
+            except DownloadCancelledError:
+                logger.info("Download cancelled for {}", repo_file.path)
+                raise
             except Exception as e:
                 # Mark file download as failed
                 logger.error("Download failed for {}: {}", repo_file.path, e)

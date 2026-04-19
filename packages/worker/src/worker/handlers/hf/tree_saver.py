@@ -118,7 +118,7 @@ async def save_repo_tree(
 
             value = {
                 "commit_hash": commit_hash,
-                "type": item_type.value,
+                "type": item_type,
                 "path": item["path"],
                 "size": item.get("size", 0),
                 "oid": item.get("oid"),

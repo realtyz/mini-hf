@@ -238,9 +238,10 @@ class TaskRepository:
         #    - 其他状态: 按 completed_at 降序
         stmt = (
             base_stmt.order_by(
-                # 1. RUNNING任务优先级为0，其他为1
+                # 1. RUNNING/PAUSING任务优先级为0，其他为1
                 case(
                     (Task.status == TaskStatus.RUNNING, 0),
+                    (Task.status == TaskStatus.PAUSING, 0),
                     else_=1
                 ).asc(),
                 # 2. 置顶任务在非RUNNING任务中排前面
@@ -254,9 +255,11 @@ class TaskRepository:
                 # 4. 状态优先级分组（非RUNNING任务）
                 case(
                     (Task.status == TaskStatus.RUNNING, 0),         # RUNNING任务忽略
+                    (Task.status == TaskStatus.PAUSING, 0),
                     (Task.status == TaskStatus.PENDING_APPROVAL, 0),
                     (Task.status == TaskStatus.PENDING, 1),
-                    else_=2
+                    (Task.status == TaskStatus.PAUSED, 2),
+                    else_=3
                 ).asc(),
                 # 5a. 对于 PENDING_APPROVAL/PENDING，按 reviewed_at 升序
                 case(
@@ -352,6 +355,7 @@ class TaskRepository:
                         TaskStatus.PENDING,
                         TaskStatus.PENDING_APPROVAL,
                         TaskStatus.RUNNING,
+                        TaskStatus.PAUSED,
                     ]
                 ),
                 Task.source.in_(["huggingface", "modelscope"]),
@@ -383,6 +387,7 @@ class TaskRepository:
                         TaskStatus.PENDING,
                         TaskStatus.PENDING_APPROVAL,
                         TaskStatus.RUNNING,
+                        TaskStatus.PAUSED,
                     ]
                 ),
             )

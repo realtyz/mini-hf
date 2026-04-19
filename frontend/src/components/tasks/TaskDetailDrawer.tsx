@@ -12,6 +12,8 @@ import {
   Globe,
   Box,
   ChevronRight,
+  Pause,
+  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -67,7 +69,7 @@ const statusDisplayConfig: Record<
     /** 是否显示实时进度（需要轮询） */
     showRealtimeProgress: boolean;
     /** 底部操作类型 */
-    bottomActionType: "none" | "refresh" | "view-progress";
+    bottomActionType: "none" | "refresh" | "view-progress" | "paused" | "pausing";
   }
 > = {
   pending_approval: {
@@ -119,6 +121,20 @@ const statusDisplayConfig: Record<
     showStorageStats: false,
     showRealtimeProgress: false,
     bottomActionType: "none",
+  },
+  pausing: {
+    fileListTitle: "请求文件列表",
+    showStorageStats: false,
+    showRealtimeProgress: false,
+    bottomActionType: "pausing",
+  },
+  paused: {
+    fileListTitle: "请求文件列表",
+    storageSectionTitle: "下载统计",
+    storageSectionColor: "bg-yellow-500",
+    showStorageStats: true,
+    showRealtimeProgress: false,
+    bottomActionType: "paused",
   },
 };
 
@@ -266,6 +282,16 @@ function StatusAlertBanner({ status }: { status: TaskStatus }) {
       </Alert>
     );
   }
+  if (status === "pausing") {
+    return (
+      <Alert className="border-yellow-200/60 bg-yellow-50/60 dark:bg-yellow-950/20 dark:border-yellow-800/40 rounded-xl py-3">
+        <Clock className="h-4 w-4 text-yellow-500 dark:text-yellow-400 animate-pulse" />
+        <AlertDescription className="ml-2 text-yellow-800 dark:text-yellow-200 font-medium text-[13px]">
+          正在暂停任务，请稍候...
+        </AlertDescription>
+      </Alert>
+    );
+  }
   return null;
 }
 
@@ -279,7 +305,7 @@ function StorageStatsSection({
 }) {
   const isCompletedState = task.status === "completed";
   const isFailedOrCancelled = task.status === "cancelled" || task.status === "failed";
-  const isTerminalState = isCompletedState || isFailedOrCancelled;
+  const isTerminalState = isCompletedState || isFailedOrCancelled || task.status === "paused";
   const isPendingState = ["pending_approval", "pending"].includes(task.status);
 
   const displayFileCount =
@@ -333,15 +359,17 @@ export function TaskDetailDrawer({
   const { data: task, isLoading, refetch: refetchTask } = useTaskDetail(taskId);
   const { data: progress } = useTaskProgress(
     taskId,
-    task?.status === "running",
+    task?.status === "running" || task?.status === "pausing",
   );
-  const { reviewTask, cancelTask } = useTaskActions();
+  const { reviewTask, cancelTask, pauseTask, resumeTask } = useTaskActions();
   const [rejectNotes, setRejectNotes] = useState("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
 
   const canCancel = task ? isAdmin || user?.id === task.creator_user_id : false;
+  const canPause = task ? (isAdmin || user?.id === task.creator_user_id) && (task.status === "running" || task.status === "pending") : false;
+  const canResume = task ? (isAdmin || user?.id === task.creator_user_id) && task.status === "paused" : false;
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -370,6 +398,20 @@ export function TaskDetailDrawer({
     if (!taskId) return;
     setCancelDialogOpen(false);
     cancelTask.mutate(taskId, {
+      onSuccess: () => refetchTask(),
+    });
+  };
+
+  const handlePause = () => {
+    if (!taskId) return;
+    pauseTask.mutate(taskId, {
+      onSuccess: () => refetchTask(),
+    });
+  };
+
+  const handleResume = () => {
+    if (!taskId) return;
+    resumeTask.mutate(taskId, {
       onSuccess: () => refetchTask(),
     });
   };
@@ -534,7 +576,7 @@ export function TaskDetailDrawer({
               </section>
 
               {/* Progress / Storage */}
-              {task.status === "running" && !progress ? (
+              {(task.status === "running" || task.status === "pausing") && !progress ? (
                 <section>
                   <SectionHeader accent="bg-blue-500">下载进度</SectionHeader>
                   <div className="rounded-xl border border-blue-100 dark:border-blue-800/40 bg-blue-50/40 dark:bg-blue-950/20 p-4 flex items-center gap-2 text-muted-foreground text-sm">
@@ -542,7 +584,7 @@ export function TaskDetailDrawer({
                     <span>加载进度中...</span>
                   </div>
                 </section>
-              ) : task.status === "running" && progress ? (
+              ) : (task.status === "running" || task.status === "pausing") && progress ? (
                 <section>
                   <SectionHeader accent="bg-blue-500">
                     {statusConfig.storageSectionTitle ?? ""}
@@ -653,6 +695,17 @@ export function TaskDetailDrawer({
                 <div className="pt-1 border-t border-border/40">
                   {statusConfig.bottomActionType === "view-progress" && (
                     <div className="flex gap-2 pt-3">
+                      {canPause && (
+                        <Button
+                          variant="outline"
+                          onClick={handlePause}
+                          disabled={pauseTask.isPending}
+                          className="h-9 text-[13px] border-yellow-200 hover:bg-yellow-50 hover:text-yellow-600 active:bg-yellow-100 dark:border-yellow-800/50 dark:hover:bg-yellow-950/40 dark:hover:text-yellow-400 dark:active:bg-yellow-950/60"
+                        >
+                          <Pause className="mr-1.5 h-3.5 w-3.5" />
+                          {pauseTask.isPending ? "暂停中..." : "暂停任务"}
+                        </Button>
+                      )}
                       {canCancel && (
                         <Button
                           variant="outline"
@@ -697,6 +750,59 @@ export function TaskDetailDrawer({
                       </div>
                     </div>
                   )}
+                  {statusConfig.bottomActionType === "paused" && (
+                    <div className="flex items-center justify-between bg-yellow-50/60 dark:bg-yellow-950/20 border border-yellow-200/60 dark:border-yellow-800/40 rounded-xl px-4 py-3 mt-1">
+                      <div className="flex items-center gap-2 text-[13px] text-yellow-700 dark:text-yellow-300 font-medium">
+                        <Pause className="h-3.5 w-3.5" />
+                        <span>任务已暂停</span>
+                      </div>
+                      <div className="flex gap-2">
+                        {canResume && (
+                          <Button
+                            size="sm"
+                            onClick={handleResume}
+                            disabled={resumeTask.isPending}
+                            className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
+                          >
+                            <Play className="mr-1 h-3 w-3" />
+                            {resumeTask.isPending ? "恢复中..." : "恢复任务"}
+                          </Button>
+                        )}
+                        {canCancel && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleCancelClick}
+                            disabled={cancelTask.isPending}
+                            className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
+                          >
+                            <XCircle className="mr-1 h-3 w-3" />
+                            {cancelTask.isPending ? "取消中..." : "取消任务"}
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {statusConfig.bottomActionType === "pausing" && (
+                    <div className="flex items-center justify-between bg-yellow-50/60 dark:bg-yellow-950/20 border border-yellow-200/60 dark:border-yellow-800/40 rounded-xl px-4 py-3 mt-1">
+                      <div className="flex items-center gap-2 text-[13px] text-yellow-700 dark:text-yellow-300 font-medium">
+                        <Clock className="h-3.5 w-3.5 animate-pulse" />
+                        <span>正在暂停任务，请稍候...</span>
+                      </div>
+                      {canCancel && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCancelClick}
+                          disabled={cancelTask.isPending}
+                          className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
+                        >
+                          <XCircle className="mr-1 h-3 w-3" />
+                          {cancelTask.isPending ? "取消中..." : "取消任务"}
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -721,6 +827,10 @@ export function TaskDetailDrawer({
                   <p className="mt-1 text-xs text-muted-foreground">
                     {task.status === "pending_approval"
                       ? "取消后任务将被标记为已取消，需要重新创建任务。"
+                      : task.status === "paused"
+                      ? "任务已暂停，取消后需要重新创建任务。"
+                      : task.status === "pausing"
+                      ? "任务正在暂停中，取消后需要重新创建任务。"
                       : "任务正在排队中，取消后需要重新创建任务。"}
                   </p>
                 </>

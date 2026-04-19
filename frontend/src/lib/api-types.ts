@@ -132,6 +132,8 @@ export type TaskStatus =
   | 'failed'
   | 'canceling'
   | 'cancelled'
+  | 'pausing'
+  | 'paused'
 
 export interface TaskCreatorUser {
   id: number

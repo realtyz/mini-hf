@@ -215,13 +215,13 @@ class TaskService:
 
             now = datetime.now()
 
-            if task.status == TaskStatus.RUNNING:
+            if task.status == TaskStatus.RUNNING or task.status == TaskStatus.PAUSING:
                 # Signal worker to stop gracefully
                 await repo.update_status(task_id, TaskStatus.CANCELING)
                 self._logger.info("Requested cancellation for task {}", task_id)
                 return True
 
-            elif task.status == TaskStatus.PENDING:
+            elif task.status == TaskStatus.PENDING or task.status == TaskStatus.PAUSED:
                 # Cancel immediately
                 await repo.update_status(
                     task_id,
@@ -229,7 +229,7 @@ class TaskService:
                     completed_at=now,
                     clear_pinned=True,
                 )
-                self._logger.info("Cancelled pending task {}", task_id)
+                self._logger.info("Cancelled pending/paused task {}", task_id)
                 return True
 
             return False
@@ -249,6 +249,83 @@ class TaskService:
                 clear_pinned=True,
             )
             self._logger.info("Task {} marked as cancelled", task_id)
+
+    async def request_pause(self, task_id: int) -> bool:
+        """Request pause of a task.
+
+        For running tasks, changes status to PAUSING so the worker will
+        detect and terminate the task gracefully after completing the
+        current file.
+
+        For pending tasks, changes status directly to PAUSED.
+
+        Args:
+            task_id: Task ID
+
+        Returns:
+            True if pause was requested, False if task not found or not pausable
+        """
+        async with self._session_ctx() as session:
+            repo = self._get_repo(session)
+            task = await repo.get_by_id(task_id)
+            if not task:
+                return False
+
+            if task.status == TaskStatus.RUNNING:
+                await repo.update_status(task_id, TaskStatus.PAUSING)
+                self._logger.info("Requested pause for running task {}", task_id)
+                return True
+
+            if task.status == TaskStatus.PENDING:
+                await repo.update_status(
+                    task_id,
+                    TaskStatus.PAUSED,
+                    clear_pinned=True,
+                )
+                self._logger.info("Paused pending task {}", task_id)
+                return True
+
+            return False
+
+    async def pause(self, task_id: int) -> None:
+        """Mark a task as paused (called by worker after graceful termination).
+
+        Args:
+            task_id: Task ID
+        """
+        async with self._session_ctx() as session:
+            repo = self._get_repo(session)
+            await repo.update_status(
+                task_id,
+                TaskStatus.PAUSED,
+            )
+            self._logger.info("Task {} marked as paused", task_id)
+
+    async def request_resume(self, task_id: int) -> bool:
+        """Resume a paused task by changing status to PENDING.
+
+        Args:
+            task_id: Task ID
+
+        Returns:
+            True if resumed, False if task not found or not in PAUSED status
+        """
+        async with self._session_ctx() as session:
+            repo = self._get_repo(session)
+            task = await repo.get_by_id(task_id)
+            if not task:
+                return False
+
+            if task.status == TaskStatus.PAUSED:
+                await repo.update_status(
+                    task_id,
+                    TaskStatus.PENDING,
+                    reviewed_at=datetime.now(),
+                )
+                self._logger.info("Resumed task {}", task_id)
+                return True
+
+            return False
 
     async def review_task(
         self,

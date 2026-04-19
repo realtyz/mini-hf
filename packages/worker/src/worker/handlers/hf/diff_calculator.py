@@ -57,7 +57,7 @@ def calculate_file_diff(
     old_files = {
         item.path: item
         for item in old_tree
-        if item.type.value == "file" and item.is_cached
+        if item.type == "file" and item.is_cached
     }
     new_files_map = {f.path: f for f in new_files}
 

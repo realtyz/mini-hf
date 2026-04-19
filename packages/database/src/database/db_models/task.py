@@ -17,6 +17,8 @@ class TaskStatus(str, PyEnum):
     RUNNING = "running"  # 执行中
     CANCELING = "canceling"  # 取消中
     CANCELLED = "cancelled"  # 已取消
+    PAUSING = "pausing"  # 暂停中
+    PAUSED = "paused"  # 已暂停
     COMPLETED = "completed"  # 已完成
     FAILED = "failed"  # 失败
 

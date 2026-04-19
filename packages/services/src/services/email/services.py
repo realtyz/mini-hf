@@ -242,14 +242,14 @@ class TaskNotificationService:
     async def send_task_notification(
         self,
         task: "Task",
-        status: Literal["completed", "failed", "cancelled"],
+        status: Literal["completed", "failed", "cancelled", "paused"],
         error_message: str | None = None,
     ) -> bool:
         """Send task status notification email to the task creator.
 
         Args:
             task: Task instance with creator information
-            status: Task status ("completed", "failed", or "cancelled")
+            status: Task status ("completed", "failed", "cancelled", or "paused")
             error_message: Optional error message for failed tasks
 
         Returns:
@@ -309,6 +309,7 @@ class TaskNotificationService:
             "completed": "已完成",
             "failed": "失败",
             "cancelled": "已取消",
+            "paused": "已暂停",
         }
         return f"[Mini-HF] 任务 {task.repo_id} {status_text.get(status, status)}"
 

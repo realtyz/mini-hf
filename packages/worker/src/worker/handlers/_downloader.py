@@ -22,6 +22,12 @@ class DownloadCancelledError(DownloaderError):
     pass
 
 
+class DownloadPausedError(DownloaderError):
+    """下载被暂停"""
+
+    pass
+
+
 class DownloadError(DownloaderError):
     """下载失败（网络错误、校验失败等）"""
 

@@ -163,13 +163,11 @@ class ConfigProvider:
         # Check cache first
         cached = self._get_from_cache(key)
         if cached is not None:
-            logger.debug("Config cache hit for key: {}", key)
             return cached[0]
 
         # Fetch from database
         config = await self._repo.get(key)
         if config is None:
-            logger.debug("Config not found for key: {}, using default", key)
             return default
 
         # Decrypt if sensitive
@@ -179,7 +177,6 @@ class ConfigProvider:
 
         # Update cache
         self._set_cache(key, value)
-        logger.debug("Config loaded from db for key: {}", key)
 
         return value
 

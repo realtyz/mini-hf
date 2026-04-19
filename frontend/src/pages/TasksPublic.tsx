@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
+  Pause,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -162,6 +163,16 @@ export function TasksPublic() {
     [activeTasks],
   );
 
+  const pausingTasks = useMemo(
+    () => activeTasks.filter((t) => t.status?.toLowerCase() === "pausing"),
+    [activeTasks],
+  );
+
+  const pausedTasks = useMemo(
+    () => activeTasks.filter((t) => t.status?.toLowerCase() === "paused"),
+    [activeTasks],
+  );
+
   // 历史任务列表（来自公共列表端点，包含 completed/failed/cancelled 等）
   const completedTasks = useMemo(
     () =>
@@ -262,7 +273,7 @@ export function TasksPublic() {
 
         {/* Status Summary Cards */}
         {!isLoading && !error && (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <StatusCard
               icon={Activity}
               label="运行中"
@@ -282,6 +293,20 @@ export function TasksPublic() {
               }
               color="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
               delay={0.1}
+            />
+            <StatusCard
+              icon={Loader2}
+              label="暂停中"
+              value={pausingTasks.length}
+              color="bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
+              delay={0.12}
+            />
+            <StatusCard
+              icon={Pause}
+              label="已暂停"
+              value={pausedTasks.length}
+              color="bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
+              delay={0.14}
             />
             <StatusCard
               icon={CheckCircle2}

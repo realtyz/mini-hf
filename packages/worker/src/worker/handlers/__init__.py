@@ -1,17 +1,19 @@
 """Task handlers for the worker."""
 
-from worker.handlers.base import HandlerFunc, TaskHandler
+from worker.handlers.base import HandlerFunc, TaskControl, TaskHandler
 from worker.handlers.hf import handle_download_huggingface
 from worker.handlers._downloader import (
     HttpFileDownloader,
     ProgressInfo,
     DownloaderError,
     DownloadCancelledError,
+    DownloadPausedError,
     DownloadError,
 )
 
 __all__ = [
     "HandlerFunc",
+    "TaskControl",
     "TaskHandler",
     "handle_download_huggingface",
     "register_handlers",
@@ -19,6 +21,7 @@ __all__ = [
     "ProgressInfo",
     "DownloaderError",
     "DownloadCancelledError",
+    "DownloadPausedError",
     "DownloadError",
 ]
 

@@ -21,7 +21,6 @@ import asyncio
 import os
 
 import click
-from loguru import logger
 
 from worker.worker import Worker
 from worker.handlers import register_handlers
@@ -48,12 +47,8 @@ async def main() -> None:
     # Register all task handlers
     register_handlers(worker)
 
-    # Start the worker
-    try:
-        await worker.start()
-    except KeyboardInterrupt:
-        logger.info("Shutting down...")
-        worker.stop()
+    # Start the worker (signal handlers are registered inside worker.start)
+    await worker.start()
 
 
 if __name__ == "__main__":
