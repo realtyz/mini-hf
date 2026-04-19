@@ -1,4 +1,4 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
 import type { TaskListResponse, ActiveTaskListResponse, TaskListFilters, PaginationParams, TaskStatus } from '@/lib/api-types'

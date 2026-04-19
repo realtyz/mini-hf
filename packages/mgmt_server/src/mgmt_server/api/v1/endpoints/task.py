@@ -1692,7 +1692,7 @@ async def retry_task(
         commit_hash=original_task.commit_hash,
         hf_endpoint=original_task.hf_endpoint,
         access_token=original_task.access_token,
-        creator_user_id=user.id,
+        creator_user_id=original_task.creator_user_id,
         total_file_count=original_task.total_file_count,
         required_file_count=original_task.required_file_count,
         total_storage=original_task.total_storage,

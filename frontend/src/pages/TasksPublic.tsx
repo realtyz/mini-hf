@@ -148,7 +148,6 @@ export function TasksPublic() {
     isLoading: isHistoryLoading,
     isRefetching: isHistoryRefetching,
     error: historyError,
-    refetch: refetchHistory,
   } = useTaskList({
     public: true,
     hours: 168,

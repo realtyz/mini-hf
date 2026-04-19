@@ -19,6 +19,8 @@ function getStatusLabel(status: TaskStatus): string {
     failed: "失败",
     canceling: "取消中",
     cancelled: "已取消",
+    pausing: "暂停中",
+    paused: "已暂停",
   };
   return labels[status] || status;
 }
