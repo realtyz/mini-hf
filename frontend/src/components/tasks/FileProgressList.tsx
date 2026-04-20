@@ -71,23 +71,23 @@ function FileProgressRow({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: index * 0.02, ease: [0.16, 1, 0.3, 1] }}
-      className={`group flex items-center gap-3 py-2.5 text-sm overflow-hidden transition-colors duration-200 ${
+      className={`group flex items-center gap-3 py-2.5 px-3 text-sm transition-colors duration-200 min-w-0 max-w-full ${
         isCurrent
-          ? "bg-blue-50/70 -mx-2 px-2 rounded-md dark:bg-blue-950/30"
+          ? "bg-blue-50/70 rounded-md dark:bg-blue-950/30"
           : ""
       } ${
         file.status === "uploading"
-          ? "bg-violet-50/60 -mx-2 px-2 rounded-md dark:bg-violet-950/20"
+          ? "bg-violet-50/60 rounded-md dark:bg-violet-950/20"
           : ""
       }`}
     >
-      <div className="shrink-0 w-5 flex items-center justify-center">
+      <div className="shrink-0 w-6 flex items-center justify-center">
         {getStatusIcon()}
       </div>
       <div className="flex-1 min-w-0 overflow-hidden">
-        <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center justify-between mb-1 min-w-0 overflow-hidden">
           <span
-            className="text-xs truncate group-hover:text-foreground transition-colors min-w-0"
+            className="text-xs truncate group-hover:text-foreground transition-colors flex-1 min-w-0 overflow-hidden max-w-full"
             title={file.path}
           >
             {file.path}
@@ -98,15 +98,12 @@ function FileProgressRow({
               : formatBytes(file.total_bytes)}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="min-w-0 max-w-full">
           <Progress
             value={progress}
-            className="h-1 flex-1 bg-muted"
+            className="h-1 bg-muted w-full"
             indicatorClassName={getProgressColor()}
           />
-          <span className="text-[10px] text-muted-foreground w-8 text-right tabular-nums">
-            {progress}%
-          </span>
         </div>
         {(file.status === "downloading" || file.status === "uploading") && file.speed_bytes_per_sec ? (
           <div className={`text-[10px] mt-0.5 font-medium ${
@@ -116,11 +113,15 @@ function FileProgressRow({
           </div>
         ) : null}
         {file.status === "failed" && file.error_message ? (
-          <div className="text-[10px] text-red-500 mt-0.5 truncate max-w-full" title={file.error_message}>
+          <div className="text-[10px] text-red-500 mt-0.5 truncate min-w-0 max-w-full overflow-hidden" title={file.error_message}>
             错误: {file.error_message}
           </div>
         ) : null}
       </div>
+      {/* Percentage display moved to right side */}
+      <span className="text-[10px] text-muted-foreground w-8 text-right tabular-nums shrink-0">
+        {progress}%
+      </span>
     </motion.div>
   );
 }
@@ -163,7 +164,7 @@ export function FileProgressList({
   });
 
   return (
-    <div className="divide-y divide-border/30 min-w-0">
+    <div className="divide-y divide-border/30 w-full min-w-0 max-w-full overflow-hidden">
       {sortedFiles.map((file, index) => (
         <FileProgressRow
           key={`${taskId}-${file.path}`}

@@ -82,7 +82,7 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
   }
 
   return (
-    <Card className="h-full shadow-sm">
+    <Card className="h-full shadow-sm w-full min-w-0 max-w-full overflow-hidden">
       <CardHeader className="pb-3">
         {/* Repo info */}
         <motion.div
@@ -190,18 +190,18 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
         </div>
       </CardHeader>
 
-      <CardContent>
-        <div className="flex items-center gap-2 mb-4 pb-4 border-b">
-          <FileDown className="h-4 w-4 text-muted-foreground" />
+      <CardContent className="min-w-0">
+        <div className="flex items-center gap-2 mb-4 pb-4 border-b min-w-0">
+          <FileDown className="h-4 w-4 text-muted-foreground shrink-0" />
           <CardTitle className="text-sm font-medium">
             文件进度详情
           </CardTitle>
           {isRunning && !progressData && (
-            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-2" />
+            <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-2 shrink-0" />
           )}
         </div>
 
-        <div className="max-h-80 overflow-y-auto scrollbar-gutter-stable">
+        <div className="max-h-80 overflow-y-auto scrollbar-gutter-stable min-w-0">
           {isLoading && !progressData ? (
             <div className="flex items-center justify-center py-8 text-muted-foreground">
               <Loader2 className="h-5 w-5 animate-spin mr-2" />

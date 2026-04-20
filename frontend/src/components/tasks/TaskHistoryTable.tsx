@@ -8,7 +8,6 @@ import {
   Search,
   X,
   History,
-  RotateCcw,
   AlertCircle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -36,7 +35,6 @@ import type { TaskResponse } from "@/lib/api-types";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useTaskActions } from "@/hooks/useTaskActions";
-import { useAuthStore } from "@/stores/auth-store";
 import { useNavigate } from "react-router";
 
 interface TaskHistoryTableProps {
@@ -61,7 +59,6 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
   const [retryTaskId, setRetryTaskId] = useState<number | null>(null);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
 
-  const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const navigate = useNavigate();
   const { retryTask } = useTaskActions();
 
@@ -80,14 +77,6 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
     setCurrentPage(1);
   };
 
-  const handleRetryClick = (taskId: number) => {
-    if (!isAuthenticated) {
-      setShowLoginDialog(true);
-      return;
-    }
-    setRetryTaskId(taskId);
-  };
-
   const handleConfirmRetry = async () => {
     if (retryTaskId === null) return;
     try {
@@ -101,10 +90,6 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
 
   const handleLoginNow = () => {
     navigate("/login");
-  };
-
-  const canRetry = (status: string) => {
-    return status === "failed" || status === "cancelled";
   };
 
   return (
@@ -181,7 +166,6 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                   <TableHead className="w-24 text-center font-semibold text-xs">状态</TableHead>
                   <TableHead className="w-24 text-center font-semibold text-xs">耗时</TableHead>
                   <TableHead className="w-32 text-center font-semibold text-xs">完成时间</TableHead>
-                  <TableHead className="w-20 text-center font-semibold text-xs">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -241,27 +225,9 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                     <TableCell className="text-center text-xs text-muted-foreground tabular-nums">
                       {task.completed_at
                         ? format(new Date(task.completed_at), "MM-dd HH:mm", {
-                            locale: zhCN,
-                          })
+                          locale: zhCN,
+                        })
                         : "-"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {canRetry(task.status) && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0 hover:bg-primary/10 hover:text-primary"
-                          onClick={() => handleRetryClick(task.id)}
-                          disabled={retryTask.isPending && retryTaskId === task.id}
-                          aria-label="重试任务"
-                        >
-                          {retryTask.isPending && retryTaskId === task.id ? (
-                            <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                          ) : (
-                            <RotateCcw className="h-3.5 w-3.5" />
-                          )}
-                        </Button>
-                      )}
                     </TableCell>
                   </motion.tr>
                 ))}

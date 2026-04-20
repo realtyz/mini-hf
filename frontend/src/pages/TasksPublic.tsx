@@ -451,14 +451,14 @@ export function TasksPublic() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="grid gap-6 lg:grid-cols-[1fr_2fr]"
+                    className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]"
                   >
                     {/* Task List */}
-                    <div className="min-h-128">
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3">
+                    <div className="min-h-128 max-h-[65vh] min-w-0 flex flex-col">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-3 shrink-0">
                         任务列表
                       </h3>
-                      <div className="h-[calc(100%-1.5rem)]">
+                      <div className="flex-1 min-h-0">
                         <ActiveTaskList
                           tasks={activeTasks}
                           selectedTaskId={selectedTaskId}
@@ -468,11 +468,11 @@ export function TasksPublic() {
                     </div>
 
                     {/* File Progress */}
-                    <div className="min-h-128">
-                      <h3 className="text-sm font-medium text-muted-foreground mb-3">
+                    <div className="min-h-128 max-h-[65vh] min-w-0 flex flex-col">
+                      <h3 className="text-sm font-medium text-muted-foreground mb-3 shrink-0">
                         文件下载进度
                       </h3>
-                      <div className="h-[calc(100%-1.5rem)]">
+                      <div className="flex-1 min-h-0">
                         <TaskFileProgressPanel task={selectedTask} />
                       </div>
                     </div>

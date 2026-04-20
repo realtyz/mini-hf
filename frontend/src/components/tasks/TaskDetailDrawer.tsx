@@ -24,7 +24,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
@@ -69,7 +68,7 @@ const statusDisplayConfig: Record<
     /** 是否显示实时进度（需要轮询） */
     showRealtimeProgress: boolean;
     /** 底部操作类型 */
-    bottomActionType: "none" | "refresh" | "view-progress" | "paused" | "pausing";
+    bottomActionType: "none" | "refresh" | "view-progress" | "paused" | "pausing" | "cancelled";
   }
 > = {
   pending_approval: {
@@ -466,340 +465,317 @@ export function TaskDetailDrawer({
             </div>
           </div>
         ) : task && statusConfig ? (
-            <div className="px-6 py-5 space-y-6 overflow-scroll">
-              {/* Status banners */}
-              <StatusAlertBanner status={task.status} />
+          <div className="px-6 py-5 space-y-6 overflow-scroll">
+            {/* Status banners */}
+            <StatusAlertBanner status={task.status} />
 
-              {/* Approval action */}
-              {task.status === "pending_approval" && isAdmin && (
-                <Alert className="border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 rounded-xl py-3">
-                  <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400" />
-                  <AlertTitle className="text-[13px] font-semibold text-amber-900 dark:text-amber-100">
-                    等待审批
-                  </AlertTitle>
-                  <AlertDescription className="mt-1.5 space-y-2.5">
-                    <p className="text-[13px] text-amber-700 dark:text-amber-300">
-                      请选择是否批准该任务
-                    </p>
-                    <textarea
-                      value={rejectNotes}
-                      onChange={(e) => setRejectNotes(e.target.value)}
-                      placeholder="拒绝原因（可选）"
-                      rows={2}
-                      className="w-full rounded-md border border-amber-200 dark:border-amber-700 bg-white dark:bg-amber-950/30 px-2.5 py-1.5 text-[12px] text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
+            {/* Approval action */}
+            {task.status === "pending_approval" && isAdmin && (
+              <Alert className="border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 rounded-xl py-3">
+                <AlertCircle className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                <AlertTitle className="text-[13px] font-semibold text-amber-900 dark:text-amber-100">
+                  等待审批
+                </AlertTitle>
+                <AlertDescription className="mt-1.5 space-y-2.5">
+                  <p className="text-[13px] text-amber-700 dark:text-amber-300">
+                    请选择是否批准该任务
+                  </p>
+                  <textarea
+                    value={rejectNotes}
+                    onChange={(e) => setRejectNotes(e.target.value)}
+                    placeholder="拒绝原因（可选）"
+                    rows={2}
+                    className="w-full rounded-md border border-amber-200 dark:border-amber-700 bg-white dark:bg-amber-950/30 px-2.5 py-1.5 text-[12px] text-foreground placeholder:text-muted-foreground/50 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400"
+                  />
+                  <div className="flex gap-2 justify-end w-full">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleReject}
+                      disabled={reviewTask.isPending}
+                      className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
+                    >
+                      <XCircle className="mr-1 h-3.5 w-3.5" />
+                      拒绝
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleApprove}
+                      disabled={reviewTask.isPending}
+                      className="h-7 text-[12px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white"
+                    >
+                      <CheckCircle className="mr-1 h-3.5 w-3.5" />
+                      批准
+                    </Button>
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Basic info */}
+            <section>
+              <SectionHeader accent="bg-primary">基本信息</SectionHeader>
+              <div className="rounded-xl border border-border/50 bg-muted/20 divide-y divide-border/40 px-4">
+                <InfoRow
+                  icon={<Globe className="h-3.5 w-3.5" />}
+                  label="来源"
+                >
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+                      {getSourceLabel(task.source)}
+                    </span>
+                    <span className="text-muted-foreground/40 text-xs">/</span>
+                    <Badge variant={task.repo_type === "model" ? "info" : "neutral"}>
+                      {getRepoTypeLabel(task.repo_type)}
+                    </Badge>
+                  </div>
+                </InfoRow>
+
+                <InfoRow
+                  icon={<Box className="h-3.5 w-3.5" />}
+                  label="仓库"
+                >
+                  <span className="font-semibold text-foreground break-all">
+                    {task.repo_id}
+                  </span>
+                </InfoRow>
+
+                <InfoRow
+                  icon={<Hash className="h-3.5 w-3.5" />}
+                  label="版本"
+                >
+                  <code className="font-mono text-[12px] bg-muted px-1.5 py-0.5 rounded text-foreground/80">
+                    {task.revision}
+                  </code>
+                </InfoRow>
+
+                {task.source === "huggingface" && (
+                  <InfoRow
+                    icon={<Globe className="h-3.5 w-3.5" />}
+                    label="HF Endpoint"
+                  >
+                    <span className="text-foreground text-[13px]">
+                      {task.hf_endpoint || "默认ENDPOINT"}
+                    </span>
+                  </InfoRow>
+                )}
+
+                {task.commit_hash && (
+                  <InfoRow
+                    icon={<GitCommit className="h-3.5 w-3.5" />}
+                    label="Commit"
+                  >
+                    <code className="font-mono text-[12px] bg-muted px-1.5 py-0.5 rounded text-foreground/80 break-all">
+                      {task.commit_hash}
+                    </code>
+                  </InfoRow>
+                )}
+
+                {task.creator_user && (
+                  <InfoRow
+                    icon={<User className="h-3.5 w-3.5" />}
+                    label="创建者"
+                  >
+                    <span className="font-medium">{task.creator_user.name}</span>
+                    <span className="text-muted-foreground text-[12px] ml-1.5">
+                      {task.creator_user.email}
+                    </span>
+                  </InfoRow>
+                )}
+              </div>
+            </section>
+
+            {/* Progress / Storage */}
+            {(task.status === "running" || task.status === "pausing") && !progress ? (
+              <section>
+                <SectionHeader accent="bg-blue-500">下载进度</SectionHeader>
+                <div className="rounded-xl border border-blue-100 dark:border-blue-800/40 bg-blue-50/40 dark:bg-blue-950/20 p-4 flex items-center gap-2 text-muted-foreground text-sm">
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <span>加载进度中...</span>
+                </div>
+              </section>
+            ) : (task.status === "running" || task.status === "pausing") && progress ? (
+              <section>
+                <SectionHeader accent="bg-blue-500">
+                  {statusConfig.storageSectionTitle ?? ""}
+                </SectionHeader>
+
+                {/* Overall progress */}
+                <div className="rounded-xl border border-blue-100 dark:border-blue-800/40 bg-blue-50/40 dark:bg-blue-950/20 p-4 space-y-3 mb-3">
+                  <TaskProgressBar
+                    progressPercent={progress.progress_percent}
+                    downloadedBytes={progress.downloaded_bytes}
+                    totalBytes={progress.total_bytes}
+                    speedBytesPerSec={progress.speed_bytes_per_sec}
+                    etaSeconds={progress.eta_seconds}
+                  />
+                </div>
+
+                {/* File progress list */}
+                <div className="rounded-xl border border-border/50 overflow-hidden">
+                  <div className="bg-muted/40 px-4 py-2.5 border-b border-border/40 flex items-center gap-2">
+                    <FileStack className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-[13px] font-medium">
+                      {statusConfig.fileListTitle}
+                    </span>
+                    <span className="ml-auto text-[12px] text-muted-foreground tabular-nums">
+                      {progress.downloaded_files} / {progress.total_files} 个文件
+                    </span>
+                  </div>
+                  <div className="h-60 py-1 w-full overflow-y-scroll min-w-0">
+                    <FileProgressList
+                      taskId={task.id}
+                      files={progress.files}
+                      isRunning={true}
+                      currentFile={progress.current_file}
                     />
-                    <div className="flex gap-2 justify-end w-full">
+                  </div>
+                </div>
+              </section>
+            ) : statusConfig.showStorageStats ? (
+              <StorageStatsSection task={task} config={statusConfig} />
+            ) : null}
+
+            {/* Error messages */}
+            {task.status === "failed" && task.error_message && (
+              <Alert
+                variant="destructive"
+                className="border-red-200/60 bg-red-50/60 dark:bg-red-950/20 rounded-xl overflow-hidden"
+              >
+                <XOctagon className="h-4 w-4 shrink-0" />
+                <AlertDescription className="ml-2 text-[13px] wrap-break-word">
+                  <span className="font-semibold">任务失败：</span>
+                  {task.error_message}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {task.status !== "failed" && task.error_message && (
+              <Alert className="border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 rounded-xl overflow-hidden">
+                <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />
+                <AlertDescription className="ml-2 text-[13px] text-amber-800 dark:text-amber-200 wrap-break-word">
+                  {task.error_message}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* File tree (non-running states) */}
+            {task.repo_items &&
+              task.repo_items.length > 0 &&
+              task.status !== "running" && (
+                <section>
+                  <SectionHeader
+                    accent="bg-indigo-500"
+                    badge={
+                      <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+                        {task.total_file_count} 个文件
+                      </span>
+                    }
+                  >
+                    {statusConfig.fileListTitle}
+                  </SectionHeader>
+                  <div className="rounded-xl border border-border/50 overflow-hidden h-72">
+                    <PreviewFileTree
+                      items={task.repo_items as PreviewItem[]}
+                      repoId={task.repo_id}
+                    />
+                  </div>
+                </section>
+              )}
+
+            {/* Timeline */}
+            <section>
+              <SectionHeader accent="bg-slate-400">时间记录</SectionHeader>
+              <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
+                {buildTimeline(task).map((item, i, arr) => (
+                  <TimelineItem
+                    key={item.label}
+                    label={item.label}
+                    value={item.value}
+                    isLast={i === arr.length - 1}
+                  />
+                ))}
+              </div>
+            </section>
+
+            {/* Bottom actions */}
+            {statusConfig.bottomActionType !== "none" && (
+              <div className="pt-1 border-t border-border/40">
+                {statusConfig.bottomActionType === "view-progress" && (
+                  <div className="flex gap-2 pt-3">
+                    {canPause && (
+                      <Button
+                        variant="outline"
+                        onClick={handlePause}
+                        disabled={pauseTask.isPending}
+                        className="h-9 text-[13px] border-yellow-200 hover:bg-yellow-50 hover:text-yellow-600 active:bg-yellow-100 dark:border-yellow-800/50 dark:hover:bg-yellow-950/40 dark:hover:text-yellow-400 dark:active:bg-yellow-950/60"
+                      >
+                        <Pause className="mr-1.5 h-3.5 w-3.5" />
+                        {pauseTask.isPending ? "暂停中..." : "暂停任务"}
+                      </Button>
+                    )}
+                    {canCancel && (
+                      <Button
+                        variant="outline"
+                        onClick={handleCancelClick}
+                        disabled={cancelTask.isPending}
+                        className="h-9 text-[13px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:hover:text-red-400 dark:active:bg-red-950/60"
+                      >
+                        <XCircle className="mr-1.5 h-3.5 w-3.5" />
+                        {cancelTask.isPending ? "取消中..." : "取消任务"}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {statusConfig.bottomActionType === "refresh" && (
+                  <div className="flex items-center justify-between bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 rounded-xl px-4 py-3 mt-1">
+                    <div className="flex items-center gap-2 text-[13px] text-blue-700 dark:text-blue-300 font-medium">
+                      <Clock className="h-3.5 w-3.5" />
+                      <span>任务排队中，等待执行</span>
+                    </div>
+                    <div className="flex gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={handleReject}
-                        disabled={reviewTask.isPending}
-                        className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
+                        onClick={() => refetchTask()}
+                        className="h-7 text-[12px] border-blue-300 hover:bg-blue-100 active:bg-blue-200 dark:border-blue-700 dark:hover:bg-blue-800/40 dark:active:bg-blue-800/60"
                       >
-                        <XCircle className="mr-1 h-3.5 w-3.5" />
-                        拒绝
+                        <RefreshCw className="mr-1 h-3 w-3" />
+                        刷新
                       </Button>
-                      <Button
-                        size="sm"
-                        onClick={handleApprove}
-                        disabled={reviewTask.isPending}
-                        className="h-7 text-[12px] bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white"
-                      >
-                        <CheckCircle className="mr-1 h-3.5 w-3.5" />
-                        批准
-                      </Button>
-                    </div>
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* Basic info */}
-              <section>
-                <SectionHeader accent="bg-primary">基本信息</SectionHeader>
-                <div className="rounded-xl border border-border/50 bg-muted/20 divide-y divide-border/40 px-4">
-                  <InfoRow
-                    icon={<Globe className="h-3.5 w-3.5" />}
-                    label="来源"
-                  >
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
-                        {getSourceLabel(task.source)}
-                      </span>
-                      <span className="text-muted-foreground/40 text-xs">/</span>
-                      <Badge variant={task.repo_type === "model" ? "info" : "neutral"}>
-                        {getRepoTypeLabel(task.repo_type)}
-                      </Badge>
-                    </div>
-                  </InfoRow>
-
-                  <InfoRow
-                    icon={<Box className="h-3.5 w-3.5" />}
-                    label="仓库"
-                  >
-                    <span className="font-semibold text-foreground break-all">
-                      {task.repo_id}
-                    </span>
-                  </InfoRow>
-
-                  <InfoRow
-                    icon={<Hash className="h-3.5 w-3.5" />}
-                    label="版本"
-                  >
-                    <code className="font-mono text-[12px] bg-muted px-1.5 py-0.5 rounded text-foreground/80">
-                      {task.revision}
-                    </code>
-                  </InfoRow>
-
-                  {task.source === "huggingface" && (
-                    <InfoRow
-                      icon={<Globe className="h-3.5 w-3.5" />}
-                      label="HF Endpoint"
-                    >
-                      <span className="text-foreground text-[13px]">
-                        {task.hf_endpoint || "默认ENDPOINT"}
-                      </span>
-                    </InfoRow>
-                  )}
-
-                  {task.commit_hash && (
-                    <InfoRow
-                      icon={<GitCommit className="h-3.5 w-3.5" />}
-                      label="Commit"
-                    >
-                      <code className="font-mono text-[12px] bg-muted px-1.5 py-0.5 rounded text-foreground/80 break-all">
-                        {task.commit_hash}
-                      </code>
-                    </InfoRow>
-                  )}
-
-                  {task.creator_user && (
-                    <InfoRow
-                      icon={<User className="h-3.5 w-3.5" />}
-                      label="创建者"
-                    >
-                      <span className="font-medium">{task.creator_user.name}</span>
-                      <span className="text-muted-foreground text-[12px] ml-1.5">
-                        {task.creator_user.email}
-                      </span>
-                    </InfoRow>
-                  )}
-                </div>
-              </section>
-
-              {/* Progress / Storage */}
-              {(task.status === "running" || task.status === "pausing") && !progress ? (
-                <section>
-                  <SectionHeader accent="bg-blue-500">下载进度</SectionHeader>
-                  <div className="rounded-xl border border-blue-100 dark:border-blue-800/40 bg-blue-50/40 dark:bg-blue-950/20 p-4 flex items-center gap-2 text-muted-foreground text-sm">
-                    <RefreshCw className="h-4 w-4 animate-spin" />
-                    <span>加载进度中...</span>
-                  </div>
-                </section>
-              ) : (task.status === "running" || task.status === "pausing") && progress ? (
-                <section>
-                  <SectionHeader accent="bg-blue-500">
-                    {statusConfig.storageSectionTitle ?? ""}
-                  </SectionHeader>
-
-                  {/* Overall progress */}
-                  <div className="rounded-xl border border-blue-100 dark:border-blue-800/40 bg-blue-50/40 dark:bg-blue-950/20 p-4 space-y-3 mb-3">
-                    <TaskProgressBar
-                      progressPercent={progress.progress_percent}
-                      downloadedBytes={progress.downloaded_bytes}
-                      totalBytes={progress.total_bytes}
-                      speedBytesPerSec={progress.speed_bytes_per_sec}
-                      etaSeconds={progress.eta_seconds}
-                    />
-                  </div>
-
-                  {/* File progress list */}
-                  <div className="rounded-xl border border-border/50 overflow-hidden">
-                    <div className="bg-muted/40 px-4 py-2.5 border-b border-border/40 flex items-center gap-2">
-                      <FileStack className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span className="text-[13px] font-medium">
-                        {statusConfig.fileListTitle}
-                      </span>
-                      <span className="ml-auto text-[12px] text-muted-foreground tabular-nums">
-                        {progress.downloaded_files} / {progress.total_files} 个文件
-                      </span>
-                    </div>
-                    <ScrollArea className="h-60">
-                      <div className="px-3 py-1 min-w-0">
-                        <FileProgressList
-                          taskId={task.id}
-                          files={progress.files}
-                          isRunning={true}
-                          currentFile={progress.current_file}
-                        />
-                      </div>
-                    </ScrollArea>
-                  </div>
-                </section>
-              ) : statusConfig.showStorageStats ? (
-                <StorageStatsSection task={task} config={statusConfig} />
-              ) : null}
-
-              {/* Error messages */}
-              {task.status === "failed" && task.error_message && (
-                <Alert
-                  variant="destructive"
-                  className="border-red-200/60 bg-red-50/60 dark:bg-red-950/20 rounded-xl"
-                >
-                  <XOctagon className="h-4 w-4" />
-                  <AlertDescription className="ml-2 text-[13px]">
-                    <span className="font-semibold">任务失败：</span>
-                    {task.error_message}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {task.status !== "failed" && task.error_message && (
-                <Alert className="border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 rounded-xl">
-                  <AlertCircle className="h-4 w-4 text-amber-500" />
-                  <AlertDescription className="ml-2 text-[13px] text-amber-800 dark:text-amber-200">
-                    {task.error_message}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {/* File tree (non-running states) */}
-              {task.repo_items &&
-                task.repo_items.length > 0 &&
-                task.status !== "running" && (
-                  <section>
-                    <SectionHeader
-                      accent="bg-indigo-500"
-                      badge={
-                        <span className="text-[11px] font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                          {task.total_file_count} 个文件
-                        </span>
-                      }
-                    >
-                      {statusConfig.fileListTitle}
-                    </SectionHeader>
-                    <div className="rounded-xl border border-border/50 overflow-hidden h-72">
-                      <PreviewFileTree
-                        items={task.repo_items as PreviewItem[]}
-                        repoId={task.repo_id}
-                      />
-                    </div>
-                  </section>
-                )}
-
-              {/* Timeline */}
-              <section>
-                <SectionHeader accent="bg-slate-400">时间记录</SectionHeader>
-                <div className="rounded-xl border border-border/50 bg-muted/20 px-4 py-3">
-                  {buildTimeline(task).map((item, i, arr) => (
-                    <TimelineItem
-                      key={item.label}
-                      label={item.label}
-                      value={item.value}
-                      isLast={i === arr.length - 1}
-                    />
-                  ))}
-                </div>
-              </section>
-
-              {/* Bottom actions */}
-              {statusConfig.bottomActionType !== "none" && (
-                <div className="pt-1 border-t border-border/40">
-                  {statusConfig.bottomActionType === "view-progress" && (
-                    <div className="flex gap-2 pt-3">
-                      {canPause && (
-                        <Button
-                          variant="outline"
-                          onClick={handlePause}
-                          disabled={pauseTask.isPending}
-                          className="h-9 text-[13px] border-yellow-200 hover:bg-yellow-50 hover:text-yellow-600 active:bg-yellow-100 dark:border-yellow-800/50 dark:hover:bg-yellow-950/40 dark:hover:text-yellow-400 dark:active:bg-yellow-950/60"
-                        >
-                          <Pause className="mr-1.5 h-3.5 w-3.5" />
-                          {pauseTask.isPending ? "暂停中..." : "暂停任务"}
-                        </Button>
-                      )}
                       {canCancel && (
-                        <Button
-                          variant="outline"
-                          onClick={handleCancelClick}
-                          disabled={cancelTask.isPending}
-                          className="h-9 text-[13px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:hover:text-red-400 dark:active:bg-red-950/60"
-                        >
-                          <XCircle className="mr-1.5 h-3.5 w-3.5" />
-                          {cancelTask.isPending ? "取消中..." : "取消任务"}
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                  {statusConfig.bottomActionType === "refresh" && (
-                    <div className="flex items-center justify-between bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 rounded-xl px-4 py-3 mt-1">
-                      <div className="flex items-center gap-2 text-[13px] text-blue-700 dark:text-blue-300 font-medium">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>任务排队中，等待执行</span>
-                      </div>
-                      <div className="flex gap-2">
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => refetchTask()}
-                          className="h-7 text-[12px] border-blue-300 hover:bg-blue-100 active:bg-blue-200 dark:border-blue-700 dark:hover:bg-blue-800/40 dark:active:bg-blue-800/60"
+                          onClick={handleCancelClick}
+                          disabled={cancelTask.isPending}
+                          className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
                         >
-                          <RefreshCw className="mr-1 h-3 w-3" />
-                          刷新
+                          <XCircle className="mr-1 h-3 w-3" />
+                          {cancelTask.isPending ? "取消中..." : "取消"}
                         </Button>
-                        {canCancel && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleCancelClick}
-                            disabled={cancelTask.isPending}
-                            className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
-                          >
-                            <XCircle className="mr-1 h-3 w-3" />
-                            {cancelTask.isPending ? "取消中..." : "取消"}
-                          </Button>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  )}
-                  {statusConfig.bottomActionType === "paused" && (
-                    <div className="flex items-center justify-between bg-yellow-50/60 dark:bg-yellow-950/20 border border-yellow-200/60 dark:border-yellow-800/40 rounded-xl px-4 py-3 mt-1">
-                      <div className="flex items-center gap-2 text-[13px] text-yellow-700 dark:text-yellow-300 font-medium">
-                        <Pause className="h-3.5 w-3.5" />
-                        <span>任务已暂停</span>
-                      </div>
-                      <div className="flex gap-2">
-                        {canResume && (
-                          <Button
-                            size="sm"
-                            onClick={handleResume}
-                            disabled={resumeTask.isPending}
-                            className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
-                          >
-                            <Play className="mr-1 h-3 w-3" />
-                            {resumeTask.isPending ? "恢复中..." : "恢复任务"}
-                          </Button>
-                        )}
-                        {canCancel && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={handleCancelClick}
-                            disabled={cancelTask.isPending}
-                            className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
-                          >
-                            <XCircle className="mr-1 h-3 w-3" />
-                            {cancelTask.isPending ? "取消中..." : "取消任务"}
-                          </Button>
-                        )}
-                      </div>
+                  </div>
+                )}
+                {statusConfig.bottomActionType === "paused" && (
+                  <div className="flex items-center justify-between bg-yellow-50/60 dark:bg-yellow-950/20 border border-yellow-200/60 dark:border-yellow-800/40 rounded-xl px-4 py-3 mt-1">
+                    <div className="flex items-center gap-2 text-[13px] text-yellow-700 dark:text-yellow-300 font-medium">
+                      <Pause className="h-3.5 w-3.5" />
+                      <span>任务已暂停</span>
                     </div>
-                  )}
-                  {statusConfig.bottomActionType === "pausing" && (
-                    <div className="flex items-center justify-between bg-yellow-50/60 dark:bg-yellow-950/20 border border-yellow-200/60 dark:border-yellow-800/40 rounded-xl px-4 py-3 mt-1">
-                      <div className="flex items-center gap-2 text-[13px] text-yellow-700 dark:text-yellow-300 font-medium">
-                        <Clock className="h-3.5 w-3.5 animate-pulse" />
-                        <span>正在暂停任务，请稍候...</span>
-                      </div>
+                    <div className="flex gap-2">
+                      {canResume && (
+                        <Button
+                          size="sm"
+                          onClick={handleResume}
+                          disabled={resumeTask.isPending}
+                          className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
+                        >
+                          <Play className="mr-1 h-3 w-3" />
+                          {resumeTask.isPending ? "恢复中..." : "恢复任务"}
+                        </Button>
+                      )}
                       {canCancel && (
                         <Button
                           size="sm"
@@ -813,34 +789,55 @@ export function TaskDetailDrawer({
                         </Button>
                       )}
                     </div>
-                  )}
-                  {statusConfig.bottomActionType === "cancelled" && (
-                    <div className="flex items-center justify-between bg-slate-50/60 dark:bg-slate-950/20 border border-slate-200/60 dark:border-slate-800/40 rounded-xl px-4 py-3 mt-1">
-                      <div className="flex items-center gap-2 text-[13px] text-slate-700 dark:text-slate-300 font-medium">
-                        <XCircle className="h-3.5 w-3.5" />
-                        <span>任务已取消</span>
-                      </div>
-                      <div className="flex gap-2">
-                        {canRetry && (
-                          <Button
-                            size="sm"
-                            onClick={handleRetry}
-                            disabled={retryTask.isPending}
-                            className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
-                          >
-                            <RefreshCw className="mr-1 h-3 w-3" />
-                            {retryTask.isPending ? "重试中..." : "重试任务"}
-                          </Button>
-                        )}
-                      </div>
+                  </div>
+                )}
+                {statusConfig.bottomActionType === "pausing" && (
+                  <div className="flex items-center justify-between bg-yellow-50/60 dark:bg-yellow-950/20 border border-yellow-200/60 dark:border-yellow-800/40 rounded-xl px-4 py-3 mt-1">
+                    <div className="flex items-center gap-2 text-[13px] text-yellow-700 dark:text-yellow-300 font-medium">
+                      <Clock className="h-3.5 w-3.5 animate-pulse" />
+                      <span>正在暂停任务，请稍候...</span>
                     </div>
-                  )}
-                </div>
-              )}
+                    {canCancel && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={handleCancelClick}
+                        disabled={cancelTask.isPending}
+                        className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
+                      >
+                        <XCircle className="mr-1 h-3 w-3" />
+                        {cancelTask.isPending ? "取消中..." : "取消任务"}
+                      </Button>
+                    )}
+                  </div>
+                )}
+                {statusConfig.bottomActionType === "cancelled" && (
+                  <div className="flex items-center justify-between bg-slate-50/60 dark:bg-slate-950/20 border border-slate-200/60 dark:border-slate-800/40 rounded-xl px-4 py-3 mt-1">
+                    <div className="flex items-center gap-2 text-[13px] text-slate-700 dark:text-slate-300 font-medium">
+                      <XCircle className="h-3.5 w-3.5" />
+                      <span>任务已取消</span>
+                    </div>
+                    <div className="flex gap-2">
+                      {canRetry && (
+                        <Button
+                          size="sm"
+                          onClick={handleRetry}
+                          disabled={retryTask.isPending}
+                          className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
+                        >
+                          <RefreshCw className="mr-1 h-3 w-3" />
+                          {retryTask.isPending ? "重试中..." : "重试任务"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
-              {/* Bottom padding */}
-              <div className="h-2" />
-            </div>
+            {/* Bottom padding */}
+            <div className="h-2" />
+          </div>
         ) : null}
       </SheetContent>
 
@@ -860,12 +857,12 @@ export function TaskDetailDrawer({
                     {task.status === "pending_approval"
                       ? "取消后任务将被标记为已取消，需要重新创建任务。"
                       : task.status === "paused"
-                      ? "任务已暂停，取消后需要重新创建任务。"
-                      : task.status === "pausing"
-                      ? "任务正在暂停中，取消后需要重新创建任务。"
-                      : task.status === "cancelled"
-                      ? "任务已取消，可以重试任务重新执行。"
-                      : "任务正在排队中，取消后需要重新创建任务。"}
+                        ? "任务已暂停，取消后需要重新创建任务。"
+                        : task.status === "pausing"
+                          ? "任务正在暂停中，取消后需要重新创建任务。"
+                          : task.status === "cancelled"
+                            ? "任务已取消，可以重试任务重新执行。"
+                            : "任务正在排队中，取消后需要重新创建任务。"}
                   </p>
                 </>
               )}
