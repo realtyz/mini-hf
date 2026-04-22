@@ -71,15 +71,13 @@ function FileProgressRow({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: index * 0.02, ease: [0.16, 1, 0.3, 1] }}
-      className={`group flex items-center gap-3 py-2.5 px-3 text-sm transition-colors duration-200 min-w-0 max-w-full ${
-        isCurrent
+      className={`group flex items-center gap-3 py-2.5 px-3 text-sm transition-colors duration-200 min-w-0 max-w-full ${isCurrent
           ? "bg-blue-50/70 rounded-md dark:bg-blue-950/30"
           : ""
-      } ${
-        file.status === "uploading"
+        } ${file.status === "uploading"
           ? "bg-violet-50/60 rounded-md dark:bg-violet-950/20"
           : ""
-      }`}
+        }`}
     >
       <div className="shrink-0 w-6 flex items-center justify-center">
         {getStatusIcon()}
@@ -106,9 +104,8 @@ function FileProgressRow({
           />
         </div>
         {(file.status === "downloading" || file.status === "uploading") && file.speed_bytes_per_sec ? (
-          <div className={`text-[10px] mt-0.5 font-medium ${
-            file.status === "uploading" ? "text-violet-500" : "text-blue-500"
-          }`}>
+          <div className={`text-[10px] mt-0.5 font-medium ${file.status === "uploading" ? "text-violet-500" : "text-blue-500"
+            }`}>
             {formatSpeed(file.speed_bytes_per_sec)}
           </div>
         ) : null}

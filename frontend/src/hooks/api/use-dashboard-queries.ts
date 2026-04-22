@@ -1,11 +1,16 @@
 /**
  * Dashboard 专用数据查询 Hooks
  */
-import { useQuery, useQueries } from '@tanstack/react-query'
-import { queryKeys } from '@/lib/query-keys'
-import { useTaskList } from '@/hooks/useTaskList'
-import type { TaskResponse, TaskStatus, DashboardStatsResponse, TaskListResponse } from '@/lib/api-types'
-import api from '@/lib/api'
+import { useQuery, useQueries } from "@tanstack/react-query";
+import { queryKeys } from "@/lib/query-keys";
+import { useTaskList } from "@/hooks/useTaskList";
+import type {
+  TaskResponse,
+  TaskStatus,
+  DashboardStatsResponse,
+  TaskListResponse,
+} from "@/lib/api-types";
+import api from "@/lib/api";
 
 /**
  * Dashboard 统计数据
@@ -13,9 +18,9 @@ import api from '@/lib/api'
 export function useDashboardStats() {
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.dashboard.stats(),
-    queryFn: () => api.get<DashboardStatsResponse>('/hf_repo/dashboard-stats'),
+    queryFn: () => api.get<DashboardStatsResponse>("/dashboard/stats"),
     staleTime: 60 * 1000, // 1 minute
-  })
+  });
 
   return {
     stats: {
@@ -25,64 +30,70 @@ export function useDashboardStats() {
       totalDownloads: data?.data?.total_downloads ?? 0,
     },
     isLoading,
-  }
+  };
 }
 
 /**
  * 任务趋势数据（最近7天，仅展示已完成和失败/取消的历史数据）
  */
 export interface TaskTrendData {
-  date: string
-  completed: number
-  failed: number
+  date: string;
+  completed: number;
+  failed: number;
 }
 
 export function useTaskTrends() {
   const { data, isLoading } = useTaskList({
     hours: 24 * 7,
     limit: 1000,
-  })
+  });
 
   const trends: TaskTrendData[] = (() => {
-    if (!data?.data) return []
+    if (!data?.data) return [];
 
-    const tasks = data.data as TaskResponse[]
-    const grouped = new Map<string, { completed: number; failed: number }>()
+    const tasks = data.data as TaskResponse[];
+    const grouped = new Map<string, { completed: number; failed: number }>();
 
     // 初始化最近7天的日期
     for (let i = 6; i >= 0; i--) {
-      const date = new Date()
-      date.setDate(date.getDate() - i)
-      const dateStr = date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-      grouped.set(dateStr, { completed: 0, failed: 0 })
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateStr = date.toLocaleDateString("zh-CN", {
+        month: "short",
+        day: "numeric",
+      });
+      grouped.set(dateStr, { completed: 0, failed: 0 });
     }
 
     // 仅统计已结束的任务（成功、失败/取消）
     tasks.forEach((task: TaskResponse) => {
-      const taskDate = new Date(task.created_at)
-      const dateStr = taskDate.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
+      const taskDate = new Date(task.created_at);
+      const dateStr = taskDate.toLocaleDateString("zh-CN", {
+        month: "short",
+        day: "numeric",
+      });
 
       if (grouped.has(dateStr)) {
-        const stats = grouped.get(dateStr)!
+        const stats = grouped.get(dateStr)!;
         switch (task.status) {
-          case 'completed':
-            stats.completed++
-            break
-          case 'failed':
-          case 'cancelled':
-            stats.failed++
-            break
+          case "completed":
+            stats.completed++;
+            break;
+          case "failed":
+          case "cancelled":
+            stats.failed++;
+            break;
         }
       }
-    })
+    });
 
     return Array.from(grouped.entries()).map(([date, stats]) => ({
       date,
       ...stats,
-    }))
-  })()
+    }));
+  })();
 
-  return { trends, isLoading }
+  return { trends, isLoading };
 }
 
 /**
@@ -96,7 +107,7 @@ export function useRecentTasks(limit = 10) {
     hours: 24 * 30, // 最近30天
     limit,
     enablePolling: true,
-  })
+  });
 }
 
 /**
@@ -104,33 +115,43 @@ export function useRecentTasks(limit = 10) {
  * 使用 useQueries 并行查询各状态任务数量
  */
 export function useTaskStatusCounts() {
-  const statuses: TaskStatus[] = ['running', 'completed', 'failed', 'pending_approval', 'pending']
+  const statuses: TaskStatus[] = [
+    "running",
+    "completed",
+    "failed",
+    "pending_approval",
+    "pending",
+  ];
 
   const queries = useQueries({
     queries: statuses.map((status) => ({
-      queryKey: [...queryKeys.tasks.all, 'list', { filters: { status }, params: { limit: 1 } }],
+      queryKey: [
+        ...queryKeys.tasks.all,
+        "list",
+        { filters: { status }, params: { limit: 1 } },
+      ],
       queryFn: async () => {
-        const response = await api.get<TaskListResponse>('/task/list', {
+        const response = await api.get<TaskListResponse>("/task/list", {
           params: { status, limit: 1 },
-        })
-        return response
+        });
+        return response;
       },
       // 状态计数不需要频繁更新，每 30 秒刷新一次即可
       refetchInterval: 30 * 1000,
       staleTime: 30 * 1000,
     })),
-  })
+  });
 
   const counts = queries.reduce(
     (acc, query, index) => {
-      const status = statuses[index]
-      acc[status] = query.data?.total ?? 0
-      return acc
+      const status = statuses[index];
+      acc[status] = query.data?.total ?? 0;
+      return acc;
     },
-    {} as Record<TaskStatus, number>
-  )
+    {} as Record<TaskStatus, number>,
+  );
 
-  const isLoading = queries.some((q) => q.isLoading)
+  const isLoading = queries.some((q) => q.isLoading);
 
-  return { counts, isLoading }
+  return { counts, isLoading };
 }

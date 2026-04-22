@@ -2,7 +2,7 @@ import {
   Menu,
   X,
   BookOpen,
-  Database,
+  Boxes,
   ListOrdered,
   Settings,
   LogOut,
@@ -38,7 +38,7 @@ import { queryClient } from "@/lib/query-client";
 
 const iconMap: Record<string, LucideIcon> = {
   BookOpen,
-  Database,
+  Boxes,
   ListOrdered,
 };
 
@@ -228,11 +228,10 @@ export function Header({
                   to={item.href}
                   viewTransition
                   onClick={handleClick}
-                  className={`relative flex items-center gap-2 rounded-lg px-4 py-2 transition-all duration-200 ease-out ${
-                    active
+                  className={`relative flex items-center gap-2 rounded-lg px-4 py-2 transition-all duration-200 ease-out ${active
                       ? "text-primary font-semibold"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                  }`}
+                    }`}
                 >
                   {active && (
                     <span className="absolute inset-0 rounded-lg bg-primary/10 shadow-sm transition-all duration-200" />
@@ -294,11 +293,10 @@ export function Header({
                     <Link
                       key={item.href}
                       to={item.href}
-                      className={`flex items-center gap-3 text-base font-medium rounded-lg px-4 py-3 transition-all duration-200 ${
-                        active
+                      className={`flex items-center gap-3 text-base font-medium rounded-lg px-4 py-3 transition-all duration-200 ${active
                           ? "bg-primary text-primary-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                      }`}
+                        }`}
                       onClick={handleClick}
                       viewTransition
                     >

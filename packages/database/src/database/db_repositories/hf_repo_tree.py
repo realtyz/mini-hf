@@ -273,6 +273,27 @@ class HfRepoTreeRepository:
 
         return cached, total
 
+    async def get_tree_item_by_path(
+        self,
+        commit_hash: str,
+        path: str,
+    ) -> HfRepoTreeItem | None:
+        """Get a single tree item by commit hash and path.
+
+        Args:
+            commit_hash: Commit hash of the snapshot
+            path: File path within the repository
+
+        Returns:
+            Tree item or None if not found
+        """
+        stmt = select(HfRepoTreeItem).where(
+            HfRepoTreeItem.commit_hash == commit_hash,
+            HfRepoTreeItem.path == path,
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_cached_paths(
         self,
         commit_hash: str,

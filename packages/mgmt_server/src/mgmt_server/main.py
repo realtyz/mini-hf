@@ -5,13 +5,15 @@ import click
 from contextlib import asynccontextmanager
 
 from loguru import logger
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import uvicorn
 
 
 from core import settings
 from mgmt_server.api.v1.router import api_router as v1_router
+from mgmt_server.core.exceptions import BusinessError
 from mgmt_server.core.init_db import init_db
 
 
@@ -52,6 +54,15 @@ app.add_middleware(
 
 # Include v1 API routes with basic auth
 app.include_router(v1_router, prefix="/api/v1")
+
+
+@app.exception_handler(BusinessError)
+async def business_error_handler(request: Request, exc: BusinessError) -> JSONResponse:
+    """Convert BusinessError subclasses to proper HTTP responses."""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.message},
+    )
 
 
 @app.get("/")

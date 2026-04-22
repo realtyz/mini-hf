@@ -233,6 +233,24 @@ class HfRepoProfileRepository:
         await self._session.commit()
         return True
 
+    async def get_profile_by_repo_id(
+        self,
+        repo_id: str,
+    ) -> HfRepoProfile | None:
+        """Get profile by repo_id only (without repo_type filter).
+
+        Args:
+            repo_id: Repository ID
+
+        Returns:
+            Profile or None if not found
+        """
+        stmt = select(HfRepoProfile).where(
+            HfRepoProfile.repo_id == repo_id,
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_profile_with_snapshots(
         self,
         repo_id: str,

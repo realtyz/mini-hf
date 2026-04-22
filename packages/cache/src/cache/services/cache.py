@@ -86,6 +86,20 @@ class CacheService(BaseService):
         result = await self.redis.delete(self._key(key))
         return result > 0
 
+    async def set_nx(self, key: str, value: str, ttl: int) -> bool:
+        """Set key only if not exists (SET NX EX), useful for distributed locks.
+
+        Args:
+            key: Cache key.
+            value: Value to set.
+            ttl: Time-to-live in seconds.
+
+        Returns:
+            True if the key was set (lock acquired), False otherwise.
+        """
+        result = await self.redis.set(self._key(key), value, nx=True, ex=ttl)
+        return result is not None
+
     async def exists(self, key: str) -> bool:
         """Check if key exists in cache.
 
@@ -232,6 +246,26 @@ class CacheService(BaseService):
         prefix_len = len(self._prefix)
         return [k[prefix_len:] if k.startswith(self._prefix) else k for k in matching]
 
+    async def scan_iter(self, pattern: str, count: int = 100) -> list[str]:
+        """Iterate keys matching a pattern using SCAN (non-blocking).
+
+        Unlike keys(), this uses Redis SCAN which is O(1) per iteration
+        and safe for production use with large datasets.
+
+        Args:
+            pattern: Redis key pattern (e.g., "user:*").
+            count: Hint for number of keys per SCAN iteration.
+
+        Returns:
+            List of matching keys (without prefix).
+        """
+        full_pattern = self._key(pattern)
+        prefix_len = len(self._prefix)
+        result: list[str] = []
+        async for key in self.redis.scan_iter(match=full_pattern, count=count):
+            result.append(key[prefix_len:] if key.startswith(self._prefix) else key)
+        return result
+
     async def clear_pattern(self, pattern: str) -> int:
         """Delete all keys matching a pattern.
 
@@ -241,7 +275,7 @@ class CacheService(BaseService):
         Returns:
             Number of keys deleted.
         """
-        matching = await self.keys(pattern)
+        matching = await self.scan_iter(pattern)
         if matching:
             return await self.delete_many(matching)
         return 0

@@ -5,7 +5,7 @@ export const landingContent = {
     brand: "MiniHF",
     navigation: [
       { label: "使用文档", href: "/docs", icon: "BookOpen" },
-      { label: "仓库列表", href: "/repositories", icon: "Database" },
+      { label: "仓库列表", href: "/repositories", icon: "Boxes" },
       { label: "任务队列", href: "/tasks-public", icon: "ListOrdered" },
     ],
     cta: "登录",

@@ -6,11 +6,7 @@ import {
   Loader2,
   Inbox,
   Plus,
-  Activity,
-  CheckCircle2,
-  Clock,
   AlertCircle,
-  Pause,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,40 +35,6 @@ function ShimmerSkeleton({ className }: { className?: string }) {
       <Skeleton className="absolute inset-0" />
       <div className="absolute inset-0 -translate-x-full animate-[shimmer-slide_1.5s_infinite] bg-linear-to-r from-transparent via-white/20 to-transparent motion-reduce:animate-none" />
     </div>
-  );
-}
-
-// Status summary card component
-function StatusCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-  delay = 0,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: number;
-  color: string;
-  delay?: number;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay, ease: [0.16, 1, 0.3, 1] }}
-      className="flex items-center gap-3 rounded-lg bg-muted/40 px-4 py-2.5"
-    >
-      <div
-        className={`flex h-8 w-8 items-center justify-center rounded-md ${color}`}
-      >
-        <Icon className="h-4 w-4" />
-      </div>
-      <div>
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-lg font-semibold tabular-nums">{value}</p>
-      </div>
-    </motion.div>
   );
 }
 
@@ -159,16 +121,6 @@ export function TasksPublic() {
   const activeTasks = useMemo(() => activeData?.data ?? [], [activeData?.data]);
   const runningTasks = useMemo(
     () => activeTasks.filter((t) => t.status?.toLowerCase() === "running"),
-    [activeTasks],
-  );
-
-  const pausingTasks = useMemo(
-    () => activeTasks.filter((t) => t.status?.toLowerCase() === "pausing"),
-    [activeTasks],
-  );
-
-  const pausedTasks = useMemo(
-    () => activeTasks.filter((t) => t.status?.toLowerCase() === "paused"),
     [activeTasks],
   );
 
@@ -269,68 +221,6 @@ export function TasksPublic() {
             </Button>
           </div>
         </div>
-
-        {/* Status Summary Cards */}
-        {!isLoading && !error && (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            <StatusCard
-              icon={Activity}
-              label="运行中"
-              value={runningTasks.length}
-              color="bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400"
-              delay={0.05}
-            />
-            <StatusCard
-              icon={Clock}
-              label="排队中"
-              value={
-                activeTasks.filter(
-                  (t) =>
-                    t.status?.toLowerCase() === "pending" ||
-                    t.status?.toLowerCase() === "pending_approval",
-                ).length
-              }
-              color="bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400"
-              delay={0.1}
-            />
-            <StatusCard
-              icon={Loader2}
-              label="暂停中"
-              value={pausingTasks.length}
-              color="bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400"
-              delay={0.12}
-            />
-            <StatusCard
-              icon={Pause}
-              label="已暂停"
-              value={pausedTasks.length}
-              color="bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400"
-              delay={0.14}
-            />
-            <StatusCard
-              icon={CheckCircle2}
-              label="已完成"
-              value={
-                completedTasks.filter(
-                  (t) => t.status?.toLowerCase() === "completed",
-                ).length
-              }
-              color="bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400"
-              delay={0.15}
-            />
-            <StatusCard
-              icon={AlertCircle}
-              label="失败"
-              value={
-                completedTasks.filter(
-                  (t) => t.status?.toLowerCase() === "failed",
-                ).length
-              }
-              color="bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400"
-              delay={0.2}
-            />
-          </div>
-        )}
       </motion.header>
 
       {/* 主内容区域 */}

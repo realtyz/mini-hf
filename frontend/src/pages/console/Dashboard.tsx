@@ -38,6 +38,7 @@ export function Dashboard() {
   const handleRefresh = () => {
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
     queryClient.invalidateQueries({ queryKey: queryKeys.repos.all });
+    queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
   };
 
   return (

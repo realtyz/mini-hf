@@ -4,6 +4,7 @@ dist
 **.local
 .pytest_cache
 
+.VSCodeCounter
 
 # Git worktrees
 .worktrees/

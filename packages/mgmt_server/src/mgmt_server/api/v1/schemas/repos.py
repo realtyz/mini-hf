@@ -1,7 +1,7 @@
 """Model-related request/response schemas."""
 
 from datetime import datetime
-from typing import Literal, Union
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -121,6 +121,22 @@ class RepoProfileResponse(BaseModel):
     cache_updated_at: datetime | None
     last_downloaded_at: datetime | None
     status: str
+
+    @classmethod
+    def from_model(cls, profile: Any) -> "RepoProfileResponse":
+        """Create response from ORM model."""
+        return cls(
+            id=profile.id,
+            repo_id=profile.repo_id,
+            repo_type=profile.repo_type,
+            pipeline_tag=profile.pipeline_tag,
+            cached_commits=profile.cached_commits,
+            downloads=profile.downloads,
+            first_cached_at=profile.first_cached_at,
+            cache_updated_at=profile.cache_updated_at,
+            last_downloaded_at=profile.last_downloaded_at,
+            status=profile.status.value,
+        )
 
 
 # 详情响应（Profile + Snapshots）
