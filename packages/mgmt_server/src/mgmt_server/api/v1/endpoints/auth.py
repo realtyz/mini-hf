@@ -28,6 +28,7 @@ from mgmt_server.api.v1.schemas.users import (
     UserRegisterRequest,
     UserResponse,
 )
+from mgmt_server.core.constants import UserRole
 from mgmt_server.core.security import create_access_token, create_refresh_token
 
 
@@ -141,7 +142,7 @@ async def register_user(
             name=request.name,
             email=request.email,
             password=request.password,
-            role="user",  # Self-registered users always get "user" role
+            role=UserRole.USER,  # Self-registered users always get "user" role
         )
         return UserCreateResponse(data=UserResponse.model_validate(user))
     except ValueError as e:
@@ -279,7 +280,7 @@ async def register_with_code(
             name=request.name,
             email=request.email,
             password=request.password,
-            role="user",
+            role=UserRole.USER,
         )
         return UserCreateResponse(data=UserResponse.model_validate(user))
     except ValueError as e:

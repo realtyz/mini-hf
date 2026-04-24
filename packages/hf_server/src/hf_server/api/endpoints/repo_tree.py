@@ -8,7 +8,10 @@ from sqlalchemy import select
 from core.settings import settings
 from database.db_models import HfRepoSnapshot, HfRepoTreeItem, SnapshotStatus
 from hf_server.api.deps import DbDep
-from hf_server.api.schemas.responses.repo_tree import RepoTreeItemResponse, RepoTreeLfsInfo
+from hf_server.api.schemas.responses.repo_tree import (
+    RepoTreeItemResponse,
+    RepoTreeLfsInfo,
+)
 from hf_server.utils.pagination import decode_cursor, encode_cursor, CursorError
 
 router = APIRouter(tags=["Repo Tree"])
@@ -85,9 +88,7 @@ async def _get_repo_tree(
     if limit < 1:
         raise HTTPException(status_code=400, detail="Limit must be at least 1")
     if limit > MAX_LIMIT:
-        raise HTTPException(
-            status_code=400, detail=f"Limit cannot exceed {MAX_LIMIT}"
-        )
+        raise HTTPException(status_code=400, detail=f"Limit cannot exceed {MAX_LIMIT}")
 
     # Get active snapshot to find commit_hash
     snapshot_stmt = select(HfRepoSnapshot).where(

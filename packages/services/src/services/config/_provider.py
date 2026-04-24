@@ -71,6 +71,7 @@ class ConfigProvider:
         Returns None if no encryption key is configured.
         """
         from core import settings
+
         return settings.CONFIG_ENCRYPTION_KEY or settings.JWT_SECRET_KEY
 
     @classmethod

@@ -94,15 +94,14 @@ class HfRepoProfileRepository:
 
         if is_new_commit:
             # Query actual active snapshot count instead of incrementing
-            count_stmt = (
-                select(func.count())
-                .select_from(
-                    select(HfRepoSnapshot).where(
-                        HfRepoSnapshot.repo_id == repo_id,
-                        HfRepoSnapshot.repo_type == repo_type,
-                        HfRepoSnapshot.status == SnapshotStatus.ACTIVE,
-                    ).subquery()
+            count_stmt = select(func.count()).select_from(
+                select(HfRepoSnapshot)
+                .where(
+                    HfRepoSnapshot.repo_id == repo_id,
+                    HfRepoSnapshot.repo_type == repo_type,
+                    HfRepoSnapshot.status == SnapshotStatus.ACTIVE,
                 )
+                .subquery()
             )
             count_result = await self._session.execute(count_stmt)
             profile.cached_commits = count_result.scalar() or 0
@@ -347,3 +346,14 @@ class HfRepoProfileRepository:
         profiles = list(result.scalars().all())
 
         return profiles, total
+
+    async def count_repos(
+        self,
+        statuses: list[RepoStatus] | None = None,
+    ) -> int:
+        """Count repositories matching the given statuses."""
+        stmt = select(func.count()).select_from(HfRepoProfile)
+        if statuses is not None:
+            stmt = stmt.where(HfRepoProfile.status.in_(statuses))
+        result = await self._session.execute(stmt)
+        return result.scalar() or 0

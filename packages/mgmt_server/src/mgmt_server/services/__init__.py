@@ -1,5 +1,27 @@
-"""Services package."""
+"""Services package.
 
-from mgmt_server.services.user_service import UserService
+Three service patterns are used in this module:
 
-__all__ = ["UserService"]
+1. Class-based services (DI via constructor, request-scoped):
+   DashboardService, RepoService, TaskLifecycleService, TaskPreviewService, UserService
+
+2. Module-level pure functions (stateless, data transformation):
+   task_response_builder
+
+3. Module-level executor functions (create own sessions, for background tasks):
+   task_preview_executor
+"""
+
+from .dashboard_service import DashboardService
+from .repo_service import RepoService
+from .task_lifecycle_service import TaskLifecycleService
+from .task_preview_service import TaskPreviewService
+from .user_service import UserService
+
+__all__ = [
+    "DashboardService",
+    "RepoService",
+    "TaskLifecycleService",
+    "TaskPreviewService",
+    "UserService",
+]

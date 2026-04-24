@@ -2,8 +2,6 @@
   "python.analysis.extraPaths": [
     "packages/core/src",
     "packages/database/src",
-    "packages/huggingface/src",
-    "packages/logging/src",
     "packages/services/src",
     "packages/storage/src",
     "packages/cache/src",

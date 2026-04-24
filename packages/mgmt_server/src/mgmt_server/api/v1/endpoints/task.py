@@ -2,20 +2,16 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from fastapi import status as http_status
+from fastapi import APIRouter, BackgroundTasks, Query
 
-from database.db_models import User
 from mgmt_server.api.deps import (
     CurrentUserToken,
-    DbDep,
-    TaskMgmtServiceDep,
-    UserServiceDep,
+    PreviewTaskServiceDep,
+    TaskLifecycleServiceDep,
 )
 from mgmt_server.api.v1.endpoints.user import (
     AdminUserDep,
     CurrentUserDep,
-    get_current_user,
 )
 from mgmt_server.api.v1.schemas import (
     ActiveTaskListResponse,
@@ -34,34 +30,26 @@ router = APIRouter(prefix="/task", tags=["Task Management"])
 
 @router.get("/list", response_model=TaskListResponse)
 async def list_tasks(
-    current_user: CurrentUserToken,
-    db: DbDep,
-    user_service: UserServiceDep,
-    service: TaskMgmtServiceDep,
+    current_user: CurrentUserDep,
+    service: TaskLifecycleServiceDep,
     status: str | None = None,
     search: str | None = None,
     limit: Annotated[int, Query(ge=1, le=1000)] = 20,
     skip: Annotated[int, Query(ge=0)] = 0,
 ) -> TaskListResponse:
     """List tasks - requires JWT authentication."""
-    user = await user_service.get_by_email(current_user.email)
-    if not user:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
     return await service.list_tasks(
         status_str=status,
         search=search,
         limit=limit,
         skip=skip,
-        user=user,
+        user=current_user,
     )
 
 
 @router.get("/active-public", response_model=ActiveTaskListResponse)
 async def list_active_public_tasks(
-    service: TaskMgmtServiceDep,
+    service: TaskLifecycleServiceDep,
 ) -> ActiveTaskListResponse:
     """List active tasks (running/pending/pending_approval/canceling) - public, no auth required."""
     return await service.list_active_public_tasks()
@@ -69,7 +57,7 @@ async def list_active_public_tasks(
 
 @router.get("/list-public", response_model=TaskListResponse)
 async def list_public_tasks(
-    service: TaskMgmtServiceDep,
+    service: TaskLifecycleServiceDep,
     status: str | None = None,
     search: str | None = None,
     limit: Annotated[int, Query(ge=1, le=1000)] = 20,
@@ -90,8 +78,7 @@ async def list_public_tasks(
 async def get_task(
     task_id: int,
     current_user: CurrentUserToken,
-    db: DbDep,
-    service: TaskMgmtServiceDep,
+    service: TaskLifecycleServiceDep,
 ) -> TaskDetailResponse:
     """Get task details - requires JWT authentication."""
     return await service.get_task_detail(task_id)
@@ -102,8 +89,7 @@ async def preview_task(
     request: TaskPreviewRequest,
     current_user: CurrentUserToken,
     background_tasks: BackgroundTasks,
-    db: DbDep,
-    service: TaskMgmtServiceDep,
+    service: PreviewTaskServiceDep,
 ) -> AsyncPreviewTaskResponse:
     """Start an async preview task for repository download."""
     response, bg_callable = await service.start_preview_task(
@@ -125,7 +111,7 @@ async def preview_task(
 async def get_preview_task_status(
     task_id: str,
     current_user: CurrentUserToken,
-    service: TaskMgmtServiceDep,
+    service: PreviewTaskServiceDep,
 ) -> AsyncPreviewTaskStatusResponse:
     """Get async preview task status and result."""
     return await service.get_preview_task_status(task_id)
@@ -134,21 +120,13 @@ async def get_preview_task_status(
 @router.post("", response_model=TaskDetailResponse)
 async def create_repo_download_task(
     request: CreateTaskFromCacheRequest,
-    user_service: UserServiceDep,
-    current_user: CurrentUserToken,
-    db: DbDep,
-    service: TaskMgmtServiceDep,
+    current_user: CurrentUserDep,
+    service: PreviewTaskServiceDep,
 ) -> TaskDetailResponse:
     """Create a download task from cached preview data."""
-    user = await user_service.get_by_email(current_user.email)
-    if not user:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
     return await service.create_task_from_cache(
         cache_key=request.cache_key,
-        user=user,
+        user=current_user,
     )
 
 
@@ -157,78 +135,53 @@ async def review_task(
     task_id: int,
     request: TaskReviewRequest,
     admin_user: AdminUserDep,
-    current_user: Annotated[User, Depends(get_current_user)],
-    service: TaskMgmtServiceDep,
+    service: TaskLifecycleServiceDep,
 ) -> TaskDetailResponse:
     """Review (approve or reject) a pending approval task."""
     return await service.review_task(
         task_id=task_id,
         approved=request.approved,
-        reviewer_user_id=current_user.id,
+        reviewer_user_id=admin_user.id,
         review_notes=request.notes,
+        user=admin_user,
     )
 
 
 @router.post("/{task_id}/cancel", response_model=TaskDetailResponse)
 async def cancel_task(
     task_id: int,
-    current_user: CurrentUserToken,
-    db: DbDep,
-    user_service: UserServiceDep,
-    service: TaskMgmtServiceDep,
+    current_user: CurrentUserDep,
+    service: TaskLifecycleServiceDep,
 ) -> TaskDetailResponse:
     """Cancel a running or pending task."""
-    user = await user_service.get_by_email(current_user.email)
-    if not user:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    return await service.cancel_task(task_id, user)
+    return await service.cancel_task(task_id, current_user)
 
 
 @router.post("/{task_id}/pause", response_model=TaskDetailResponse)
 async def pause_task(
     task_id: int,
-    current_user: CurrentUserToken,
-    db: DbDep,
-    user_service: UserServiceDep,
-    service: TaskMgmtServiceDep,
+    current_user: CurrentUserDep,
+    service: TaskLifecycleServiceDep,
 ) -> TaskDetailResponse:
     """Pause a running or pending task."""
-    user = await user_service.get_by_email(current_user.email)
-    if not user:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    return await service.pause_task(task_id, user)
+    return await service.pause_task(task_id, current_user)
 
 
 @router.post("/{task_id}/resume", response_model=TaskDetailResponse)
 async def resume_task(
     task_id: int,
-    current_user: CurrentUserToken,
-    db: DbDep,
-    user_service: UserServiceDep,
-    service: TaskMgmtServiceDep,
+    current_user: CurrentUserDep,
+    service: TaskLifecycleServiceDep,
 ) -> TaskDetailResponse:
     """Resume a paused task."""
-    user = await user_service.get_by_email(current_user.email)
-    if not user:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    return await service.resume_task(task_id, user)
+    return await service.resume_task(task_id, current_user)
 
 
 @router.post("/{task_id}/pin", response_model=TaskDetailResponse)
 async def pin_task(
     task_id: int,
     current_user: CurrentUserDep,
-    db: DbDep,
-    service: TaskMgmtServiceDep,
+    service: TaskLifecycleServiceDep,
 ) -> TaskDetailResponse:
     """Pin a pending task to give it higher priority."""
     return await service.pin_task(task_id, current_user)
@@ -238,8 +191,7 @@ async def pin_task(
 async def unpin_task(
     task_id: int,
     current_user: CurrentUserDep,
-    db: DbDep,
-    service: TaskMgmtServiceDep,
+    service: TaskLifecycleServiceDep,
 ) -> TaskDetailResponse:
     """Unpin a pinned task to remove its higher priority."""
     return await service.unpin_task(task_id, current_user)
@@ -248,25 +200,17 @@ async def unpin_task(
 @router.post("/{task_id}/retry", response_model=TaskDetailResponse)
 async def retry_task(
     task_id: int,
-    current_user: CurrentUserToken,
-    db: DbDep,
-    user_service: UserServiceDep,
-    service: TaskMgmtServiceDep,
+    current_user: CurrentUserDep,
+    service: TaskLifecycleServiceDep,
 ) -> TaskDetailResponse:
     """Retry a failed or cancelled task by creating a new task with the same configuration."""
-    user = await user_service.get_by_email(current_user.email)
-    if not user:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND, detail="User not found"
-        )
-
-    return await service.retry_task(task_id, user)
+    return await service.retry_task(task_id, current_user)
 
 
 @router.get("/{task_id}/progress", response_model=TaskProgressResponse)
 async def get_task_progress(
     task_id: int,
-    service: TaskMgmtServiceDep,
+    service: TaskLifecycleServiceDep,
 ) -> TaskProgressResponse:
     """Get task file-level progress."""
     return await service.get_task_progress(task_id)

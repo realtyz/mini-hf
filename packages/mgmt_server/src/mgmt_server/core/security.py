@@ -18,7 +18,9 @@ password_hash = PasswordHash((BcryptHasher(),))
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/sign-in")
 
 # OAuth2 Bearer scheme for refresh token (Swagger UI)
-oauth2_refresh_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/refresh", auto_error=False)
+oauth2_refresh_scheme = OAuth2PasswordBearer(
+    tokenUrl="/api/v1/auth/refresh", auto_error=False
+)
 
 
 def create_refresh_token(data: dict) -> str:

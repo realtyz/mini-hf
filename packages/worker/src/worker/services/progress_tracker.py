@@ -290,7 +290,9 @@ class TaskProgressTracker:
         existing = await cache_service.get(file_key)
 
         if existing is None:
-            logger.warning("Cannot update upload progress for non-existent file: {}", file_path)
+            logger.warning(
+                "Cannot update upload progress for non-existent file: {}", file_path
+            )
             return
 
         total_bytes = total or existing.get("total_bytes", 0)
@@ -314,7 +316,9 @@ class TaskProgressTracker:
         existing = await cache_service.get(file_key)
 
         if existing is None:
-            logger.warning("Cannot complete upload for non-existent file: {}", file_path)
+            logger.warning(
+                "Cannot complete upload for non-existent file: {}", file_path
+            )
             return
 
         now = datetime.now(timezone.utc).isoformat()

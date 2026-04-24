@@ -2,7 +2,7 @@
 
 from fastapi import APIRouter
 
-from mgmt_server.api.deps import DashboardServiceDep, DbDep
+from mgmt_server.api.deps import DashboardServiceDep
 from mgmt_server.api.v1.schemas.repos import DashboardStatsResponse
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
@@ -10,7 +10,6 @@ router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
 @router.get("/stats", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
-    db: DbDep,
     service: DashboardServiceDep,
 ) -> DashboardStatsResponse:
     """Get dashboard statistics.
@@ -24,5 +23,5 @@ async def get_dashboard_stats(
     Uses a stale-while-revalidate cache strategy to avoid timeouts when
     the cache expires and multiple concurrent requests arrive.
     """
-    stats = await service.get_stats(db)
+    stats = await service.get_stats()
     return DashboardStatsResponse(data=stats)

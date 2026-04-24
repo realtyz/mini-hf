@@ -140,7 +140,9 @@ class TaskPreviewData(BaseModel):
     cache_key: str  # Use this key to create task from cached preview data
 
     # Update check results
-    cached_commit_hash: str | None = None  # The commit hash of the currently cached version (if any)
+    cached_commit_hash: str | None = (
+        None  # The commit hash of the currently cached version (if any)
+    )
 
     # Cache status for required files
     all_required_cached: bool = False  # Whether all requested files are already cached

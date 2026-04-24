@@ -7,7 +7,12 @@ from loguru import logger
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.db_models import HfRepoSnapshot, HfRepoTreeItem, SnapshotStatus, TreeItemType
+from database.db_models import (
+    HfRepoSnapshot,
+    HfRepoTreeItem,
+    SnapshotStatus,
+    TreeItemType,
+)
 from database.db_repositories import HfRepoSnapshotRepository, HfRepoTreeRepository
 
 

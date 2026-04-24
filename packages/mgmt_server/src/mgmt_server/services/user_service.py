@@ -1,178 +1,135 @@
 """User service."""
 
-from typing import Optional
+from __future__ import annotations
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from loguru import logger
-
-from mgmt_server.core.security import hash_password, verify_password
 from database.db_models import User
 from database.db_repositories import UserRepository
+from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from mgmt_server.core.constants import UserRole
+from mgmt_server.core.exceptions import ConflictError, NotFoundError, ValidationError
+from mgmt_server.core.security import hash_password, verify_password
+
+
+def _mask_email(email: str) -> str:
+    """Mask email for logging (e.g. 'alice@example.com' -> 'a***@example.com')."""
+    if "@" not in email:
+        return "***"
+    local, domain = email.split("@", 1)
+    if len(local) <= 1:
+        return f"*@{domain}"
+    return f"{local[0]}***@{domain}"
 
 
 class UserService:
     """User service for business logic."""
 
     def __init__(self, session: AsyncSession):
-        """Initialize user service.
-
-        Args:
-            session: Database session
-        """
-        self.session = session
+        self._session = session
         self._repo = UserRepository(session)
 
-    async def authenticate(self, email: str, password: str) -> Optional[User]:
-        """Authenticate user with email and password.
-
-        Args:
-            email: User email
-            password: Plain text password
-
-        Returns:
-            User if authentication succeeds, None otherwise
-        """
-        logger.debug("Authenticating user with email: %s", email)
+    async def authenticate(self, email: str, password: str) -> User | None:
+        """Authenticate user with email and password."""
         user = await self._repo.get_by_email(email)
-        if not user:
-            logger.debug("User not found: %s", email)
+        if (
+            not user
+            or not user.is_active
+            or not verify_password(password, user.hashed_password)
+        ):
+            logger.debug("Authentication failed for user: {}", _mask_email(email))
             return None
-        if not user.is_active:
-            logger.debug("User is inactive: %s", email)
-            return None
-        if not verify_password(password, user.hashed_password):
-            logger.debug("Password verification failed for user: %s", email)
-            return None
-        logger.debug("User authenticated successfully: %s", email)
         return user
 
-    async def get_by_email(self, email: str) -> Optional[User]:
-        """Get user by email.
-
-        Args:
-            email: Email to search for
-
-        Returns:
-            User if found, None otherwise
-        """
+    async def get_by_email(self, email: str) -> User | None:
+        """Get user by email."""
         return await self._repo.get_by_email(email)
 
-    async def get_by_id(self, user_id: int) -> Optional[User]:
-        """Get user by ID.
-
-        Args:
-            user_id: User ID to search for
-
-        Returns:
-            User if found, None otherwise
-        """
-        logger.debug("Fetching user by ID: %s", user_id)
+    async def get_by_id(self, user_id: int) -> User | None:
+        """Get user by ID."""
+        logger.debug("Fetching user by ID: {}", user_id)
         return await self._repo.get_by_id(user_id)
 
-    async def get_by_name(self, name: str) -> Optional[User]:
-        """Get user by name.
-
-        Args:
-            name: Name to search for
-
-        Returns:
-            User if found, None otherwise
-        """
-        logger.debug("Fetching user by name: %s", name)
+    async def get_by_name(self, name: str) -> User | None:
+        """Get user by name."""
+        logger.debug("Fetching user by name: {}", name)
         return await self._repo.get_by_name(name)
 
     async def create_user(
-        self, name: str, email: str, password: str, role: str = "user"
+        self, name: str, email: str, password: str, role: UserRole = UserRole.USER
     ) -> User:
         """Create a new user.
 
-        Args:
-            name: User name
-            email: User email
-            password: Plain text password
-            role: User role (default: "user")
-
-        Returns:
-            Created user
-
         Raises:
-            ValueError: If email already exists
+            ConflictError: If email already exists
         """
-        logger.info("Creating new user with email: %s", email)
+        logger.info("Creating new user: {}", _mask_email(email))
 
-        # Check if user already exists
         existing_user = await self._repo.get_by_email(email)
         if existing_user:
-            logger.warning("User with email %s already exists", email)
-            raise ValueError(f"User with email {email} already exists")
+            logger.warning("User with email already exists: {}", _mask_email(email))
+            raise ConflictError("A user with this email already exists")
 
-        # Hash password
         hashed_password = hash_password(password)
-
-        # Create user
         user = await self._repo.create(
             name=name,
             email=email,
             hashed_password=hashed_password,
             role=role,
         )
-        logger.info("User created successfully: %s", email)
+        logger.info("User created successfully: {}", _mask_email(email))
         return user
 
     async def list_users(
-        self, skip: int = 0, limit: int = 20, email_search: Optional[str] = None
+        self, skip: int = 0, limit: int = 20, email_search: str | None = None
     ) -> tuple[list[User], int]:
-        """List users with pagination and optional email fuzzy search.
+        """List users with pagination and optional email fuzzy search."""
+        logger.debug(
+            "Listing users with skip={}, limit={}, email_search={}",
+            skip,
+            limit,
+            email_search,
+        )
+        return await self._repo.list_users(
+            skip=skip, limit=limit, email_search=email_search
+        )
 
-        Args:
-            skip: Number of users to skip
-            limit: Number of users to return
-            email_search: Optional email substring to search for (fuzzy match)
+    async def _get_user_or_raise(self, user_id: int) -> User:
+        """Fetch user by ID or raise NotFoundError."""
+        user = await self._repo.get_by_id(user_id)
+        if not user:
+            raise NotFoundError(f"User '{user_id}' not found")
+        return user
 
-        Returns:
-            Tuple of (users list, total count)
-        """
-        logger.debug("Listing users with skip=%s, limit=%s, email_search=%s", skip, limit, email_search)
-        return await self._repo.list_users(skip=skip, limit=limit, email_search=email_search)
+    async def _update_password(self, user: User, new_password: str) -> None:
+        """Hash and set new password for a user."""
+        user.hashed_password = hash_password(new_password)
+        await self._repo.update(user)
 
     async def update_user(
         self,
         user_id: int,
         name: str | None = None,
         email: str | None = None,
-        role: str | None = None,
+        role: UserRole | None = None,
         is_active: bool | None = None,
     ) -> User:
         """Update user information.
 
-        Args:
-            user_id: User ID to update
-            name: New name (optional)
-            email: New email (optional)
-            role: New role (optional)
-            is_active: New active status (optional)
-
-        Returns:
-            Updated user
-
         Raises:
-            ValueError: If user not found or email already exists
+            NotFoundError: If user not found
+            ConflictError: If email already exists
         """
-        logger.info("Updating user %s", user_id)
+        logger.info("Updating user {}", user_id)
 
-        # Get user
-        user = await self._repo.get_by_id(user_id)
-        if not user:
-            raise ValueError(f"User with ID {user_id} not found")
+        user = await self._get_user_or_raise(user_id)
 
-        # Check email uniqueness if changing email
         if email is not None and email != user.email:
             existing = await self._repo.get_by_email(email)
             if existing:
-                raise ValueError(f"Email {email} already exists")
+                raise ConflictError("Email already exists")
             user.email = email
 
-        # Update fields
         if name is not None:
             user.name = name
         if role is not None:
@@ -181,7 +138,7 @@ class UserService:
             user.is_active = is_active
 
         await self._repo.update(user)
-        logger.info("User %s updated successfully", user_id)
+        logger.info("User {} updated successfully", user_id)
         return user
 
     async def change_password(
@@ -189,63 +146,44 @@ class UserService:
     ) -> None:
         """Change user password (requires current password).
 
-        Args:
-            user_id: User ID
-            current_password: Current password
-            new_password: New password
-
         Raises:
-            ValueError: If user not found or current password is incorrect
+            NotFoundError: If user not found
+            ValidationError: If current password is incorrect
         """
-        logger.info("Changing password for user %s", user_id)
+        logger.info("Changing password for user {}", user_id)
 
-        user = await self._repo.get_by_id(user_id)
-        if not user:
-            raise ValueError("User not found")
+        user = await self._get_user_or_raise(user_id)
 
         if not verify_password(current_password, user.hashed_password):
-            raise ValueError("Current password is incorrect")
+            raise ValidationError("Current password is incorrect")
 
-        user.hashed_password = hash_password(new_password)
-        await self._repo.update(user)
-        logger.info("Password changed successfully for user %s", user_id)
+        await self._update_password(user, new_password)
+        logger.info("Password changed successfully for user {}", user_id)
 
     async def admin_reset_password(self, user_id: int, new_password: str) -> None:
         """Reset user password (admin only, no current password required).
 
-        Args:
-            user_id: User ID
-            new_password: New password
-
         Raises:
-            ValueError: If user not found
+            NotFoundError: If user not found
         """
-        logger.info("Admin resetting password for user %s", user_id)
+        logger.info("Admin resetting password for user {}", user_id)
 
-        user = await self._repo.get_by_id(user_id)
-        if not user:
-            raise ValueError("User not found")
+        user = await self._get_user_or_raise(user_id)
 
-        user.hashed_password = hash_password(new_password)
-        await self._repo.update(user)
-        logger.info("Password reset successfully for user %s", user_id)
+        await self._update_password(user, new_password)
+        logger.info("Password reset successfully for user {}", user_id)
 
     async def deactivate_user(self, user_id: int) -> None:
         """Deactivate and logically delete a user.
 
-        Args:
-            user_id: User ID to deactivate
-
         Raises:
-            ValueError: If user not found
+            NotFoundError: If user not found
         """
-        logger.info("Deactivating user %s", user_id)
+        logger.info("Deactivating user {}", user_id)
 
-        user = await self._repo.get_by_id(user_id)
-        if not user:
-            raise ValueError("User not found")
+        user = await self._get_user_or_raise(user_id)
 
         user.is_active = False
         user.is_deleted = True
         await self._repo.update(user)
-        logger.info("User %s deactivated successfully", user_id)
+        logger.info("User {} deactivated successfully", user_id)

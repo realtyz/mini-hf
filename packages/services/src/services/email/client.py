@@ -410,4 +410,7 @@ class EmailClient:
             logger.opt(exception=True).error(
                 f"[SMTP Test] ❌ Unexpected error at step '{step}': {e}"
             )
-            return False, f"Connection test failed at step '{step}': {type(e).__name__}: {e}"
+            return (
+                False,
+                f"Connection test failed at step '{step}': {type(e).__name__}: {e}",
+            )

@@ -1,11 +1,16 @@
 """API v1 schemas."""
 
-from mgmt_server.api.v1.schemas.auth import LoginRequest, LoginResponse, TokenVerifyResponse
+from mgmt_server.api.v1.schemas.auth import (
+    LoginRequest,
+    LoginResponse,
+    TokenVerifyResponse,
+)
 from mgmt_server.api.v1.schemas.base import BaseResponse
 from mgmt_server.api.v1.schemas.repos import (
     CreateTaskFromCacheRequest,
     CreateTaskFromPreviewRequest,
     CreateTaskRequest,
+    DeleteRepoResult,
     DryRunRequest,
     RepoItem,
     RepoDetailResponse,
@@ -40,6 +45,7 @@ from mgmt_server.api.v1.schemas.tasks import (
     TaskReviewRequest,
 )
 from mgmt_server.api.v1.schemas.progress import (
+    CachedFileProgressData,
     FileProgressItem,
     TaskProgressData,
     TaskProgressResponse,
@@ -53,6 +59,7 @@ __all__ = [
     "CreateTaskFromCacheRequest",
     "CreateTaskFromPreviewRequest",
     "CreateTaskRequest",
+    "DeleteRepoResult",
     "DryRunRequest",
     "RepoItem",
     "RepoDetailResponse",
@@ -81,6 +88,7 @@ __all__ = [
     "TaskPreviewRequest",
     "TaskPreviewResponse",
     "TaskReviewRequest",
+    "CachedFileProgressData",
     "FileProgressItem",
     "TaskProgressData",
     "TaskProgressResponse",

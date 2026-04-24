@@ -5,6 +5,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from mgmt_server.api.deps import CurrentUserToken, UserServiceDep
+from mgmt_server.core.constants import UserRole
 from mgmt_server.api.v1.schemas.users import (
     AdminPasswordResetRequest,
     PasswordResetResponse,
@@ -67,7 +68,7 @@ async def require_admin(
     Raises:
         HTTPException: If user is not admin
     """
-    if current_user.role != "admin":
+    if current_user.role != UserRole.ADMIN:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
@@ -92,9 +93,7 @@ async def get_me(
     Returns:
         Current user information
     """
-    return UserDetailResponse(
-        data=UserResponse.model_validate(current_user)
-    )
+    return UserDetailResponse(data=UserResponse.model_validate(current_user))
 
 
 @router.put("/me", response_model=UserUpdateResponse)
@@ -117,9 +116,7 @@ async def update_me(
         user_id=current_user.id,
         name=request.name,
     )
-    return UserUpdateResponse(
-        data=UserResponse.model_validate(updated_user)
-    )
+    return UserUpdateResponse(data=UserResponse.model_validate(updated_user))
 
 
 @router.put("/me/password", response_model=PasswordResetResponse)
@@ -164,7 +161,9 @@ async def list_users(
     user_service: UserServiceDep,
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
-    email_search: Annotated[Optional[str], Query(description="Fuzzy search by email substring")] = None,
+    email_search: Annotated[
+        Optional[str], Query(description="Fuzzy search by email substring")
+    ] = None,
 ) -> UserListResponse:
     """List all users (admin only).
 
@@ -178,7 +177,9 @@ async def list_users(
     Returns:
         List of users with total count
     """
-    users, total = await user_service.list_users(skip=skip, limit=limit, email_search=email_search)
+    users, total = await user_service.list_users(
+        skip=skip, limit=limit, email_search=email_search
+    )
     return UserListResponse(
         data=[UserResponse.model_validate(user) for user in users],
         total=total,
@@ -217,9 +218,7 @@ async def create_user(
                 user_id=user.id,
                 is_active=request.is_active,
             )
-        return UserCreateResponse(
-            data=UserResponse.model_validate(user)
-        )
+        return UserCreateResponse(data=UserResponse.model_validate(user))
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -252,9 +251,7 @@ async def get_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"User with ID {user_id} not found",
         )
-    return UserDetailResponse(
-        data=UserResponse.model_validate(user)
-    )
+    return UserDetailResponse(data=UserResponse.model_validate(user))
 
 
 @router.put("/{user_id}", response_model=UserUpdateResponse)
@@ -289,7 +286,7 @@ async def update_user(
     if (
         user_id == admin_user.id
         and request.role is not None
-        and request.role != "admin"
+        and request.role != UserRole.ADMIN
     ):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -303,9 +300,7 @@ async def update_user(
         role=request.role,
         is_active=request.is_active,
     )
-    return UserUpdateResponse(
-        data=UserResponse.model_validate(updated_user)
-    )
+    return UserUpdateResponse(data=UserResponse.model_validate(updated_user))
 
 
 @router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)

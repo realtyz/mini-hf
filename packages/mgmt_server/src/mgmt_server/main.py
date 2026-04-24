@@ -1,6 +1,5 @@
 """FastAPI application entry point."""
 
-import os
 import click
 from contextlib import asynccontextmanager
 
@@ -11,7 +10,6 @@ from fastapi.responses import JSONResponse
 import uvicorn
 
 
-from core import settings
 from mgmt_server.api.v1.router import api_router as v1_router
 from mgmt_server.core.exceptions import BusinessError
 from mgmt_server.core.init_db import init_db

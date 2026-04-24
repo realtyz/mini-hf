@@ -31,7 +31,7 @@ class PermissionDeniedError(BusinessError):
         super().__init__(message, status_code=403)
 
 
-class GoneError(BusinessError):
+class ResourceGoneError(BusinessError):
     """Resource no longer available (410)."""
 
     def __init__(self, message: str):

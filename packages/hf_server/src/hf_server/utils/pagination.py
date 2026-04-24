@@ -5,6 +5,7 @@ import base64
 
 class CursorError(Exception):
     """Raised when cursor encoding/decoding fails."""
+
     pass
 
 

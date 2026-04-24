@@ -5,6 +5,7 @@ from loguru import logger
 from core.settings import settings
 from database.core import AsyncSessionLocal
 from database.db_repositories import UserRepository
+from mgmt_server.core.constants import UserRole
 from mgmt_server.core.security import hash_password
 
 
@@ -21,7 +22,9 @@ async def init_db() -> None:
         try:
             # Check if any admin user already exists
             if await repo.admin_exists():
-                logger.info("Admin user already exists, skipping default admin creation")
+                logger.info(
+                    "Admin user already exists, skipping default admin creation"
+                )
                 return
 
             # Create default admin user
@@ -61,10 +64,7 @@ async def _create_default_admin(repo: UserRepository) -> None:
     hashed_password = hash_password(password)
 
     await repo.create(
-        name=name,
-        email=email,
-        hashed_password=hashed_password,
-        role="admin"
+        name=name, email=email, hashed_password=hashed_password, role=UserRole.ADMIN
     )
 
     logger.info(f"Default admin user '{name}' created with email '{email}'")

@@ -55,9 +55,7 @@ def calculate_file_diff(
     """
     # Build lookup maps - only consider cached files from old commit
     old_files = {
-        item.path: item
-        for item in old_tree
-        if item.type == "file" and item.is_cached
+        item.path: item for item in old_tree if item.type == "file" and item.is_cached
     }
     new_files_map = {f.path: f for f in new_files}
 

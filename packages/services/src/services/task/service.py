@@ -129,9 +129,7 @@ class TaskService:
             repo = self._get_repo(session)
             tasks = await repo.get_next_for_worker(batch_size)
             if tasks:
-                self._logger.debug(
-                    "Worker picked up tasks: {}", [t.id for t in tasks]
-                )
+                self._logger.debug("Worker picked up tasks: {}", [t.id for t in tasks])
             return tasks
 
     async def start_task(self, task_id: int) -> None:
@@ -142,7 +140,9 @@ class TaskService:
         """
         async with self._session_ctx() as session:
             repo = self._get_repo(session)
-            await repo.update_status(task_id, TaskStatus.RUNNING, started_at=datetime.now())
+            await repo.update_status(
+                task_id, TaskStatus.RUNNING, started_at=datetime.now()
+            )
             self._logger.debug("Started task {}", task_id)
 
     async def complete(self, task_id: int, result: Optional[dict] = None) -> None:
@@ -360,9 +360,7 @@ class TaskService:
             now = datetime.now()
 
             if approved:
-                await repo.update_status(
-                    task_id, TaskStatus.PENDING, reviewed_at=now
-                )
+                await repo.update_status(task_id, TaskStatus.PENDING, reviewed_at=now)
                 self._logger.info("Approved task {} for execution", task_id)
             else:
                 await repo.update_status(

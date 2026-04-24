@@ -24,7 +24,7 @@ class UserRepository:
             User if found, None otherwise
         """
         result = await self.session.execute(
-            select(User).where(User.email == email, User.is_deleted == False)
+            select(User).where(User.email == email, User.is_deleted == False)  # noqa: E712
         )
         return result.scalar_one_or_none()
 
@@ -49,7 +49,7 @@ class UserRepository:
             User if found, None otherwise
         """
         result = await self.session.execute(
-            select(User).where(User.name == name, User.is_deleted == False)
+            select(User).where(User.name == name, User.is_deleted == False)  # noqa: E712
         )
         return result.scalar_one_or_none()
 
@@ -78,7 +78,9 @@ class UserRepository:
         await self.session.refresh(user)
         return user
 
-    async def list_users(self, skip: int = 0, limit: int = 20, email_search: Optional[str] = None) -> tuple[list[User], int]:
+    async def list_users(
+        self, skip: int = 0, limit: int = 20, email_search: Optional[str] = None
+    ) -> tuple[list[User], int]:
         """List users with pagination and optional email fuzzy search.
 
         Args:
@@ -90,7 +92,7 @@ class UserRepository:
             Tuple of (users list, total count)
         """
         # Base query (excluding deleted users)
-        base_query = select(User).where(User.is_deleted == False)
+        base_query = select(User).where(User.is_deleted == False)  # noqa: E712
 
         # Add email search filter if provided
         if email_search:
@@ -126,9 +128,6 @@ class UserRepository:
             True if at least one admin user exists, False otherwise
         """
         result = await self.session.execute(
-            select(User).where(
-                User.role == "admin",
-                User.is_deleted == False
-            )
+            select(User).where(User.role == "admin", User.is_deleted == False)  # noqa: E712
         )
         return result.scalar_one_or_none() is not None

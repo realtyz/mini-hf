@@ -24,9 +24,13 @@ class ConfigCreateRequest(BaseModel):
 
     key: str = Field(..., min_length=1, max_length=255, description="Configuration key")
     value: str = Field(..., description="Configuration value")
-    category: str = Field(default="general", max_length=50, description="Configuration category")
+    category: str = Field(
+        default="general", max_length=50, description="Configuration category"
+    )
     description: str | None = Field(None, description="Configuration description")
-    is_sensitive: bool = Field(default=False, description="Whether the value is sensitive")
+    is_sensitive: bool = Field(
+        default=False, description="Whether the value is sensitive"
+    )
 
 
 class ConfigUpdateRequest(BaseModel):
@@ -41,9 +45,15 @@ class ConfigBatchUpdateItem(BaseModel):
 
     key: str = Field(..., description="Configuration key")
     value: str = Field(..., description="New configuration value")
-    category: str | None = Field(default=None, description="Configuration category (for new configs)")
-    description: str | None = Field(default=None, description="Configuration description (for new configs)")
-    is_sensitive: bool = Field(default=False, description="Whether the value is sensitive (for new configs)")
+    category: str | None = Field(
+        default=None, description="Configuration category (for new configs)"
+    )
+    description: str | None = Field(
+        default=None, description="Configuration description (for new configs)"
+    )
+    is_sensitive: bool = Field(
+        default=False, description="Whether the value is sensitive (for new configs)"
+    )
 
 
 class ConfigBatchUpdateRequest(BaseModel):
@@ -86,9 +96,7 @@ class SMTPConfigResponse(BaseModel):
     username: str = Field(..., description="SMTP authentication username")
     use_tls: bool = Field(..., description="Whether to use TLS encryption")
     from_email: str = Field(..., description="Default sender email address")
-    is_configured: bool = Field(
-        ..., description="Whether SMTP is fully configured"
-    )
+    is_configured: bool = Field(..., description="Whether SMTP is fully configured")
 
 
 class SMTPConfigResponseWrapper(BaseResponse[SMTPConfigResponse]):
@@ -103,7 +111,9 @@ class SMTPTestRequest(BaseModel):
     username: str = Field(..., description="SMTP authentication username")
     password: str = Field(..., description="SMTP authentication password")
     use_tls: bool = Field(default=True, description="Whether to use TLS encryption")
-    from_email: str | None = Field(default=None, description="Sender email address (optional for test)")
+    from_email: str | None = Field(
+        default=None, description="Sender email address (optional for test)"
+    )
 
 
 class SMTPSaveRequest(BaseModel):
@@ -144,7 +154,9 @@ class HFEndpointSaveRequest(BaseModel):
     endpoints: list[str] = Field(
         ..., min_length=1, description="List of available HF endpoints"
     )
-    default_endpoint: str = Field(..., description="Default endpoint, must be in endpoints")
+    default_endpoint: str = Field(
+        ..., description="Default endpoint, must be in endpoints"
+    )
 
 
 class NotificationConfigResponse(BaseModel):
@@ -166,7 +178,9 @@ class NotificationSaveRequest(BaseModel):
     email: str = Field(default="", description="通知接收邮箱，多个用逗号分隔")
     task_approval_push: bool = Field(default=True, description="是否推送任务审批通知")
     auto_approve_enabled: bool = Field(default=False, description="是否开启自动审批")
-    auto_approve_threshold_gb: int = Field(default=100, description="自动审批阈值（GB）")
+    auto_approve_threshold_gb: int = Field(
+        default=100, description="自动审批阈值（GB）"
+    )
 
 
 class AnnouncementType(str):
@@ -181,7 +195,9 @@ class AnnouncementConfigResponse(BaseModel):
     """Announcement configuration response schema."""
 
     content: str = Field(..., description="系统公告内容")
-    announcement_type: str = Field(default="info", description="公告类型: info/warning/urgent")
+    announcement_type: str = Field(
+        default="info", description="公告类型: info/warning/urgent"
+    )
     is_active: bool = Field(default=True, description="是否启用公告")
 
 
@@ -193,5 +209,7 @@ class AnnouncementSaveRequest(BaseModel):
     """Announcement configuration save request schema."""
 
     content: str = Field(default="", description="系统公告内容")
-    announcement_type: str = Field(default="info", description="公告类型: info/warning/urgent")
+    announcement_type: str = Field(
+        default="info", description="公告类型: info/warning/urgent"
+    )
     is_active: bool = Field(default=True, description="是否启用公告")

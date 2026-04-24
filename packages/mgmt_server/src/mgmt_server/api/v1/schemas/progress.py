@@ -11,7 +11,9 @@ class FileProgressItem(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     path: str = Field(..., description="文件路径")
-    status: str = Field(..., description="文件状态: pending/downloading/completed/failed")
+    status: str = Field(
+        ..., description="文件状态: pending/downloading/completed/failed"
+    )
     downloaded_bytes: int = Field(0, description="已下载字节数")
     total_bytes: int = Field(0, description="总字节数")
     progress_percent: float = Field(0.0, description="下载进度百分比")
@@ -19,6 +21,24 @@ class FileProgressItem(BaseModel):
     started_at: str | None = Field(None, description="开始时间(ISO格式)")
     completed_at: str | None = Field(None, description="完成时间(ISO格式)")
     error_message: str | None = Field(None, description="错误信息(如果失败)")
+
+
+class CachedFileProgressData(BaseModel):
+    """Cache 中存储的文件进度数据结构。
+
+    用于将 Redis 缓存中的 dict 安全解析为类型化结构，
+    避免在 parse_file_progress_items 中逐字段 .get() 调用。
+    """
+
+    path: str = ""
+    status: str = "pending"
+    downloaded_bytes: int = 0
+    total_bytes: int = 0
+    progress_percent: float = 0.0
+    speed_bytes_per_sec: float | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
+    error_message: str | None = None
 
 
 class TaskProgressData(BaseModel):
@@ -37,7 +57,9 @@ class TaskProgressData(BaseModel):
     speed_bytes_per_sec: float | None = Field(None, description="当前下载速度")
     eta_seconds: int | None = Field(None, description="预计剩余时间(秒)")
     updated_at: str = Field(..., description="最后更新时间(ISO格式)")
-    files: list[FileProgressItem] = Field(default_factory=list, description="文件进度列表")
+    files: list[FileProgressItem] = Field(
+        default_factory=list, description="文件进度列表"
+    )
 
 
 class TaskProgressResponse(BaseResponse[TaskProgressData]):

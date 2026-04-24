@@ -2,7 +2,15 @@
 
 from fastapi import APIRouter
 
-from mgmt_server.api.v1.endpoints import auth, config, dashboard, health, repo, task, user
+from mgmt_server.api.v1.endpoints import (
+    auth,
+    config,
+    dashboard,
+    health,
+    repo,
+    task,
+    user,
+)
 
 api_router = APIRouter()
 

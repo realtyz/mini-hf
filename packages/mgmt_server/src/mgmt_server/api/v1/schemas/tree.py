@@ -1,4 +1,5 @@
 """Internal API tree schemas."""
+
 from pydantic import BaseModel, Field
 
 

@@ -242,38 +242,42 @@ class TaskRepository:
                 case(
                     (Task.status == TaskStatus.RUNNING, 0),
                     (Task.status == TaskStatus.PAUSING, 0),
-                    else_=1
+                    else_=1,
                 ).asc(),
                 # 2. 置顶任务在非RUNNING任务中排前面
                 case(
                     (Task.status == TaskStatus.RUNNING, 1),  # RUNNING任务忽略置顶
-                    (Task.pinned_at.isnot(None), 0),        # 非RUNNING置顶任务
-                    else_=1                                  # 非置顶任务
+                    (Task.pinned_at.isnot(None), 0),  # 非RUNNING置顶任务
+                    else_=1,  # 非置顶任务
                 ).asc(),
                 # 3. 置顶任务后置顶的排前面
                 Task.pinned_at.desc().nulls_last(),
                 # 4. 状态优先级分组（非RUNNING任务）
                 case(
-                    (Task.status == TaskStatus.RUNNING, 0),         # RUNNING任务忽略
+                    (Task.status == TaskStatus.RUNNING, 0),  # RUNNING任务忽略
                     (Task.status == TaskStatus.PAUSING, 0),
                     (Task.status == TaskStatus.PENDING_APPROVAL, 0),
                     (Task.status == TaskStatus.PENDING, 1),
                     (Task.status == TaskStatus.PAUSED, 2),
-                    else_=3
+                    else_=3,
                 ).asc(),
                 # 5a. 对于 PENDING_APPROVAL/PENDING，按 reviewed_at 升序
                 case(
                     (Task.status == TaskStatus.PENDING_APPROVAL, Task.reviewed_at),
                     (Task.status == TaskStatus.PENDING, Task.reviewed_at),
-                    else_=None
-                ).asc().nulls_last(),
+                    else_=None,
+                )
+                .asc()
+                .nulls_last(),
                 # 5b. 对于其他状态，按 completed_at 降序
                 case(
                     (Task.status == TaskStatus.PENDING_APPROVAL, None),
                     (Task.status == TaskStatus.RUNNING, None),
                     (Task.status == TaskStatus.PENDING, None),
-                    else_=Task.completed_at
-                ).desc().nulls_last(),
+                    else_=Task.completed_at,
+                )
+                .desc()
+                .nulls_last(),
             )
             .limit(limit)
             .offset(offset)
@@ -365,9 +369,7 @@ class TaskRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
-    async def get_active_download_task(
-        self, repo_id: str, source: str
-    ) -> Task | None:
+    async def get_active_download_task(self, repo_id: str, source: str) -> Task | None:
         """Get active download task for a specific repo_id and source.
 
         Args:

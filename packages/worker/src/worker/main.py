@@ -19,8 +19,10 @@ Usage:
 
 import asyncio
 import os
+import sys
 
 import click
+from loguru import logger
 
 from worker.worker import Worker
 from worker.handlers import register_handlers
@@ -36,6 +38,11 @@ def cli(debug: bool) -> None:
     """Worker entry point."""
     if debug:
         os.environ["DEBUG"] = "true"
+
+    # Configure loguru log level based on debug flag
+    logger.remove()
+    logger.add(sys.stderr, level="DEBUG" if debug else "INFO")
+
     asyncio.run(main())
 
 

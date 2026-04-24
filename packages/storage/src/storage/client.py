@@ -116,7 +116,9 @@ class S3Client:
         self, client, bucket_name: str, delete_batch: list[dict]
     ) -> dict:
         """Synchronous delete_objects call (runs in thread pool)."""
-        return client.delete_objects(Bucket=bucket_name, Delete={"Objects": delete_batch})
+        return client.delete_objects(
+            Bucket=bucket_name, Delete={"Objects": delete_batch}
+        )
 
     async def upload_file(
         self,
@@ -184,7 +186,9 @@ class S3Client:
     ) -> None:
         """Synchronous upload of file from path to S3 (runs in thread pool)."""
         client.upload_file(
-            file_path, bucket_name, key,
+            file_path,
+            bucket_name,
+            key,
             ExtraArgs=extra_args,
         )
 
@@ -304,7 +308,9 @@ class S3Client:
         if content_type and http_method.lower() == "put":
             params["ContentType"] = content_type
         if download_filename and http_method.lower() == "get":
-            params["ResponseContentDisposition"] = f'attachment; filename="{download_filename}"'
+            params["ResponseContentDisposition"] = (
+                f'attachment; filename="{download_filename}"'
+            )
 
         url = client.generate_presigned_url(
             ClientMethod=f"{http_method.lower()}_object",

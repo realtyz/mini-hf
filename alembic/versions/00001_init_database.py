@@ -5,6 +5,7 @@ Revises:
 Create Date: 2025-04-06 10:00:00.000000
 
 """
+
 from typing import Sequence, Union
 
 from alembic import op
@@ -39,8 +40,15 @@ def upgrade() -> None:
         sa.UniqueConstraint("email"),
         schema="mini_hf",
     )
-    op.create_index("ix_users_active_by_time", "users", ["is_deleted", "created_at"], schema="mini_hf")
-    op.create_index("ix_users_email_active", "users", ["is_deleted", "email"], schema="mini_hf")
+    op.create_index(
+        "ix_users_active_by_time",
+        "users",
+        ["is_deleted", "created_at"],
+        schema="mini_hf",
+    )
+    op.create_index(
+        "ix_users_email_active", "users", ["is_deleted", "email"], schema="mini_hf"
+    )
     op.create_index("ix_users_name", "users", ["name"], schema="mini_hf")
 
     # system_configs table
@@ -88,15 +96,37 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         schema="mini_hf",
     )
-    op.create_index("ix_task_worker_fetch", "tasks", ["status", "reviewed_at", "pinned_at"], schema="mini_hf")
-    op.create_index("ix_task_repo_active", "tasks", ["repo_id", "source", "status"], schema="mini_hf")
+    op.create_index(
+        "ix_task_worker_fetch",
+        "tasks",
+        ["status", "reviewed_at", "pinned_at"],
+        schema="mini_hf",
+    )
+    op.create_index(
+        "ix_task_repo_active",
+        "tasks",
+        ["repo_id", "source", "status"],
+        schema="mini_hf",
+    )
     op.create_index("ix_task_source", "tasks", ["source"], schema="mini_hf")
     op.create_index("ix_task_repo_id", "tasks", ["repo_id"], schema="mini_hf")
     op.create_index("ix_task_status", "tasks", ["status"], schema="mini_hf")
     op.create_index("ix_task_created_at", "tasks", ["created_at"], schema="mini_hf")
-    op.create_index("ix_task_creator_user_id", "tasks", ["creator_user_id"], schema="mini_hf")
-    op.create_index("ix_task_list_user", "tasks", ["creator_user_id", "status", "created_at"], schema="mini_hf")
-    op.create_index("ix_task_list_status_created", "tasks", ["status", "created_at"], schema="mini_hf")
+    op.create_index(
+        "ix_task_creator_user_id", "tasks", ["creator_user_id"], schema="mini_hf"
+    )
+    op.create_index(
+        "ix_task_list_user",
+        "tasks",
+        ["creator_user_id", "status", "created_at"],
+        schema="mini_hf",
+    )
+    op.create_index(
+        "ix_task_list_status_created",
+        "tasks",
+        ["status", "created_at"],
+        schema="mini_hf",
+    )
 
     # hf_repo_profiles table
     op.create_table(
@@ -112,13 +142,30 @@ def upgrade() -> None:
         sa.Column("last_downloaded_at", sa.DateTime(), nullable=True),
         sa.Column("status", sa.String(length=16), nullable=False),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("repo_id", "repo_type", name="uq_repo_profiles_repo_id_repo_type"),
+        sa.UniqueConstraint(
+            "repo_id", "repo_type", name="uq_repo_profiles_repo_id_repo_type"
+        ),
         schema="mini_hf",
     )
-    op.create_index("idx_repo_profiles_repo_id_repo_type", "hf_repo_profiles", ["repo_id", "repo_type"], unique=True, schema="mini_hf")
-    op.create_index("idx_repo_profiles_repo_id", "hf_repo_profiles", ["repo_id"], schema="mini_hf")
-    op.create_index("idx_repo_profiles_status_updated_at", "hf_repo_profiles", ["status", "cache_updated_at"], schema="mini_hf")
-    op.create_index("ix_hf_repo_profiles_status", "hf_repo_profiles", ["status"], schema="mini_hf")
+    op.create_index(
+        "idx_repo_profiles_repo_id_repo_type",
+        "hf_repo_profiles",
+        ["repo_id", "repo_type"],
+        unique=True,
+        schema="mini_hf",
+    )
+    op.create_index(
+        "idx_repo_profiles_repo_id", "hf_repo_profiles", ["repo_id"], schema="mini_hf"
+    )
+    op.create_index(
+        "idx_repo_profiles_status_updated_at",
+        "hf_repo_profiles",
+        ["status", "cache_updated_at"],
+        schema="mini_hf",
+    )
+    op.create_index(
+        "ix_hf_repo_profiles_status", "hf_repo_profiles", ["status"], schema="mini_hf"
+    )
 
     # hf_repo_snapshots table
     op.create_table(
@@ -135,10 +182,27 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         schema="mini_hf",
     )
-    op.create_index("idx_snapshot_repo_type_rev_status", "hf_repo_snapshots", ["repo_id", "repo_type", "revision", "status"], schema="mini_hf")
-    op.create_index("idx_snapshot_repo_type_rev_commit", "hf_repo_snapshots", ["repo_id", "repo_type", "revision", "commit_hash"], schema="mini_hf")
-    op.create_index("idx_snapshot_repo_commit", "hf_repo_snapshots", ["repo_id", "commit_hash"], schema="mini_hf")
-    op.create_index("idx_snapshot_repo_id", "hf_repo_snapshots", ["repo_id"], schema="mini_hf")
+    op.create_index(
+        "idx_snapshot_repo_type_rev_status",
+        "hf_repo_snapshots",
+        ["repo_id", "repo_type", "revision", "status"],
+        schema="mini_hf",
+    )
+    op.create_index(
+        "idx_snapshot_repo_type_rev_commit",
+        "hf_repo_snapshots",
+        ["repo_id", "repo_type", "revision", "commit_hash"],
+        schema="mini_hf",
+    )
+    op.create_index(
+        "idx_snapshot_repo_commit",
+        "hf_repo_snapshots",
+        ["repo_id", "commit_hash"],
+        schema="mini_hf",
+    )
+    op.create_index(
+        "idx_snapshot_repo_id", "hf_repo_snapshots", ["repo_id"], schema="mini_hf"
+    )
 
     # hf_repo_tree_items table
     op.create_table(
@@ -155,12 +219,29 @@ def upgrade() -> None:
         sa.Column("xet_hash", sa.String(length=64), nullable=True),
         sa.Column("is_cached", sa.Boolean(), nullable=True),
         sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("commit_hash", "path", name="uq_hf_repo_tree_items_commit_path"),
+        sa.UniqueConstraint(
+            "commit_hash", "path", name="uq_hf_repo_tree_items_commit_path"
+        ),
         schema="mini_hf",
     )
-    op.create_index("idx_hf_repo_tree_items_commit_hash", "hf_repo_tree_items", ["commit_hash"], schema="mini_hf")
-    op.create_index("idx_hf_repo_tree_items_cached", "hf_repo_tree_items", ["commit_hash", "type", "is_cached"], schema="mini_hf")
-    op.create_index("idx_hf_repo_tree_items_commit_path", "hf_repo_tree_items", ["commit_hash", "path"], schema="mini_hf")
+    op.create_index(
+        "idx_hf_repo_tree_items_commit_hash",
+        "hf_repo_tree_items",
+        ["commit_hash"],
+        schema="mini_hf",
+    )
+    op.create_index(
+        "idx_hf_repo_tree_items_cached",
+        "hf_repo_tree_items",
+        ["commit_hash", "type", "is_cached"],
+        schema="mini_hf",
+    )
+    op.create_index(
+        "idx_hf_repo_tree_items_commit_path",
+        "hf_repo_tree_items",
+        ["commit_hash", "path"],
+        schema="mini_hf",
+    )
 
 
 def downgrade() -> None:

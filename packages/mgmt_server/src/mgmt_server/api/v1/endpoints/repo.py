@@ -15,6 +15,7 @@ from database.db_models import RepoStatus
 from mgmt_server.api.deps import CurrentUserToken, DbDep, RepoServiceDep, UserServiceDep
 from mgmt_server.api.v1.endpoints.user import AdminUserDep
 from mgmt_server.api.v1.schemas.repos import (
+    DeleteRepoResult,
     RepoDetailData,
     RepoDetailResponse,
     RepoListResponse,
@@ -201,7 +202,7 @@ async def delete_repository(
             description="Hard delete: remove all database records including profile. Default is soft delete (preserve profile)."
         ),
     ] = False,
-) -> dict:
+) -> DeleteRepoResult:
     """Delete an entire cached repository."""
     user = await user_service.get_by_email(current_user.email)
     if not user:
@@ -220,9 +221,7 @@ async def get_file_download(
     repo_service: RepoServiceDep,
 ) -> RedirectResponse:
     """Redirect to presigned S3 download URL for a cached file."""
-    presigned_url = await repo_service.get_file_download_url(
-        repo_id, commit_hash, path
-    )
+    presigned_url = await repo_service.get_file_download_url(repo_id, commit_hash, path)
     return RedirectResponse(presigned_url, status_code=302)
 
 

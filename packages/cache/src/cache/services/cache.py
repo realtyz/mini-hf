@@ -157,8 +157,7 @@ class CacheService(BaseService):
 
         ttl = ttl if ttl is not None else self._default_ttl
         serialized_mapping = {
-            self._key(k): self._serializer.serialize(v)
-            for k, v in mapping.items()
+            self._key(k): self._serializer.serialize(v) for k, v in mapping.items()
         }
 
         await self.redis.mset(serialized_mapping)

@@ -5,6 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from mgmt_server.api.v1.schemas.base import BaseResponse
+from mgmt_server.core.constants import UserRole
 
 
 class UserRegisterRequest(BaseModel):
@@ -25,7 +26,7 @@ class UserCreateRequest(BaseModel):
     password: str = Field(
         ..., min_length=6, description="User password (min 6 characters)"
     )
-    role: str = Field(default="user", max_length=255, description="User role")
+    role: UserRole = Field(default=UserRole.USER, description="User role")
     is_active: bool = Field(default=True, description="Whether user is active")
 
 
@@ -36,7 +37,7 @@ class UserUpdateRequest(BaseModel):
         None, min_length=1, max_length=255, description="User name"
     )
     email: EmailStr | None = Field(None, description="User email address")
-    role: str | None = Field(None, max_length=255, description="User role")
+    role: UserRole | None = Field(None, description="User role")
     is_active: bool | None = Field(None, description="Whether user is active")
 
 

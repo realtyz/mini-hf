@@ -3,7 +3,7 @@
 name = "mini-hf"
 version = "0.1.0"
 description = "Model cache repository system for Huggingface/Modelscope"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.12,<3.13"
 dependencies = ["alembic>=1.18.4", "loguru>=0.7.3", "psycopg2-binary>=2.9.11"]
 
 [tool.uv.workspace]

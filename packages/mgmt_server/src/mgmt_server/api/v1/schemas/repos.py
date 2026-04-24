@@ -195,13 +195,33 @@ class RepoTreeResponse(BaseResponse[list[RepoTreeItemResponse]]):
 class DashboardStats(BaseModel):
     """Dashboard statistics data."""
 
-    total_repos: int = Field(..., description="Total number of HuggingFace repositories (excluding inactive)")
+    total_repos: int = Field(
+        ..., description="Total number of HuggingFace repositories (excluding inactive)"
+    )
     total_files: int = Field(..., description="Total number of files in S3 bucket")
     storage_capacity: int = Field(..., description="Total storage capacity in bytes")
-    total_downloads: int = Field(..., description="Total download count across all repositories")
+    total_downloads: int = Field(
+        ..., description="Total download count across all repositories"
+    )
 
 
 class DashboardStatsResponse(BaseResponse[DashboardStats]):
     """Dashboard statistics response."""
 
     pass
+
+
+# ==================== Delete Result ====================
+
+
+class DeleteRepoResult(BaseModel):
+    """Result of repository deletion operation."""
+
+    deleted: bool
+    repo_id: str
+    snapshots_deleted: int = 0
+    tree_items_deleted: int = 0
+    blobs_deleted: int = 0
+    blobs_failed: int = 0
+    profile_deleted: bool = False
+    message: str = ""
