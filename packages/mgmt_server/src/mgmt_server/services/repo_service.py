@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import asyncio
 
-from database.db_models import HfRepoProfile, HfRepoSnapshot, RepoStatus
+from database.db_models import HfRepoProfile, HfRepoSnapshot, HfRepoTreeItem, RepoStatus
 from database.db_repositories import (
     HfRepoProfileRepository,
     HfRepoSnapshotRepository,
     HfRepoTreeRepository,
 )
+from database.db_repositories.hf_repo_snapshot import SizeStats
 from loguru import logger
 from services.task import TaskService
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -39,6 +40,29 @@ class RepoService:
     # Read helpers (used by routes)
     # ------------------------------------------------------------------
 
+    async def list_repos(
+        self,
+        repo_type: str | None = None,
+        skip: int = 0,
+        limit: int = 20,
+        statuses: list[RepoStatus] | None = None,
+        pipeline_tag: str | None = None,
+        search: str | None = None,
+        sort_by: str = "cache_updated_at",
+        sort_order: str = "desc",
+    ) -> tuple[list[HfRepoProfile], int]:
+        """List repositories with filtering, search, sorting and pagination."""
+        return await self._profile_repo.list_repos(
+            repo_type=repo_type,
+            skip=skip,
+            limit=limit,
+            statuses=statuses,
+            pipeline_tag=pipeline_tag,
+            search=search,
+            sort_by=sort_by,
+            sort_order=sort_order,
+        )
+
     async def get_profile_by_repo_id(self, repo_id: str) -> HfRepoProfile | None:
         """Get repository profile by repo_id (without repo_type filter)."""
         return await self._profile_repo.get_profile_by_repo_id(repo_id)
@@ -47,7 +71,7 @@ class RepoService:
         self,
         repo_id: str,
         repo_type: str,
-    ) -> tuple[HfRepoProfile | None, list[HfRepoSnapshot], dict[str, tuple[int, int]]]:
+    ) -> tuple[HfRepoProfile | None, list[HfRepoSnapshot], dict[str, SizeStats]]:
         """Get repository detail with profile and snapshots.
 
         Returns:
@@ -57,7 +81,7 @@ class RepoService:
             repo_id, repo_type=repo_type
         )
 
-        size_stats: dict[str, tuple[int, int]] = {}
+        size_stats: dict[str, SizeStats] = {}
         if snapshots:
             size_stats = await self._snapshot_repo.get_snapshot_size_stats(
                 [s.commit_hash for s in snapshots]
@@ -104,6 +128,23 @@ class RepoService:
             key, download_filename=download_filename
         )
         return presigned_url
+
+    async def get_repo_tree(
+        self, repo_id: str, commit_hash: str
+    ) -> list[HfRepoTreeItem]:
+        """Get repository file tree for a specific commit.
+
+        Raises:
+            NotFoundError: If snapshot not found
+        """
+        snapshots = await self._snapshot_repo.get_snapshots_by_commit(
+            repo_id, commit_hash
+        )
+        if not snapshots:
+            raise NotFoundError(
+                f"Snapshot with commit '{commit_hash}' not found for repository '{repo_id}'"
+            )
+        return await self._tree_repo.get_file_tree(commit_hash)
 
     # ------------------------------------------------------------------
     # Delete orchestration (used by routes)
@@ -236,7 +277,10 @@ class RepoService:
         )
 
         hard_extras = (
-            {"tree_items_deleted": tree_items_deleted, "profile_deleted": profile_deleted}
+            {
+                "tree_items_deleted": tree_items_deleted,
+                "profile_deleted": profile_deleted,
+            }
             if hard
             else {}
         )

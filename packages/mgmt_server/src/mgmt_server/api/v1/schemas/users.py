@@ -14,7 +14,7 @@ class UserRegisterRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="User name")
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(
-        ..., min_length=6, description="User password (min 6 characters)"
+        ..., min_length=6, max_length=64, description="User password (min 6 characters)"
     )
 
 
@@ -24,7 +24,7 @@ class UserCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255, description="User name")
     email: EmailStr = Field(..., description="User email address")
     password: str = Field(
-        ..., min_length=6, description="User password (min 6 characters)"
+        ..., min_length=6, max_length=64, description="User password (min 6 characters)"
     )
     role: UserRole = Field(default=UserRole.USER, description="User role")
     is_active: bool = Field(default=True, description="Whether user is active")
@@ -52,9 +52,11 @@ class UserSelfUpdateRequest(BaseModel):
 class UserPasswordUpdateRequest(BaseModel):
     """Password update request schema (self-service)."""
 
-    current_password: str = Field(..., description="Current password")
+    current_password: str = Field(
+        ..., min_length=6, max_length=64, description="Current password"
+    )
     new_password: str = Field(
-        ..., min_length=6, description="New password (min 6 characters)"
+        ..., min_length=6, max_length=64, description="New password (min 6 characters)"
     )
 
 
@@ -62,7 +64,7 @@ class AdminPasswordResetRequest(BaseModel):
     """Admin password reset request schema."""
 
     new_password: str = Field(
-        ..., min_length=6, description="New password (min 6 characters)"
+        ..., min_length=6, max_length=64, description="New password (min 6 characters)"
     )
 
 
@@ -74,7 +76,7 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
-    role: str
+    role: UserRole
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -100,5 +102,3 @@ class UserUpdateResponse(BaseResponse[UserResponse]):
 
 class PasswordResetResponse(BaseResponse[None]):
     """Password reset response schema."""
-
-    message: str = "Password reset successfully"

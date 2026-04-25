@@ -1,25 +1,33 @@
 """Authentication endpoints."""
 
+import asyncio
+import time
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from loguru import logger
 
 from core.settings import settings
 from mgmt_server.api.deps import (
     CurrentUserToken,
     RefreshUser,
+    TokenServiceDep,
     UserServiceDep,
     VerifyCodeServiceDep,
 )
 from mgmt_server.api.v1.schemas.auth import (
     LoginResponse,
     RefreshTokenResponse,
+    TokenData,
     RegisterWithCodeRequest,
+    SendVerifyCodeData,
     SendVerifyCodeRequest,
     SendVerifyCodeResponse,
+    TokenVerifyData,
     TokenVerifyResponse,
+    VerifyEmailData,
     VerifyEmailRequest,
     VerifyEmailResponse,
 )
@@ -29,7 +37,12 @@ from mgmt_server.api.v1.schemas.users import (
     UserResponse,
 )
 from mgmt_server.core.constants import UserRole
-from mgmt_server.core.security import create_access_token, create_refresh_token
+from mgmt_server.core.security import (
+    build_token_payload,
+    create_access_token,
+    create_refresh_token,
+)
+from mgmt_server.services.token_service import TokenReplayError
 
 
 router = APIRouter()
@@ -39,23 +52,12 @@ router = APIRouter()
 async def sign_in(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     user_service: UserServiceDep,
+    token_service: TokenServiceDep,
 ) -> LoginResponse:
     """Login with email and password, returns JWT access token.
 
     Uses OAuth2PasswordRequestForm for standard OAuth2 password flow.
-
-    Args:
-        form_data: OAuth2 form data with username (email) and password
-        user_service: User service dependency
-
-    Returns:
-        Login response with access token and token type
-
-    Raises:
-        HTTPException: If credentials are invalid
     """
-    # Authenticate user using user service
-    # OAuth2PasswordRequestForm uses 'username' field for the identifier (email)
     user = await user_service.authenticate(
         email=form_data.username,
         password=form_data.password,
@@ -68,31 +70,22 @@ async def sign_in(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # Create access token with user info
     access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={
-            "sub": user.email,
-            "user_id": user.id,
-            "role": user.role,
-        },
+    payload = build_token_payload(user.email, user.id, user.role)
+    access_token, access_jti = create_access_token(
+        data=payload,
         expires_delta=access_token_expires,
     )
-
-    # Create refresh token
-    refresh_token = create_refresh_token(
-        data={
-            "sub": user.email,
-            "user_id": user.id,
-            "role": user.role,
-        }
-    )
+    refresh_token, family_id, jti = create_refresh_token(data=payload)
+    await token_service.create_family(user_id=user.id, jti=jti)
 
     return LoginResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
-        expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        data=TokenData(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
     )
 
 
@@ -100,21 +93,14 @@ async def sign_in(
 async def verify_token_endpoint(
     current_user: CurrentUserToken,
 ) -> TokenVerifyResponse:
-    """Verify if the current token is valid.
-
-    Args:
-        current_user: Current authenticated user token payload
-
-    Returns:
-        Token verification response with user info
-    """
+    """Verify if the current token is valid."""
     return TokenVerifyResponse(
-        data={
-            "valid": True,
-            "email": current_user.email,
-            "user_id": current_user.user_id,
-            "role": current_user.role,
-        }
+        data=TokenVerifyData(
+            valid=True,
+            email=current_user.email,
+            user_id=current_user.user_id,
+            role=current_user.role,
+        )
     )
 
 
@@ -125,34 +111,17 @@ async def register_user(
     request: UserRegisterRequest,
     user_service: UserServiceDep,
 ) -> UserCreateResponse:
-    """Register a new user (self-registration).
-
-    Args:
-        request: Registration request with name, email, password
-        user_service: User service dependency
-
-    Returns:
-        Created user information (role defaults to "user")
-
-    Raises:
-        HTTPException: If email already exists or validation fails
-    """
-    try:
-        user = await user_service.create_user(
-            name=request.name,
-            email=request.email,
-            password=request.password,
-            role=UserRole.USER,  # Self-registered users always get "user" role
-        )
-        return UserCreateResponse(data=UserResponse.model_validate(user))
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(e),
-        )
+    """Register a new user (self-registration)."""
+    user = await user_service.create_user(
+        name=request.name,
+        email=request.email,
+        password=request.password,
+        role=UserRole.USER,
+    )
+    return UserCreateResponse(data=UserResponse.model_validate(user))
 
 
-# ==================== 邮箱验证码相关 API ====================
+# --- Email verification code APIs ---
 
 
 @router.post("/send-verify-code", response_model=SendVerifyCodeResponse)
@@ -161,28 +130,35 @@ async def send_verify_code(
     user_service: UserServiceDep,
     verify_code_service: VerifyCodeServiceDep,
 ) -> SendVerifyCodeResponse:
-    """发送邮箱验证码.
+    """Send email verification code.
 
-    Args:
-        request: 发送验证码请求
-        user_service: 用户服务
-        verify_code_service: 验证码服务
-
-    Returns:
-        发送结果和下次可重发时间
-
-    Raises:
-        HTTPException: 如果邮箱已注册或发送失败
+    Returns a uniform response regardless of whether the email is already
+    registered, to prevent user enumeration attacks. A minimum elapsed-time
+    floor is enforced so that timing differences between the two SMTP paths
+    (notification vs verification code) cannot be used to distinguish them.
     """
-    # 检查邮箱是否已注册
+    start = time.monotonic()
+    # Floor time masks SMTP timing differences between branches.
+    MIN_ELAPSED = 2.0
+
     existing_user = await user_service.get_by_email(request.email)
     if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="该邮箱已被注册",
+        # Both branches perform SMTP I/O, but the templates differ so
+        # processing time may vary. The MIN_ELAPSED floor below ensures
+        # the total response time is not distinguishable.
+        try:
+            await verify_code_service.send_already_registered_notification(
+                request.email,
+            )
+        except Exception:
+            pass  # swallow errors to avoid leaking registered-user info
+        elapsed = time.monotonic() - start
+        if elapsed < MIN_ELAPSED:
+            await asyncio.sleep(MIN_ELAPSED - elapsed)
+        return SendVerifyCodeResponse(
+            data=SendVerifyCodeData(resend_after=60),
         )
 
-    # 发送验证码
     success, message, resend_after = await verify_code_service.send_code(
         email=request.email,
     )
@@ -193,10 +169,11 @@ async def send_verify_code(
             detail=message,
         )
 
+    elapsed = time.monotonic() - start
+    if elapsed < MIN_ELAPSED:
+        await asyncio.sleep(MIN_ELAPSED - elapsed)
     return SendVerifyCodeResponse(
-        data={
-            "resend_after": resend_after,
-        }
+        data=SendVerifyCodeData(resend_after=resend_after),
     )
 
 
@@ -205,22 +182,11 @@ async def verify_email(
     request: VerifyEmailRequest,
     verify_code_service: VerifyCodeServiceDep,
 ) -> VerifyEmailResponse:
-    """验证邮箱验证码.
-
-    Args:
-        request: 验证请求
-        verify_code_service: 验证码服务
-
-    Returns:
-        验证结果
-
-    Raises:
-        HTTPException: 如果验证码无效或已过期
-    """
+    """Verify email verification code."""
     success, message = await verify_code_service.verify_code(
         email=request.email,
         code=request.code,
-        delete_on_success=False,
+        delete_on_success=True,
     )
 
     if not success:
@@ -230,10 +196,7 @@ async def verify_email(
         )
 
     return VerifyEmailResponse(
-        data={
-            "verified": True,
-            "email": request.email,
-        }
+        data=VerifyEmailData(verified=True, email=request.email),
     )
 
 
@@ -247,25 +210,16 @@ async def register_with_code(
     user_service: UserServiceDep,
     verify_code_service: VerifyCodeServiceDep,
 ) -> UserCreateResponse:
-    """通过验证码注册.
+    """Register with verification code.
 
-    先验证验证码，验证通过后创建用户。
-
-    Args:
-        request: 注册请求
-        user_service: 用户服务
-        verify_code_service: 验证码服务
-
-    Returns:
-        创建的用户信息
-
-    Raises:
-        HTTPException: 如果验证码无效或邮箱已注册
+    Verifies the code first, then creates the user.
+    Re-checks email existence after verification to mitigate TOCTOU race.
     """
-    # 验证验证码
+    # Verify the code
     success, message = await verify_code_service.verify_code(
         email=request.email,
         code=request.code,
+        delete_on_success=True,
     )
 
     if not success:
@@ -274,50 +228,89 @@ async def register_with_code(
             detail=message,
         )
 
-    # 创建用户
-    try:
-        user = await user_service.create_user(
-            name=request.name,
-            email=request.email,
-            password=request.password,
-            role=UserRole.USER,
-        )
-        return UserCreateResponse(data=UserResponse.model_validate(user))
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail=str(e),
-        )
+    # Re-check email after verification to close TOCTOU window
+    user = await user_service.create_user(
+        name=request.name,
+        email=request.email,
+        password=request.password,
+        role=UserRole.USER,
+    )
+    return UserCreateResponse(data=UserResponse.model_validate(user))
 
 
 @router.post("/refresh", response_model=RefreshTokenResponse)
 async def refresh_access_token(
-    refresh_user: RefreshUser,
+    user: RefreshUser,
+    token_service: TokenServiceDep,
 ) -> RefreshTokenResponse:
     """Refresh access token using refresh token.
 
-    Args:
-        refresh_user: User authenticated via refresh token
-
-    Returns:
-        New access token response
-
-    Raises:
-        HTTPException: If refresh token is invalid or user is inactive
+    Implements Refresh Token Rotation with server-side family tracking:
+    - Validates the refresh token's jti against Redis
+    - Detects replay attacks (reused token) and revokes the entire family
+    - Issues new access + refresh tokens, rotating the jti
     """
-    # Create new access token
+    if not user.family_id or not user.jti:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid refresh token: missing family_id or jti",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    try:
+        new_refresh_token, family_id, new_jti = create_refresh_token(
+            data=build_token_payload(user.email, user.user_id, user.role),
+            family_id=user.family_id,
+        )
+        await token_service.validate_and_rotate(
+            family_id=user.family_id,
+            jti=user.jti,
+            new_jti=new_jti,
+        )
+    except TokenReplayError as e:
+        logger.warning("Refresh token replay: {}", e)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Refresh token has been revoked. Please sign in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={
-            "sub": refresh_user.email,
-            "user_id": refresh_user.user_id,
-            "role": refresh_user.role,
-        },
+    access_token, _access_jti = create_access_token(
+        data=build_token_payload(user.email, user.user_id, user.role),
         expires_delta=access_token_expires,
     )
 
     return RefreshTokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        data=TokenData(
+            access_token=access_token,
+            refresh_token=new_refresh_token,
+            token_type="bearer",
+            expires_in=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
     )
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(
+    request: Request,
+    user: RefreshUser,
+    token_service: TokenServiceDep,
+) -> None:
+    """Logout by revoking the refresh token family and the current access token.
+
+    Accepts the refresh token in the Authorization header and an optional
+    X-Access-Token header with the current access token for immediate revocation.
+    Revokes the entire refresh token family on the server side.
+    """
+    if user.family_id:
+        await token_service.revoke_family(user.family_id)
+
+    # Revoke the current access token so it cannot be reused
+    access_token = request.headers.get("X-Access-Token")
+    if access_token:
+        from mgmt_server.core.security import decode_access_token
+
+        payload = decode_access_token(access_token)
+        if payload and payload.get("jti"):
+            await token_service.revoke_access_token(payload["jti"])

@@ -29,13 +29,15 @@ export interface LoginRequest {
   password: string
 }
 
-export interface LoginResponse {
+export interface LoginData {
   access_token: string
   refresh_token: string
   token_type: string
   /** Access token expiration time in seconds */
   expires_in: number
 }
+
+export type LoginResponse = ApiResponse<LoginData>
 
 export interface TokenVerifyResponse {
   valid: boolean

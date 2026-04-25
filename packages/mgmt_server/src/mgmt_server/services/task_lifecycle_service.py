@@ -119,45 +119,48 @@ class TaskLifecycleService:
         config_service = self._config_service
         notification_config = await config_service.get_notification_config()
 
-        auto_approve_enabled = notification_config["auto_approve_enabled"]
-        auto_approve_threshold_gb = notification_config["auto_approve_threshold_gb"]
-        task_approval_push = notification_config["task_approval_push"]
-        notification_email = notification_config["email"]
+        auto_approve_enabled = notification_config.auto_approve_enabled
+        auto_approve_threshold_gb = notification_config.auto_approve_threshold_gb
+        task_approval_push = notification_config.task_approval_push
+        notification_email = notification_config.email
 
         required_storage_gb = task.required_storage / BYTES_PER_GB
 
-        # Auto-approval logic
-        if auto_approve_enabled and required_storage_gb < auto_approve_threshold_gb:
-            return await self._try_auto_approve(task, user, required_storage_gb, auto_approve_threshold_gb)
+        task = await self._auto_approve(
+            task,
+            user,
+            required_storage_gb,
+            auto_approve_enabled,
+            auto_approve_threshold_gb,
+        )
 
-        # Determine if notification email should be sent
-        should_send_email = bool(task_approval_push and notification_email)
-
-        if not auto_approve_enabled and required_storage_gb >= auto_approve_threshold_gb:
-            logger.info(
-                "Task {} requires manual approval: required_storage={:.2f}GB >= threshold={}GB",
-                task.id,
-                required_storage_gb,
-                auto_approve_threshold_gb,
-            )
-
-        if should_send_email:
-            logger.info("Sending approval notification email for task {}", task.id)
-            await task_notification_service.send_task_approval_notification(
-                task=task,
-                notification_emails=notification_email,
-            )
+        await self._notify_if_needed(
+            task,
+            required_storage_gb,
+            auto_approve_enabled,
+            auto_approve_threshold_gb,
+            task_approval_push,
+            notification_email,
+        )
 
         return task
 
-    async def _try_auto_approve(
+    async def _auto_approve(
         self,
         task: Task,
         user: User,
         required_storage_gb: float,
+        auto_approve_enabled: bool,
         threshold_gb: float,
     ) -> Task:
-        """Attempt to auto-approve a task."""
+        """Attempt to auto-approve a task if eligible.
+
+        If auto-approval fails, the task remains in PENDING_APPROVAL so that
+        the notification logic can still send an approval email.
+        """
+        if not auto_approve_enabled or required_storage_gb >= threshold_gb:
+            return task
+
         logger.info(
             "Task {} auto-approved: required_storage={:.2f}GB < threshold={}GB",
             task.id,
@@ -176,6 +179,36 @@ class TaskLifecycleService:
         except Exception as e:
             logger.error("Failed to auto-approve task {}: {}", task.id, e)
         return task
+
+    async def _notify_if_needed(
+        self,
+        task: Task,
+        required_storage_gb: float,
+        auto_approve_enabled: bool,
+        threshold_gb: float,
+        task_approval_push: bool,
+        notification_email: str | None,
+    ) -> None:
+        """Send approval notification email if needed."""
+        if task.status != TaskStatus.PENDING_APPROVAL:
+            return
+
+        if not task_approval_push or not notification_email:
+            return
+
+        if not auto_approve_enabled and required_storage_gb >= threshold_gb:
+            logger.info(
+                "Task {} requires manual approval: required_storage={:.2f}GB >= threshold={}GB",
+                task.id,
+                required_storage_gb,
+                threshold_gb,
+            )
+
+        logger.info("Sending approval notification email for task {}", task.id)
+        await task_notification_service.send_task_approval_notification(
+            task=task,
+            notification_emails=notification_email,
+        )
 
     # ------------------------------------------------------------------
     # Lifecycle actions
@@ -355,22 +388,15 @@ class TaskLifecycleService:
 
     async def list_tasks(
         self,
-        status_str: str | None,
+        status: TaskStatus | None,
         search: str | None,
         limit: int,
         skip: int,
         user: User,
     ) -> TaskListResponse:
-        status_filter = None
-        if status_str:
-            try:
-                status_filter = TaskStatus(status_str)
-            except ValueError:
-                raise ValidationError(f"Invalid status: '{status_str}'")
-
         creator_user_id = None if user.role == UserRole.ADMIN else user.id
         total, tasks = await self._task_service.list_tasks(
-            status=status_filter,
+            status=status,
             limit=limit,
             skip=skip,
             creator_user_id=creator_user_id,
@@ -381,22 +407,15 @@ class TaskLifecycleService:
 
     async def list_public_tasks(
         self,
-        status_str: str | None,
+        status: TaskStatus | None,
         search: str | None,
         limit: int,
         skip: int,
         hours: int,
     ) -> TaskListResponse:
-        status_filter = None
-        if status_str:
-            try:
-                status_filter = TaskStatus(status_str)
-            except ValueError:
-                raise ValidationError(f"Invalid status: '{status_str}'")
-
         since = datetime.now() - timedelta(hours=hours)
         total, tasks = await self._task_service.list_tasks(
-            status=status_filter,
+            status=status,
             limit=limit,
             skip=skip,
             since=since,

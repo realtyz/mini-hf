@@ -1,4 +1,8 @@
-"""Token encoding/decoding utilities for preview tasks."""
+"""Token encoding/decoding utilities for preview tasks.
+
+NOTE: base64 is encoding, NOT encryption. Anyone with access to the cache
+can decode the token. Do not rely on this for confidentiality.
+"""
 
 import base64
 

@@ -56,7 +56,12 @@ class UserService:
         return await self._repo.get_by_name(name)
 
     async def create_user(
-        self, name: str, email: str, password: str, role: UserRole = UserRole.USER
+        self,
+        name: str,
+        email: str,
+        password: str,
+        role: UserRole = UserRole.USER,
+        is_active: bool = True,
     ) -> User:
         """Create a new user.
 
@@ -76,6 +81,7 @@ class UserService:
             email=email,
             hashed_password=hashed_password,
             role=role,
+            is_active=is_active,
         )
         logger.info("User created successfully: {}", _mask_email(email))
         return user
@@ -94,12 +100,16 @@ class UserService:
             skip=skip, limit=limit, email_search=email_search
         )
 
-    async def _get_user_or_raise(self, user_id: int) -> User:
+    async def get_or_raise(self, user_id: int) -> User:
         """Fetch user by ID or raise NotFoundError."""
         user = await self._repo.get_by_id(user_id)
         if not user:
-            raise NotFoundError(f"User '{user_id}' not found")
+            raise NotFoundError(f"User with ID {user_id} not found")
         return user
+
+    async def _get_user_or_raise(self, user_id: int) -> User:
+        """Fetch user by ID or raise NotFoundError. Deprecated: use get_or_raise."""
+        return await self.get_or_raise(user_id)
 
     async def _update_password(self, user: User, new_password: str) -> None:
         """Hash and set new password for a user."""
@@ -172,6 +182,32 @@ class UserService:
 
         await self._update_password(user, new_password)
         logger.info("Password reset successfully for user {}", user_id)
+
+    async def deactivate_user_with_admin_check(self, user_id: int) -> None:
+        """Deactivate a user, atomically checking they aren't the last active admin.
+
+        Uses SELECT ... FOR UPDATE to lock admin rows during the check, preventing
+        concurrent requests from both passing and deleting the last admin.
+
+        Raises:
+            NotFoundError: If user not found
+            ValidationError: If user is the last active admin
+        """
+        logger.info("Deactivating user {} with admin check", user_id)
+
+        user = await self._get_user_or_raise(user_id)
+
+        if user.role == UserRole.ADMIN and user.is_active:
+            remaining = await self._repo.lock_and_count_active_admins(
+                exclude_user_id=user_id
+            )
+            if remaining < 1:
+                raise ValidationError("Cannot deactivate the last active admin user")
+
+        user.is_active = False
+        user.is_deleted = True
+        await self._repo.update(user)
+        logger.info("User {} deactivated successfully", user_id)
 
     async def deactivate_user(self, user_id: int) -> None:
         """Deactivate and logically delete a user.

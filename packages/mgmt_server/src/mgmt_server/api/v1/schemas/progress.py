@@ -6,63 +6,47 @@ from mgmt_server.api.v1.schemas.base import BaseResponse
 
 
 class FileProgressItem(BaseModel):
-    """单个文件进度项."""
+    """Single file progress item."""
 
-    model_config = ConfigDict(from_attributes=True)
-
-    path: str = Field(..., description="文件路径")
+    path: str = Field(..., description="File path")
     status: str = Field(
-        ..., description="文件状态: pending/downloading/completed/failed"
+        ..., description="File status: pending/downloading/completed/failed"
     )
-    downloaded_bytes: int = Field(0, description="已下载字节数")
-    total_bytes: int = Field(0, description="总字节数")
-    progress_percent: float = Field(0.0, description="下载进度百分比")
-    speed_bytes_per_sec: float | None = Field(None, description="下载速度(字节/秒)")
-    started_at: str | None = Field(None, description="开始时间(ISO格式)")
-    completed_at: str | None = Field(None, description="完成时间(ISO格式)")
-    error_message: str | None = Field(None, description="错误信息(如果失败)")
-
-
-class CachedFileProgressData(BaseModel):
-    """Cache 中存储的文件进度数据结构。
-
-    用于将 Redis 缓存中的 dict 安全解析为类型化结构，
-    避免在 parse_file_progress_items 中逐字段 .get() 调用。
-    """
-
-    path: str = ""
-    status: str = "pending"
-    downloaded_bytes: int = 0
-    total_bytes: int = 0
-    progress_percent: float = 0.0
-    speed_bytes_per_sec: float | None = None
-    started_at: str | None = None
-    completed_at: str | None = None
-    error_message: str | None = None
+    downloaded_bytes: int = Field(0, description="Downloaded bytes")
+    total_bytes: int = Field(0, description="Total bytes")
+    progress_percent: float = Field(0.0, description="Download progress percentage")
+    speed_bytes_per_sec: float | None = Field(
+        None, description="Download speed (bytes/sec)"
+    )
+    started_at: str | None = Field(None, description="Start time (ISO format)")
+    completed_at: str | None = Field(None, description="Completion time (ISO format)")
+    error_message: str | None = Field(None, description="Error message (if failed)")
 
 
 class TaskProgressData(BaseModel):
-    """任务整体进度数据."""
+    """Task overall progress data."""
 
     model_config = ConfigDict(from_attributes=True)
 
-    task_id: int = Field(..., description="任务ID")
-    status: str = Field(..., description="任务状态: running/completed/failed")
-    progress_percent: float = Field(0.0, description="整体进度百分比")
-    downloaded_files: int = Field(0, description="已完成文件数")
-    total_files: int = Field(0, description="总文件数")
-    downloaded_bytes: int = Field(0, description="已下载字节数")
-    total_bytes: int = Field(0, description="总字节数")
-    current_file: str | None = Field(None, description="当前正在下载的文件")
-    speed_bytes_per_sec: float | None = Field(None, description="当前下载速度")
-    eta_seconds: int | None = Field(None, description="预计剩余时间(秒)")
-    updated_at: str = Field(..., description="最后更新时间(ISO格式)")
+    task_id: int = Field(..., description="Task ID")
+    status: str = Field(..., description="Task status: running/completed/failed")
+    progress_percent: float = Field(0.0, description="Overall progress percentage")
+    downloaded_files: int = Field(0, description="Completed file count")
+    total_files: int = Field(0, description="Total file count")
+    downloaded_bytes: int = Field(0, description="Downloaded bytes")
+    total_bytes: int = Field(0, description="Total bytes")
+    current_file: str | None = Field(None, description="Current downloading file")
+    speed_bytes_per_sec: float | None = Field(
+        None, description="Current download speed"
+    )
+    eta_seconds: int | None = Field(
+        None, description="Estimated remaining time (seconds)"
+    )
+    updated_at: str = Field(..., description="Last update time (ISO format)")
     files: list[FileProgressItem] = Field(
-        default_factory=list, description="文件进度列表"
+        default_factory=list, description="File progress list"
     )
 
 
 class TaskProgressResponse(BaseResponse[TaskProgressData]):
-    """任务进度响应."""
-
-    pass
+    """Task progress response."""

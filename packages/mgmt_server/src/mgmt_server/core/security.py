@@ -1,15 +1,23 @@
 """Security utilities for JWT authentication."""
 
+import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
+from pydantic import BaseModel
 from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 
 from core.settings import settings
+from cache import cache_service as _cache_service
+from cache.services.cache import CacheService
+
+
+async def _get_cache_service() -> CacheService:
+    return _cache_service
 
 # Password hashing using bcrypt (Windows compatible)
 password_hash = PasswordHash((BcryptHasher(),))
@@ -23,25 +31,30 @@ oauth2_refresh_scheme = OAuth2PasswordBearer(
 )
 
 
-def create_refresh_token(data: dict) -> str:
+def create_refresh_token(
+    data: dict,
+    family_id: str | None = None,
+) -> tuple[str, str, str]:
     """Create a JWT refresh token with longer expiration.
 
     Args:
         data: Data to encode in the token (e.g., {"sub": user_id, "type": "refresh"})
+        family_id: Token family ID. If None, a new family is created.
 
     Returns:
-        Encoded JWT refresh token string
+        Tuple of (encoded_jwt, family_id, jti)
     """
     to_encode = data.copy()
-    # Refresh token expires in 7 days
+    fid = family_id or str(uuid.uuid4())
+    jti = str(uuid.uuid4())
     expire = datetime.now(timezone.utc) + timedelta(days=7)
-    to_encode.update({"exp": expire, "type": "refresh"})
+    to_encode.update({"exp": expire, "type": "refresh", "family_id": fid, "jti": jti})
     encoded_jwt = jwt.encode(
         to_encode,
         settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
     )
-    return encoded_jwt
+    return encoded_jwt, fid, jti
 
 
 def hash_password(password: str) -> str:
@@ -69,7 +82,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hash.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> tuple[str, str]:
     """Create a JWT access token with user info.
 
     Args:
@@ -77,9 +90,10 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
         expires_delta: Optional custom expiration time
 
     Returns:
-        Encoded JWT token string
+        Tuple of (encoded_jwt, jti)
     """
     to_encode = data.copy()
+    jti = str(uuid.uuid4())
 
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -88,13 +102,13 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
             minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
         )
 
-    to_encode.update({"exp": expire, "type": "access"})
+    to_encode.update({"exp": expire, "type": "access", "jti": jti})
     encoded_jwt = jwt.encode(
         to_encode,
         settings.JWT_SECRET_KEY,
         algorithm=settings.JWT_ALGORITHM,
     )
-    return encoded_jwt
+    return encoded_jwt, jti
 
 
 def decode_access_token(token: str) -> Optional[dict]:
@@ -143,29 +157,51 @@ def decode_refresh_token(token: str) -> Optional[dict]:
         return None
 
 
-class TokenPayload:
+class TokenPayload(BaseModel):
     """Token payload with user info."""
 
-    def __init__(self, payload: dict):
-        self.email: str = payload.get("sub", "")
-        self.user_id: int = payload.get("user_id", 0)
-        self.role: str = payload.get("role", "")
-        self.original_payload = payload
+    email: str
+    user_id: int
+    role: str
+    family_id: str | None = None
+    jti: str | None = None
+
+    @classmethod
+    def from_jwt_payload(cls, payload: dict) -> "TokenPayload":
+        """Create TokenPayload from a decoded JWT dict, raising on missing fields."""
+        sub = payload.get("sub")
+        user_id = payload.get("user_id")
+        if sub is None or user_id is None:
+            raise ValueError("Token payload missing required fields (sub, user_id)")
+        return cls(
+            email=sub,
+            user_id=user_id,
+            role=payload.get("role", ""),
+            family_id=payload.get("family_id"),
+            jti=payload.get("jti"),
+        )
+
+
+def build_token_payload(email: str, user_id: int, role: str) -> dict:
+    """Build JWT token payload dict."""
+    return {"sub": email, "user_id": user_id, "role": role}
 
 
 async def verify_bearer_token(
     token: Annotated[str, Depends(oauth2_scheme)],
+    cache_service: Annotated[CacheService, Depends(_get_cache_service)],
 ) -> TokenPayload:
     """Verify bearer token and return token payload with user info.
 
     Args:
         token: JWT access token from OAuth2 scheme
+        cache_service: Cache service for revocation checks
 
     Returns:
         TokenPayload containing user email, user_id, and role
 
     Raises:
-        HTTPException: If token is missing or invalid
+        HTTPException: If token is missing, invalid, or revoked
     """
     payload = decode_access_token(token)
 
@@ -176,15 +212,27 @@ async def verify_bearer_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    email: Optional[str] = payload.get("sub")
-    if email is None:
+    try:
+        tp = TokenPayload.from_jwt_payload(payload)
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token: missing subject",
+            detail="Invalid token: missing required fields",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return TokenPayload(payload)
+    # Check access token revocation list in Redis
+    jti = payload.get("jti")
+    if jti:
+        revoked = await cache_service.exists(f"access_revoke:{jti}")
+        if revoked:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token has been revoked",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+    return tp
 
 
 async def verify_refresh_token(
@@ -217,12 +265,11 @@ async def verify_refresh_token(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    email: Optional[str] = payload.get("sub")
-    if email is None:
+    try:
+        return TokenPayload.from_jwt_payload(payload)
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token: missing subject",
+            detail="Invalid refresh token: missing required fields",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    return TokenPayload(payload)

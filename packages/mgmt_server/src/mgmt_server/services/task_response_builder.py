@@ -8,7 +8,6 @@ from database.db_models import Task, User
 
 from mgmt_server.api.v1.schemas import (
     ActiveTaskListResponse,
-    CachedFileProgressData,
     FileProgressItem,
     TaskCreatorUser,
     TaskDetailResponse,
@@ -43,7 +42,7 @@ def build_task_response(
         repo_type=task.repo_type,
         revision=task.revision,
         hf_endpoint=task.hf_endpoint,
-        status=task.status.value,
+        status=task.status,
         error_message=task.error_message,
         created_at=task.created_at,
         reviewed_at=task.reviewed_at,
@@ -101,18 +100,17 @@ def build_file_progress_items(
     items: list[FileProgressItem] = []
     for file_data in file_data_list:
         if file_data:
-            cached = CachedFileProgressData.model_validate(file_data)
             items.append(
                 FileProgressItem(
-                    path=cached.path,
-                    status=cached.status,
-                    downloaded_bytes=cached.downloaded_bytes,
-                    total_bytes=cached.total_bytes,
-                    progress_percent=cached.progress_percent,
-                    speed_bytes_per_sec=cached.speed_bytes_per_sec,
-                    started_at=cached.started_at,
-                    completed_at=cached.completed_at,
-                    error_message=cached.error_message,
+                    path=file_data.get("path", ""),
+                    status=file_data.get("status", "pending"),
+                    downloaded_bytes=file_data.get("downloaded_bytes", 0),
+                    total_bytes=file_data.get("total_bytes", 0),
+                    progress_percent=file_data.get("progress_percent", 0.0),
+                    speed_bytes_per_sec=file_data.get("speed_bytes_per_sec"),
+                    started_at=file_data.get("started_at"),
+                    completed_at=file_data.get("completed_at"),
+                    error_message=file_data.get("error_message"),
                 )
             )
     return items
@@ -124,11 +122,11 @@ def build_progress_response(
     task_id: int,
 ) -> TaskProgressResponse:
     """Build TaskProgressResponse from cached task and file data."""
-    files = sorted(files, key=lambda x: x.path)
+    sorted_files = sorted(files, key=lambda x: x.path)
 
-    total_bytes = sum(f.total_bytes for f in files)
-    downloaded_bytes = sum(f.downloaded_bytes for f in files)
-    completed_files = sum(1 for f in files if f.status == "completed")
+    total_bytes = sum(f.total_bytes for f in sorted_files)
+    downloaded_bytes = sum(f.downloaded_bytes for f in sorted_files)
+    completed_files = sum(1 for f in sorted_files if f.status == "completed")
 
     progress_percent = (
         (downloaded_bytes / total_bytes * 100) if total_bytes > 0 else 0.0
@@ -139,14 +137,14 @@ def build_progress_response(
         status=task_data.get("status", "unknown"),
         progress_percent=round(progress_percent, 2),
         downloaded_files=completed_files,
-        total_files=len(files) or task_data.get("total_files", 0),
+        total_files=len(sorted_files) or task_data.get("total_files", 0),
         downloaded_bytes=downloaded_bytes,
         total_bytes=total_bytes or task_data.get("total_bytes", 0),
         current_file=task_data.get("current_file"),
         speed_bytes_per_sec=task_data.get("speed_bytes_per_sec"),
         eta_seconds=task_data.get("eta_seconds"),
         updated_at=task_data.get("updated_at", ""),
-        files=files,
+        files=sorted_files,
     )
 
     return TaskProgressResponse(data=progress_data)

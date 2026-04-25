@@ -309,6 +309,37 @@ class ConfigProvider:
             logger.info("Config deleted: %s", key)
         return result
 
+    async def bulk_set(self, items: list[dict]) -> None:
+        """Set multiple configuration values in a single transaction.
+
+        Args:
+            items: List of dicts with keys: key, value, category, description, is_sensitive
+        """
+        processed = []
+        for item in items:
+            stored_value = item["value"]
+            if item.get("is_sensitive"):
+                stored_value = self._encrypt(stored_value)
+            processed.append(
+                {
+                    "key": item["key"],
+                    "value": stored_value,
+                    "category": item.get("category", "general"),
+                    "description": item.get("description"),
+                    "is_sensitive": item.get("is_sensitive", False),
+                }
+            )
+
+        await self._repo.bulk_set(processed)
+
+        for item in items:
+            self._set_cache(item["key"], item["value"])
+            logger.info(
+                "Config updated: %s (category: %s)",
+                item["key"],
+                item.get("category", "general"),
+            )
+
     async def initialize_defaults(
         self,
         defaults: list[dict],

@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { UserResponse } from '@/lib/api-types'
+import { config } from '@/lib/runtime-config'
 
 /**
  * 认证状态管理
@@ -22,8 +23,9 @@ interface AuthState {
   // Actions
   login: (accessToken: string, refreshToken: string, expiresIn: number) => void
   logout: () => void
+  serverLogout: () => Promise<void>
   setUser: (user: UserResponse) => void
-  setToken: (token: string, expiresIn: number) => void
+  setToken: (token: string, expiresIn: number, refreshToken?: string) => void
   isTokenExpired: () => boolean
   isTokenAboutToExpire: (bufferSeconds?: number) => boolean
 }
@@ -56,15 +58,37 @@ export const useAuthStore = create<AuthState>()(
         })
       },
 
+      serverLogout: async () => {
+        const { token, refreshToken } = get()
+        if (refreshToken) {
+          try {
+            const headers: Record<string, string> = {
+              Authorization: `Bearer ${refreshToken}`,
+            }
+            if (token) {
+              headers['X-Access-Token'] = token
+            }
+            await fetch(`${config.API_BASE_URL}/auth/logout`, {
+              method: 'POST',
+              headers,
+            })
+          } catch {
+            // Server logout is best-effort; clear local state regardless
+          }
+        }
+        get().logout()
+      },
+
       setUser: (user) =>
         set({
           user,
         }),
 
-      setToken: (token, expiresIn) =>
+      setToken: (token, expiresIn, refreshToken) =>
         set({
           token,
           tokenExpiresAt: Date.now() + expiresIn * 1000,
+          ...(refreshToken ? { refreshToken } : {}),
         }),
 
       isTokenExpired: () => {

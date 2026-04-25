@@ -1,35 +1,33 @@
 """Model-related request/response schemas."""
 
 from datetime import datetime
-from typing import Any, Literal, Union
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-from mgmt_server.api.v1.schemas.base import BaseResponse
+from database.db_models.enums import RepoStatus, SnapshotStatus, TreeItemType
+from mgmt_server.api.v1.schemas.base import BaseResponse, PaginationQueryParams, RepoId
 
 
-class RepoItem(BaseModel):
-    """Repository item in download request.
+class RepoListQueryParams(PaginationQueryParams):
+    """Query parameters for repository list endpoints."""
 
-    Represents a file or folder in the repository with its metadata
-    and whether it will be downloaded based on the filter rules.
-    """
+    repo_type: str | None = None
+    sort_by: Literal["downloads", "cache_updated_at"] = "cache_updated_at"
+    sort_order: Literal["asc", "desc"] = "desc"
+
+
+class RepoFileItem(BaseModel):
+    """Repository item (file or folder) with download filter status."""
 
     path: str
     size: int
-    type: str  # "file" or "folder"
-    required: bool  # Whether this item will be downloaded
+    type: Literal["file", "folder"]
+    required: bool
 
 
-class DryRunRequest(BaseModel):
-    """Request body for dry-run model download preview."""
-
-    repo_id: str
-    repo_type: str
-    revision: str | None = None
-    access_token: str | None = None
-    include_patterns: list[str] | None = None
-    exclude_patterns: list[str] | None = None
+# Backward-compatible alias
+RepoItem = RepoFileItem
 
 
 class CreateTaskFromPreviewRequest(BaseModel):
@@ -39,9 +37,9 @@ class CreateTaskFromPreviewRequest(BaseModel):
     """
 
     # Repository identification
-    source: str
-    repo_id: str
-    repo_type: str
+    source: Literal["huggingface", "modelscope"]
+    repo_id: RepoId
+    repo_type: Literal["model", "dataset"]
     revision: str
     commit_hash: str | None = None
     hf_endpoint: str | None = None
@@ -55,24 +53,7 @@ class CreateTaskFromPreviewRequest(BaseModel):
     required_storage: int
     required_file_count: int
 
-    # Complete file tree with required markers
     items: list[RepoItem]
-
-    @field_validator("source")
-    @classmethod
-    def validate_source(cls, v: str) -> str:
-        allowed = {"huggingface", "modelscope"}
-        if v not in allowed:
-            raise ValueError(f"source must be one of {allowed}")
-        return v
-
-    @field_validator("repo_type")
-    @classmethod
-    def validate_repo_type(cls, v: str) -> str:
-        allowed = {"model", "dataset"}
-        if v not in allowed:
-            raise ValueError(f"repo_type must be one of {allowed}")
-        return v
 
 
 class CreateTaskFromCacheRequest(BaseModel):
@@ -81,14 +62,9 @@ class CreateTaskFromCacheRequest(BaseModel):
     Use this when you have a cache_key from the preview endpoint.
     """
 
-    cache_key: str  # The cache key returned by /task/preview
+    cache_key: str
 
 
-# Union type for create task endpoint - supports both full data and cache key
-CreateTaskRequest = Union[CreateTaskFromPreviewRequest, CreateTaskFromCacheRequest]
-
-
-# Snapshot 信息
 class RepoSnapshotResponse(BaseModel):
     """Repository snapshot response schema."""
 
@@ -100,19 +76,18 @@ class RepoSnapshotResponse(BaseModel):
     committed_at: datetime | None
     created_at: datetime
     updated_at: datetime
-    status: str  # "active" or "archived"
+    status: SnapshotStatus
     total_size: int | None = None
     cached_size: int | None = None
 
 
-# Profile 信息（列表用）
 class RepoProfileResponse(BaseModel):
     """Repository profile response schema."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    repo_id: str
+    repo_id: RepoId
     repo_type: str
     pipeline_tag: str | None
     cached_commits: int
@@ -120,7 +95,7 @@ class RepoProfileResponse(BaseModel):
     first_cached_at: datetime | None
     cache_updated_at: datetime | None
     last_downloaded_at: datetime | None
-    status: str
+    status: RepoStatus
 
     @classmethod
     def from_model(cls, profile: Any) -> "RepoProfileResponse":
@@ -135,11 +110,10 @@ class RepoProfileResponse(BaseModel):
             first_cached_at=profile.first_cached_at,
             cache_updated_at=profile.cache_updated_at,
             last_downloaded_at=profile.last_downloaded_at,
-            status=profile.status.value,
+            status=profile.status,
         )
 
 
-# 详情响应（Profile + Snapshots）
 class RepoDetailData(BaseModel):
     """Repository detail data schema."""
 
@@ -156,27 +130,12 @@ class RepoListResponse(BaseResponse[list[RepoProfileResponse]]):
 class RepoDetailResponse(BaseResponse[RepoDetailData]):
     """Repository detail response schema."""
 
-    pass
-
-
-# ==================== Repo Tree ====================
-
-
-class PaginatedResponse[T](BaseModel):
-    """Paginated response wrapper."""
-
-    items: list[T]
-    total: int
-    page: int
-    page_size: int
-    pages: int
-
 
 class RepoTreeItemResponse(BaseModel):
     """Repository tree item (file or directory)."""
 
     path: str = Field(..., description="File/directory path relative to repo root")
-    type: Literal["file", "directory"] = Field(..., description="Item type")
+    type: TreeItemType = Field(..., description="Item type")
     size: int = Field(..., description="Size in bytes (0 for directories)")
     is_cached: bool | None = Field(
         None, description="Cache status: null=directory, false=not cached, true=cached"
@@ -185,11 +144,6 @@ class RepoTreeItemResponse(BaseModel):
 
 class RepoTreeResponse(BaseResponse[list[RepoTreeItemResponse]]):
     """Repository tree response."""
-
-    pass
-
-
-# ==================== Dashboard Stats ====================
 
 
 class DashboardStats(BaseModel):
@@ -208,20 +162,19 @@ class DashboardStats(BaseModel):
 class DashboardStatsResponse(BaseResponse[DashboardStats]):
     """Dashboard statistics response."""
 
-    pass
-
-
-# ==================== Delete Result ====================
-
 
 class DeleteRepoResult(BaseModel):
     """Result of repository deletion operation."""
 
     deleted: bool
-    repo_id: str
+    repo_id: RepoId
     snapshots_deleted: int = 0
     tree_items_deleted: int = 0
     blobs_deleted: int = 0
     blobs_failed: int = 0
     profile_deleted: bool = False
     message: str = ""
+
+
+class DeleteRepoResponse(BaseResponse[DeleteRepoResult]):
+    """Repository deletion response wrapped in BaseResponse."""

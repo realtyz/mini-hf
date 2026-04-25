@@ -44,7 +44,7 @@ export function useLogin() {
           skipAuthRedirect: true,
         }
       )
-      return response
+      return response.data
     },
     onSuccess: (data) => {
       login(data.access_token, data.refresh_token, data.expires_in)
@@ -192,20 +192,16 @@ export function useRefreshToken() {
 
   return useMutation({
     mutationFn: async (refreshToken: string) => {
-      const response = await api.post<{
-        access_token: string
-        token_type: string
-        expires_in: number
-      }>('/auth/refresh', {}, {
+      const response = await api.post<LoginResponse>('/auth/refresh', {}, {
         headers: {
           Authorization: `Bearer ${refreshToken}`,
         },
         skipAuthRedirect: true, // 刷新 token 时不需要跳转
       })
-      return response
+      return response.data
     },
     onSuccess: (data) => {
-      setToken(data.access_token, data.expires_in)
+      setToken(data.access_token, data.expires_in, data.refresh_token)
     },
   })
 }

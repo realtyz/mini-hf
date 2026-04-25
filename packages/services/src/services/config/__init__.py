@@ -7,6 +7,7 @@ Public API (use these from external code):
 - ConfigService: Business-level configuration service with high-level helpers
   and typed configuration objects. This is the recommended entry point for
   all external configuration access.
+- ConfigUpdateItem: Typed dataclass for batch configuration updates.
 
 Internal API (for services package use only):
 - ConfigProvider: Low-level configuration provider with caching and encryption.
@@ -22,8 +23,10 @@ Example:
     email_client = await config_service.get_email_client()
 """
 
-from services.config.service import ConfigService
+from services.config.service import ConfigService, ConfigUpdateItem, HFEndpointConfig
 
 __all__ = [
     "ConfigService",
+    "ConfigUpdateItem",
+    "HFEndpointConfig",
 ]

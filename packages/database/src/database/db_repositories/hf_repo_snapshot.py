@@ -1,11 +1,17 @@
 """Repository for HuggingFace repository snapshot operations."""
 
 from datetime import datetime
+from typing import NamedTuple
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.db_models import HfRepoSnapshot, SnapshotStatus
+
+
+class SizeStats(NamedTuple):
+    total_size: int
+    cached_size: int
 
 
 class HfRepoSnapshotRepository:
@@ -243,14 +249,14 @@ class HfRepoSnapshotRepository:
     async def get_snapshot_size_stats(
         self,
         commit_hashes: list[str],
-    ) -> dict[str, tuple[int, int]]:
-        """Return (total_size, cached_size) for each commit_hash.
+    ) -> dict[str, SizeStats]:
+        """Return total_size and cached_size for each commit_hash.
 
         Args:
             commit_hashes: List of commit hashes to query
 
         Returns:
-            Dict mapping commit_hash -> (total_size, cached_size) in bytes
+            Dict mapping commit_hash -> SizeStats(total_size, cached_size) in bytes
         """
         from sqlalchemy import case
 
@@ -278,7 +284,7 @@ class HfRepoSnapshotRepository:
         )
         result = await self._session.execute(stmt)
         return {
-            row.commit_hash: (int(row.total_size), int(row.cached_size))
+            row.commit_hash: SizeStats(int(row.total_size), int(row.cached_size))
             for row in result.all()
         }
 

@@ -1,6 +1,6 @@
 """Internal API tree schemas."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class RepoTreeQueryRequest(BaseModel):
@@ -25,14 +25,13 @@ class RepoTreeSyncRequest(BaseModel):
 class RepoTreeItemInfo(BaseModel):
     """Tree item info for internal API."""
 
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     path: str
     type: str  # file or folder
     size: int | None
     oid: str | None
-
-    class Config:
-        from_attributes = True
 
 
 class RepoTreeSyncResponse(BaseModel):

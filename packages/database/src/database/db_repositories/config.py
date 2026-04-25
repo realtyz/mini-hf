@@ -91,25 +91,32 @@ class ConfigDbRepository:
         result = await self._session.execute(stmt)
         return result.scalars().all()
 
-    async def bulk_update(
+    async def bulk_set(
         self,
-        updates: list[dict],
-    ) -> int:
-        """Bulk update configurations.
+        items: list[dict],
+    ) -> None:
+        """Bulk set (upsert) multiple configurations in a single transaction.
+
+        Each item dict should have keys: key, value, category, description, is_sensitive.
+        All changes are committed once at the end.
 
         Args:
-            updates: List of dicts with 'key' and 'value' keys
-            user_id: ID of user making the update
-
-        Returns:
-            Number of rows updated
+            items: List of config dicts to set
         """
-        count = 0
-        for item in updates:
-            key = item.get("key")
-            value = item.get("value")
-            if key and value is not None:
-                config = await self.update(key, value)
-                if config:
-                    count += 1
-        return count
+        for item in items:
+            key = item["key"]
+            existing = await self.get(key)
+            if existing:
+                existing.value = item["value"]
+                if item.get("is_sensitive") is not None:
+                    existing.is_sensitive = item["is_sensitive"]
+            else:
+                config = SystemConfig(
+                    key=key,
+                    value=item["value"],
+                    category=item.get("category", "general"),
+                    description=item.get("description"),
+                    is_sensitive=item.get("is_sensitive", False),
+                )
+                self._session.add(config)
+        await self._session.commit()

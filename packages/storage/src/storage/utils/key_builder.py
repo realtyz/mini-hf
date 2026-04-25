@@ -1,7 +1,22 @@
 """Key builder utilities for S3 storage paths."""
 
+import re
+
+_RE_REPO_ID_SEGMENT = re.compile(r"^[a-zA-Z0-9_.-]+$")
+
+
+def _validate_repo_id(repo_id: str) -> None:
+    """Validate repo_id format to prevent path traversal in S3 keys."""
+    parts = repo_id.split("/")
+    if len(parts) != 2 or not all(_RE_REPO_ID_SEGMENT.match(p) for p in parts):
+        raise ValueError(
+            f"Invalid repo_id: {repo_id!r}. Must match 'namespace/repo-name' format "
+            "(alphanumeric, underscores, hyphens, and dots only)"
+        )
+
 
 def build_blob_key(repo_id: str, repo_type: str, blob_id: str) -> str:
+    _validate_repo_id(repo_id)
     namespace, repo_name = repo_id.split("/", 1)
     return f"hf/{repo_type}--{namespace}--{repo_name}/blobs/{blob_id}"
 
@@ -20,6 +35,7 @@ def build_blob_prefix(repo_id: str, repo_type: str) -> str:
         >>> build_blob_prefix("facebook/bart-large", "model")
         'hf/model--facebook--bart-large/blobs/'
     """
+    _validate_repo_id(repo_id)
     namespace, repo_name = repo_id.split("/", 1)
     return f"hf/{repo_type}--{namespace}--{repo_name}/blobs/"
 
@@ -82,6 +98,7 @@ def build_hf_key(repo_id: str, revision: str, file_path: str) -> str:
         >>> build_hf_key("facebook/bart-large", "main", "pytorch_model.bin")
         'hf/facebook/bart-large/main/pytorch_model.bin'
     """
+    _validate_repo_id(repo_id)
     return f"hf/{repo_id}/{revision}/{file_path}"
 
 
@@ -101,6 +118,7 @@ def build_hf_prefix(repo_id: str, revision: str | None = None) -> str:
         >>> build_hf_prefix("facebook/bart-large", "main")
         'hf/facebook/bart-large/main/'
     """
+    _validate_repo_id(repo_id)
     if revision:
         return f"hf/{repo_id}/{revision}/"
     return f"hf/{repo_id}/"

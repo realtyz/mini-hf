@@ -1,10 +1,27 @@
 """Task-related request/response schemas."""
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-from mgmt_server.api.v1.schemas.base import BaseResponse
+from database.db_models.task import TaskStatus
+from mgmt_server.api.v1.schemas.base import BaseResponse, PaginationQueryParams, RepoId
+from mgmt_server.api.v1.schemas.repos import RepoFileItem
+
+
+class TaskListQueryParams(PaginationQueryParams):
+    """Query parameters for authenticated task list endpoint."""
+
+    status: TaskStatus | None = None
+    limit: int = Field(20, ge=1, le=1000)
+
+
+class PublicTaskListQueryParams(PaginationQueryParams):
+    """Query parameters for public task list endpoint (adds hours filter)."""
+
+    hours: int = Field(24, ge=1, le=168)
+    status: TaskStatus | None = None
 
 
 class TaskCreatorUser(BaseModel):
@@ -22,30 +39,30 @@ class TaskResponse(BaseModel):
 
     id: int
     source: str
-    repo_id: str
+    repo_id: RepoId
     repo_type: str
     revision: str
     hf_endpoint: str | None = None
-    status: str
+    status: TaskStatus
     error_message: str | None
     created_at: datetime
     reviewed_at: datetime | None
     updated_at: datetime
     started_at: datetime | None
     completed_at: datetime | None
-    pinned_at: datetime | None = None  # 置顶时间，用于优先级排序
+    pinned_at: datetime | None = None
     required_storage: int
     creator_user_id: int
     creator_user: TaskCreatorUser | None = None
 
-    # 仓库统计信息
+    # Repository statistics
     total_storage: int
     required_file_count: int
     total_file_count: int
-    repo_items: list | None = None
+    repo_items: list[RepoFileItem] | None = None
     commit_hash: str | None
 
-    # 实际下载统计（任务完成或失败后填充）
+    # Download statistics (populated after completion/failure)
     downloaded_file_count: int | None = None
     downloaded_bytes: int | None = None
 
@@ -59,13 +76,9 @@ class TaskListResponse(BaseResponse[list[TaskResponse]]):
 class ActiveTaskListResponse(BaseResponse[list[TaskResponse]]):
     """Active task list response schema — no pagination, no total."""
 
-    pass
-
 
 class TaskDetailResponse(BaseResponse[TaskResponse]):
     """Task detail response schema."""
-
-    pass
 
 
 class TaskReviewRequest(BaseModel):
@@ -81,39 +94,15 @@ class TaskPreviewRequest(BaseModel):
     Used to preview repository information before creating a download task.
     """
 
-    source: str = "huggingface"
-    repo_type: str = "model"
-    repo_id: str
+    source: Literal["huggingface", "modelscope"] = "huggingface"
+    repo_type: Literal["model", "dataset"] = "model"
+    repo_id: RepoId
     revision: str = "main"
     hf_endpoint: str | None = None
-    access_token: str | None = None
+    access_token: str | None = Field(None, max_length=128)
     full_download: bool = True
     allow_patterns: list[str] | None = None
     ignore_patterns: list[str] | None = None
-
-    @field_validator("repo_id")
-    @classmethod
-    def validate_repo_id_format(cls, v: str) -> str:
-        """Validate repo_id follows namespace/repo_name format."""
-        parts = v.split("/")
-        if len(parts) != 2 or not parts[0] or not parts[1]:
-            raise ValueError(
-                "repo_id must be in 'namespace/repo_name' format (e.g., 'meta-llama/Llama-3.3-70B-Instruct')"
-            )
-        return v
-
-
-class PreviewItem(BaseModel):
-    """Repository item in preview response.
-
-    Represents a file or folder in the repository with its metadata
-    and whether it will be downloaded based on the filter rules.
-    """
-
-    path: str
-    size: int
-    type: str  # "file" or "folder"
-    required: bool  # Whether this item will be downloaded
 
 
 class TaskPreviewData(BaseModel):
@@ -126,42 +115,33 @@ class TaskPreviewData(BaseModel):
     hf_endpoint: str | None = None
 
     # Repository statistics
-    total_storage: int  # Total size in bytes
-    total_file_count: int  # Total number of files
+    total_storage: int
+    total_file_count: int
 
-    # Required download statistics
-    required_storage: int  # Size to download in bytes
-    required_file_count: int  # Number of files to download
+    # Required download statistics (after filtering)
+    required_storage: int
+    required_file_count: int
 
-    # Complete file tree with required markers
-    items: list[PreviewItem]
-
-    # Cache key for creating task without resending data
-    cache_key: str  # Use this key to create task from cached preview data
+    items: list[RepoFileItem]
+    cache_key: str
 
     # Update check results
-    cached_commit_hash: str | None = (
-        None  # The commit hash of the currently cached version (if any)
-    )
+    cached_commit_hash: str | None = None
 
-    # Cache status for required files
-    all_required_cached: bool = False  # Whether all requested files are already cached
+    all_required_cached: bool = False
 
 
 class TaskPreviewResponse(BaseResponse[TaskPreviewData]):
     """Task preview response schema."""
-
-    pass
-
-
-# Async Preview Task Schemas
 
 
 class AsyncPreviewTaskData(BaseModel):
     """Async preview task creation response data."""
 
     task_id: str
-    status: str  # pending, fetching, processing, completed, failed
+    status: str = Field(
+        ..., description="pending, fetching, processing, completed, failed"
+    )
     message: str
 
 
@@ -190,5 +170,3 @@ class AsyncPreviewTaskStatusData(BaseModel):
 
 class AsyncPreviewTaskStatusResponse(BaseResponse[AsyncPreviewTaskStatusData]):
     """Async preview task status response."""
-
-    pass

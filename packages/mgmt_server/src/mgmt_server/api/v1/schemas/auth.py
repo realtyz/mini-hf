@@ -5,82 +5,83 @@ from pydantic import BaseModel, EmailStr, Field
 from mgmt_server.api.v1.schemas.base import BaseResponse
 
 
-class LoginRequest(BaseModel):
-    """Login request schema."""
+class TokenData(BaseModel):
+    """Token response data (used for login and refresh)."""
 
-    email: str
-    password: str
+    access_token: str
+    refresh_token: str
+    token_type: str
+    expires_in: int = Field(..., description="Access token expiration time in seconds")
 
 
-class LoginResponse(BaseModel):
+class LoginResponse(BaseResponse[TokenData]):
     """Login response schema with refresh token."""
 
-    access_token: str
-    refresh_token: str
-    token_type: str
-    expires_in: int = Field(..., description="Access token expiration time in seconds")
+
+class RefreshTokenResponse(BaseResponse[TokenData]):
+    """Refresh token response schema with token rotation."""
 
 
-class RefreshTokenRequest(BaseModel):
-    """Refresh token request schema."""
+class TokenVerifyData(BaseModel):
+    """Token verify response data."""
 
-    refresh_token: str
-
-
-class RefreshTokenResponse(BaseModel):
-    """Refresh token response schema."""
-
-    access_token: str
-    token_type: str
-    expires_in: int = Field(..., description="Access token expiration time in seconds")
+    valid: bool
+    email: str
+    user_id: int
+    role: str
 
 
-class TokenVerifyResponse(BaseResponse):
+class TokenVerifyResponse(BaseResponse[TokenVerifyData]):
     """Token verify response schema."""
 
-    data: dict = {
-        "valid": True,
-        "email": "",
-    }
 
-
-# ==================== 邮箱验证码相关 ====================
+# --- Email verification code ---
 
 
 class SendVerifyCodeRequest(BaseModel):
-    """发送验证码请求."""
+    """Send verification code request."""
 
-    email: EmailStr = Field(..., description="邮箱地址")
+    email: EmailStr = Field(..., description="Email address")
 
 
-class SendVerifyCodeResponse(BaseResponse[dict]):
-    """发送验证码响应."""
+class SendVerifyCodeData(BaseModel):
+    """Send verification code response data."""
 
-    data: dict = {
-        "resend_after": 60,
-    }
+    resend_after: int = Field(60, description="Seconds until next code can be sent")
+
+
+class SendVerifyCodeResponse(BaseResponse[SendVerifyCodeData]):
+    """Send verification code response."""
 
 
 class VerifyEmailRequest(BaseModel):
-    """验证邮箱请求."""
+    """Verify email request."""
 
-    email: EmailStr = Field(..., description="邮箱地址")
-    code: str = Field(..., min_length=6, max_length=6, description="6位验证码")
+    email: EmailStr = Field(..., description="Email address")
+    code: str = Field(
+        ..., min_length=6, max_length=6, description="6-digit verification code"
+    )
 
 
-class VerifyEmailResponse(BaseResponse[dict]):
-    """验证邮箱响应."""
+class VerifyEmailData(BaseModel):
+    """Verify email response data."""
 
-    data: dict = {
-        "verified": True,
-        "email": "",
-    }
+    verified: bool = True
+    email: str = ""
+
+
+class VerifyEmailResponse(BaseResponse[VerifyEmailData]):
+    """Verify email response."""
 
 
 class RegisterWithCodeRequest(BaseModel):
-    """通过验证码注册请求."""
+    """Register with verification code request."""
 
-    email: EmailStr = Field(..., description="邮箱地址")
-    code: str = Field(..., min_length=6, max_length=6, description="6位验证码")
-    name: str = Field(..., min_length=1, max_length=255, description="用户名")
-    password: str = Field(..., min_length=6, description="密码（至少6位）")
+    email: EmailStr = Field(..., description="Email address")
+    code: str = Field(
+        ..., min_length=6, max_length=6, description="6-digit verification code"
+    )
+    name: str = Field(..., min_length=1, max_length=255, description="User name")
+    password: str = Field(
+        ..., min_length=6, max_length=64, description="Password (min 6 characters)"
+    )

@@ -60,11 +60,11 @@ interface UserDropdownProps {
  */
 function UserDropdown({ isInConsole = false }: UserDropdownProps) {
   const navigate = useNavigate();
-  const { user, logout } = useAuthStore();
+  const { user, serverLogout } = useAuthStore();
   const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
-    logout();
+    serverLogout();
     // 清除 React Query 缓存，避免用户数据残留在内存中
     queryClient.clear();
     navigate("/login");

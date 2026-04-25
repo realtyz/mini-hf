@@ -29,7 +29,7 @@ from mgmt_server.core.exceptions import (
     ResourceGoneError,
     ValidationError,
 )
-from mgmt_server.core.token_utils import decode_access_token
+from mgmt_server.utils.token_utils import decode_access_token
 from mgmt_server.services.task_lifecycle_service import TaskLifecycleService
 from mgmt_server.services.task_preview_executor import (
     PREVIEW_TASK_PREFIX,
@@ -236,12 +236,16 @@ class TaskPreviewService:
     # Task creation from preview
     # ------------------------------------------------------------------
 
-    async def create_task_from_cache(
+    async def _validate_and_decode_preview_data(
         self,
         cache_key: str,
-        user: User,
-    ) -> TaskDetailResponse:
-        """Create a download task from cached preview data."""
+    ) -> CreateTaskFromPreviewRequest:
+        """Validate cached preview data and return parsed request.
+
+        Raises:
+            ResourceGoneError: If preview data has expired or is invalid.
+            ConflictError: If all required files are already cached.
+        """
         logger.debug("Creating task from cache key: {}", cache_key)
         cache_data: dict[str, Any] | None = await self._cache.get(
             f"preview:{cache_key}"
@@ -258,8 +262,15 @@ class TaskPreviewService:
             )
 
         cache_data["access_token"] = decode_access_token(cache_data.get("access_token"))
+        return CreateTaskFromPreviewRequest(**cache_data)
 
-        task_data = CreateTaskFromPreviewRequest(**cache_data)
+    async def create_task_from_cache(
+        self,
+        cache_key: str,
+        user: User,
+    ) -> TaskDetailResponse:
+        """Create a download task from cached preview data."""
+        task_data = await self._validate_and_decode_preview_data(cache_key)
 
         task = await self._task_service.add_new_task(
             source=task_data.source,

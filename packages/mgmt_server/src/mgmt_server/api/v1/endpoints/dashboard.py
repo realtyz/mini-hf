@@ -2,14 +2,15 @@
 
 from fastapi import APIRouter
 
-from mgmt_server.api.deps import DashboardServiceDep
+from mgmt_server.api.deps import CurrentUserDep, DashboardServiceDep
 from mgmt_server.api.v1.schemas.repos import DashboardStatsResponse
 
-router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
+router = APIRouter()
 
 
 @router.get("/stats", response_model=DashboardStatsResponse)
 async def get_dashboard_stats(
+    current_user: CurrentUserDep,
     service: DashboardServiceDep,
 ) -> DashboardStatsResponse:
     """Get dashboard statistics.

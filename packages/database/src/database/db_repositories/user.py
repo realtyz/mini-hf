@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.db_models import User
@@ -54,7 +54,12 @@ class UserRepository:
         return result.scalar_one_or_none()
 
     async def create(
-        self, name: str, email: str, hashed_password: str, role: str = "user"
+        self,
+        name: str,
+        email: str,
+        hashed_password: str,
+        role: str = "user",
+        is_active: bool = True,
     ) -> User:
         """Create a new user.
 
@@ -63,6 +68,7 @@ class UserRepository:
             email: User email
             hashed_password: Hashed password
             role: User role (default: "user")
+            is_active: Whether the user is active (default: True)
 
         Returns:
             Created user
@@ -72,6 +78,7 @@ class UserRepository:
             email=email,
             hashed_password=hashed_password,
             role=role,
+            is_active=is_active,
         )
         self.session.add(user)
         await self.session.commit()
@@ -120,6 +127,36 @@ class UserRepository:
         await self.session.commit()
         await self.session.refresh(user)
         return user
+
+    async def lock_and_count_active_admins(
+        self, exclude_user_id: int | None = None
+    ) -> int:
+        """Atomically count active admins with row-level lock to prevent TOCTOU races.
+
+        Uses SELECT ... FOR UPDATE to lock matched rows, ensuring concurrent
+        delete/update requests serialize and can't both pass the count check.
+
+        Args:
+            exclude_user_id: If provided, exclude this user from the count
+                (useful when checking before deactivating a specific admin).
+
+        Returns:
+            Number of active, non-deleted admin users.
+        """
+        query = (
+            select(func.count())
+            .select_from(User)
+            .where(
+                User.role == "admin",
+                User.is_active == True,  # noqa: E712
+                User.is_deleted == False,  # noqa: E712
+            )
+            .with_for_update()
+        )
+        if exclude_user_id is not None:
+            query = query.where(User.id != exclude_user_id)
+        result = await self.session.execute(query)
+        return result.scalar_one()
 
     async def admin_exists(self) -> bool:
         """Check if any admin user exists in the database.

@@ -7,6 +7,9 @@ from cache.serializers import JSONSerializer, Serializer
 from cache.services.base import BaseService
 
 
+_DEFAULT_PREFIX = "mini_hf:"
+
+
 class CacheService(BaseService):
     """Service for general key-value caching operations.
 
@@ -17,7 +20,7 @@ class CacheService(BaseService):
         self,
         client: RedisClient | None = None,
         serializer: Serializer | None = None,
-        prefix: str = "mini_hf:cache:",
+        prefix: str = _DEFAULT_PREFIX,
         default_ttl: int | None = None,
     ):
         """Initialize cache service.

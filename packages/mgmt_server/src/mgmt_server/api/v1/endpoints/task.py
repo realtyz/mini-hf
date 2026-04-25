@@ -2,47 +2,46 @@
 
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Query
+from fastapi import APIRouter, BackgroundTasks, Depends
 
 from mgmt_server.api.deps import (
-    CurrentUserToken,
-    PreviewTaskServiceDep,
-    TaskLifecycleServiceDep,
-)
-from mgmt_server.api.v1.endpoints.user import (
     AdminUserDep,
     CurrentUserDep,
+    PreviewTaskServiceDep,
+    TaskLifecycleServiceDep,
 )
 from mgmt_server.api.v1.schemas import (
     ActiveTaskListResponse,
     AsyncPreviewTaskResponse,
     AsyncPreviewTaskStatusResponse,
     CreateTaskFromCacheRequest,
+    PublicTaskListQueryParams,
     TaskDetailResponse,
+    TaskListQueryParams,
     TaskListResponse,
     TaskPreviewRequest,
     TaskProgressResponse,
     TaskReviewRequest,
 )
 
-router = APIRouter(prefix="/task", tags=["Task Management"])
+router = APIRouter()
+
+TaskListParamsDep = Annotated[TaskListQueryParams, Depends()]
+PublicTaskListParamsDep = Annotated[PublicTaskListQueryParams, Depends()]
 
 
 @router.get("/list", response_model=TaskListResponse)
 async def list_tasks(
     current_user: CurrentUserDep,
     service: TaskLifecycleServiceDep,
-    status: str | None = None,
-    search: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=1000)] = 20,
-    skip: Annotated[int, Query(ge=0)] = 0,
+    params: TaskListParamsDep,
 ) -> TaskListResponse:
     """List tasks - requires JWT authentication."""
     return await service.list_tasks(
-        status_str=status,
-        search=search,
-        limit=limit,
-        skip=skip,
+        status=params.status,
+        search=params.search,
+        limit=params.limit,
+        skip=params.skip,
         user=current_user,
     )
 
@@ -58,26 +57,22 @@ async def list_active_public_tasks(
 @router.get("/list-public", response_model=TaskListResponse)
 async def list_public_tasks(
     service: TaskLifecycleServiceDep,
-    status: str | None = None,
-    search: str | None = None,
-    limit: Annotated[int, Query(ge=1, le=1000)] = 20,
-    skip: Annotated[int, Query(ge=0)] = 0,
-    hours: int = 24,
+    params: PublicTaskListParamsDep,
 ) -> TaskListResponse:
     """List tasks from the last N hours - public access, no authentication required."""
     return await service.list_public_tasks(
-        status_str=status,
-        search=search,
-        limit=limit,
-        skip=skip,
-        hours=hours,
+        status=params.status,
+        search=params.search,
+        limit=params.limit,
+        skip=params.skip,
+        hours=params.hours,
     )
 
 
 @router.get("/{task_id}", response_model=TaskDetailResponse)
 async def get_task(
     task_id: int,
-    current_user: CurrentUserToken,
+    current_user: CurrentUserDep,
     service: TaskLifecycleServiceDep,
 ) -> TaskDetailResponse:
     """Get task details - requires JWT authentication."""
@@ -87,7 +82,7 @@ async def get_task(
 @router.post("/preview", response_model=AsyncPreviewTaskResponse)
 async def preview_task(
     request: TaskPreviewRequest,
-    current_user: CurrentUserToken,
+    current_user: CurrentUserDep,
     background_tasks: BackgroundTasks,
     service: PreviewTaskServiceDep,
 ) -> AsyncPreviewTaskResponse:
@@ -110,7 +105,7 @@ async def preview_task(
 @router.get("/preview/{task_id}", response_model=AsyncPreviewTaskStatusResponse)
 async def get_preview_task_status(
     task_id: str,
-    current_user: CurrentUserToken,
+    current_user: CurrentUserDep,
     service: PreviewTaskServiceDep,
 ) -> AsyncPreviewTaskStatusResponse:
     """Get async preview task status and result."""
@@ -212,5 +207,9 @@ async def get_task_progress(
     task_id: int,
     service: TaskLifecycleServiceDep,
 ) -> TaskProgressResponse:
-    """Get task file-level progress."""
+    """Get task file-level progress.
+
+    Public endpoint (no auth required): allows unauthenticated progress
+    polling for the frontend dashboard.
+    """
     return await service.get_task_progress(task_id)

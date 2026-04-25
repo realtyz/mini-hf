@@ -19,7 +19,7 @@ from sqlalchemy.exc import DatabaseError
 
 from mgmt_server.core.constants import PREVIEW_CACHE_TTL, PREVIEW_TASK_TTL
 from mgmt_server.core.exceptions import ValidationError
-from mgmt_server.core.token_utils import encode_access_token
+from mgmt_server.utils.token_utils import encode_access_token
 from mgmt_server.services.repo_service import RepoService
 
 PREVIEW_TASK_PREFIX = "preview_task:"
@@ -337,10 +337,17 @@ async def execute_preview_task(
         )
 
     try:
-        hf_service = HuggingfaceService(token=config.access_token, endpoint=config.actual_endpoint)
+        hf_service = HuggingfaceService(
+            token=config.access_token, endpoint=config.actual_endpoint
+        )
 
         files, directories, commit_hash = await _fetch_repo_tree(
-            hf_service, config.repo_id, config.repo_type, config.revision, _update_state, task_logger
+            hf_service,
+            config.repo_id,
+            config.repo_type,
+            config.revision,
+            _update_state,
+            task_logger,
         )
 
         processed = await _process_files(
@@ -358,12 +365,17 @@ async def execute_preview_task(
             all_required_cached,
             cached_commit_hash,
         ) = await check_cache_status_with_fresh_session(
-            config.repo_id, config.repo_type, config.revision, processed.required_file_paths, task_logger
+            config.repo_id,
+            config.repo_type,
+            config.revision,
+            processed.required_file_paths,
+            task_logger,
         )
 
         if all_required_cached:
             task_logger.info(
-                "All {} required files are already cached", processed.required_file_count
+                "All {} required files are already cached",
+                processed.required_file_count,
             )
 
         result = PreviewResult(

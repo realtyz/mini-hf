@@ -153,6 +153,34 @@ class VerifyCodeService:
             logger.error(f"Failed to send verification code to {email}: {e}")
             return False, f"发送失败: {e}", 0
 
+    async def send_already_registered_notification(self, email: str) -> None:
+        """Send an 'already registered' notification to an email.
+
+        This makes the response time of the send-verify-code endpoint
+        indistinguishable between registered and unregistered emails,
+        eliminating timing side-channel user enumeration.
+        """
+        try:
+            config = await self._get_smtp_config()
+            if not config or not config.is_configured:
+                logger.debug(
+                    "SMTP not configured, skipping already-registered notification"
+                )
+                return
+
+            client = EmailClient(config, template_dir=TEMPLATE_DIR)
+            await client.send_template_email(
+                to=email,
+                subject="[Mini-HF] 注册提醒",
+                template_name="already_registered.html",
+                context={"year": datetime.now().year},
+            )
+            logger.info(f"Already-registered notification sent to {email}")
+        except EmailError as e:
+            logger.error(
+                f"Failed to send already-registered notification to {email}: {e}"
+            )
+
     async def verify_code(
         self, email: str, code: str, delete_on_success: bool = True
     ) -> tuple[bool, str]:

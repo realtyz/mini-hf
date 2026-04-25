@@ -48,9 +48,14 @@ async function refreshAccessToken(): Promise<string | null> {
 
   try {
     const response = await axios.post<{
-      access_token: string
-      token_type: string
-      expires_in: number
+      code: number
+      message: string
+      data: {
+        access_token: string
+        refresh_token: string
+        token_type: string
+        expires_in: number
+      }
     }>(
       `${config.API_BASE_URL}/auth/refresh`,
       {},
@@ -61,8 +66,8 @@ async function refreshAccessToken(): Promise<string | null> {
       }
     )
 
-    const { access_token, expires_in } = response.data
-    useAuthStore.getState().setToken(access_token, expires_in)
+    const { access_token, refresh_token, expires_in } = response.data.data
+    useAuthStore.getState().setToken(access_token, expires_in, refresh_token)
     return access_token
   } catch (error) {
     console.error('Failed to refresh token:', error)
