@@ -5,6 +5,8 @@ from typing import Annotated, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from mgmt_server.core.exceptions import ValidationError
+
 T = TypeVar("T")
 
 # Matches HuggingFace repo_id format: namespace/repo-name
@@ -15,7 +17,7 @@ _RE_REPO_ID = re.compile(r"^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$")
 def _validate_repo_id(v: str) -> str:
     """Validate repo_id matches HuggingFace namespace/repo-name format."""
     if not _RE_REPO_ID.match(v):
-        raise ValueError(
+        raise ValidationError(
             "repo_id must be in 'namespace/repo-name' format "
             "(alphanumeric, underscores, hyphens, and dots only)"
         )

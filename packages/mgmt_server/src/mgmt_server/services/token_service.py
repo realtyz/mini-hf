@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import uuid
 
 from loguru import logger
 
@@ -31,16 +30,14 @@ class TokenService:
     def _access_revoke_key(self, jti: str) -> str:
         return f"{_ACCESS_REVOKE_PREFIX}{jti}"
 
-    async def create_family(self, user_id: int, jti: str) -> str:
+    async def create_family(self, user_id: int, jti: str, family_id: str) -> None:
         """Create a new token family on login.
 
-        Returns:
-            The new family_id.
+        Args:
+            family_id: The family ID from the refresh token JWT.
         """
-        family_id = str(uuid.uuid4())
         value = json.dumps({"user_id": user_id, "jti": jti})
         await self._cache.set(self._family_key(family_id), value, ttl=_FAMILY_TTL)
-        return family_id
 
     async def validate_and_rotate(
         self,

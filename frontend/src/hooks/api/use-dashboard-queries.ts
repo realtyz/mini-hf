@@ -45,7 +45,7 @@ export interface TaskTrendData {
 export function useTaskTrends() {
   const { data, isLoading } = useTaskList({
     hours: 24 * 7,
-    limit: 1000,
+    limit: 100,
   });
 
   const trends: TaskTrendData[] = (() => {

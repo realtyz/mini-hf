@@ -2,14 +2,14 @@
 
 from typing import Annotated, Protocol
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi import status as http_status
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import RedirectResponse
 
 from database.db_models import HfRepoProfile, HfRepoSnapshot, RepoStatus
 from database.db_repositories.hf_repo_snapshot import SizeStats
 from mgmt_server.api.deps import AdminUserDep, RepoServiceDep
-from mgmt_server.api.v1.schemas.base import _RE_REPO_ID
+from mgmt_server.api.v1.schemas.base import RepoId
+from mgmt_server.core.exceptions import NotFoundError, ValidationError
 from mgmt_server.api.v1.schemas.repos import (
     DeleteRepoResponse,
     RepoDetailData,
@@ -25,15 +25,31 @@ from mgmt_server.api.v1.schemas.repos import (
 router = APIRouter()
 
 
-def _validate_repo_id(repo_id: str) -> str:
-    """Validate repo_id matches HuggingFace namespace/repo-name format."""
-    if not _RE_REPO_ID.match(repo_id):
-        raise HTTPException(
-            status_code=http_status.HTTP_400_BAD_REQUEST,
-            detail="Invalid repo_id: must match 'namespace/repo-name' format "
-            "(alphanumeric, underscores, hyphens, and dots only)",
-        )
-    return repo_id
+def _validate_file_path(path: str) -> str:
+    """Validate file path to prevent path traversal attacks.
+
+    Checks for:
+    - Path traversal sequences (..)
+    - Absolute paths (starting with /)
+    - Windows-style absolute paths (starting with C:, etc.)
+
+    Returns normalized path without leading slashes.
+    """
+    # Block path traversal
+    if ".." in path:
+        raise ValidationError("Invalid path: '..' sequence not allowed")
+
+    # Block absolute paths
+    if path.startswith("/"):
+        raise ValidationError("Invalid path: absolute paths not allowed")
+
+    # Block Windows absolute paths (C:, D:, etc.)
+    if len(path) >= 2 and path[1] == ":":
+        raise ValidationError("Invalid path: absolute paths not allowed")
+
+    # Normalize and return
+    normalized = path.replace("\\", "/")
+    return normalized
 
 
 class _RepoDetailProvider(Protocol):
@@ -55,9 +71,8 @@ def _map_repo_status(statuses: list[str] | None) -> list[RepoStatus] | None:
         try:
             status_enums.append(RepoStatus(s))
         except ValueError:
-            raise HTTPException(
-                status_code=http_status.HTTP_400_BAD_REQUEST,
-                detail=f"Invalid status: {s}. Must be one of: {', '.join(e.value for e in RepoStatus)}",
+            raise ValidationError(
+                f"Invalid status: {s}. Must be one of: {', '.join(e.value for e in RepoStatus)}"
             )
     return status_enums
 
@@ -129,10 +144,7 @@ async def _get_repo_detail(
     )
 
     if profile is None:
-        raise HTTPException(
-            status_code=http_status.HTTP_404_NOT_FOUND,
-            detail=f"{repo_type.capitalize()} '{repo_id}' not found",
-        )
+        raise NotFoundError(f"{repo_type.capitalize()} '{repo_id}' not found")
 
     return RepoDetailResponse(
         data=RepoDetailData(
@@ -161,21 +173,19 @@ async def _get_repo_detail(
 
 @router.get("/model/{repo_id:path}", response_model=RepoDetailResponse)
 async def get_model_detail(
-    repo_id: str,
+    repo_id: RepoId,
     repo_service: RepoServiceDep,
 ) -> RepoDetailResponse:
     """Get model detail with profile and snapshots."""
-    repo_id = _validate_repo_id(repo_id)
     return await _get_repo_detail(repo_id, repo_type="model", repo_service=repo_service)
 
 
 @router.get("/dataset/{repo_id:path}", response_model=RepoDetailResponse)
 async def get_dataset_detail(
-    repo_id: str,
+    repo_id: RepoId,
     repo_service: RepoServiceDep,
 ) -> RepoDetailResponse:
     """Get dataset detail with profile and snapshots."""
-    repo_id = _validate_repo_id(repo_id)
     return await _get_repo_detail(
         repo_id, repo_type="dataset", repo_service=repo_service
     )
@@ -183,7 +193,7 @@ async def get_dataset_detail(
 
 @router.delete("/{repo_id:path}", response_model=DeleteRepoResponse)
 async def delete_repository(
-    repo_id: str,
+    repo_id: RepoId,
     admin_user: AdminUserDep,
     repo_service: RepoServiceDep,
     hard: Annotated[
@@ -194,14 +204,13 @@ async def delete_repository(
     ] = False,
 ) -> DeleteRepoResponse:
     """Delete an entire cached repository."""
-    repo_id = _validate_repo_id(repo_id)
     result = await repo_service.delete_repo(repo_id, hard=hard)
     return DeleteRepoResponse(data=result)
 
 
 @router.get("/{repo_id:path}/file")
 async def get_file_download(
-    repo_id: str,
+    repo_id: RepoId,
     commit_hash: Annotated[str, Query(description="Commit hash of the snapshot")],
     path: Annotated[str, Query(description="File path within the repository")],
     repo_service: RepoServiceDep,
@@ -210,19 +219,18 @@ async def get_file_download(
 
     Public endpoint (no auth required): compatible with HF Hub download flow.
     """
-    repo_id = _validate_repo_id(repo_id)
+    path = _validate_file_path(path)
     presigned_url = await repo_service.get_file_download_url(repo_id, commit_hash, path)
     return RedirectResponse(presigned_url, status_code=302)
 
 
 @router.get("/{repo_id:path}/tree/{commit_hash}", response_model=RepoTreeResponse)
 async def get_repo_tree(
-    repo_id: str,
+    repo_id: RepoId,
     commit_hash: str,
     repo_service: RepoServiceDep,
 ) -> RepoTreeResponse:
     """Get repository tree (files and directories) for a specific commit."""
-    repo_id = _validate_repo_id(repo_id)
     items = await repo_service.get_repo_tree(repo_id, commit_hash)
 
     return RepoTreeResponse(

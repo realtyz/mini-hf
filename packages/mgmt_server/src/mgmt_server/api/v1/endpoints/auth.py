@@ -5,9 +5,9 @@ import time
 from datetime import timedelta
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.security import OAuth2PasswordRequestForm
 from loguru import logger
+from fastapi import APIRouter, Depends, status
+from fastapi.security import OAuth2PasswordRequestForm
 
 from core.settings import settings
 from mgmt_server.api.deps import (
@@ -19,6 +19,7 @@ from mgmt_server.api.deps import (
 )
 from mgmt_server.api.v1.schemas.auth import (
     LoginResponse,
+    LogoutRequest,
     RefreshTokenResponse,
     TokenData,
     RegisterWithCodeRequest,
@@ -36,13 +37,25 @@ from mgmt_server.api.v1.schemas.users import (
     UserRegisterRequest,
     UserResponse,
 )
-from mgmt_server.core.constants import UserRole
+from mgmt_server.core.constants import (
+    VERIFY_CODE_MIN_ELAPSED,
+    VERIFY_CODE_RESEND_AFTER,
+    UserRole,
+)
+from mgmt_server.core.exceptions import (
+    ConflictError,
+    PermissionDeniedError,
+    UnauthorizedError,
+    ValidationError,
+)
 from mgmt_server.core.security import (
     build_token_payload,
     create_access_token,
     create_refresh_token,
+    decode_access_token,
 )
 from mgmt_server.services.token_service import TokenReplayError
+from mgmt_server.services.user_service import UserService
 
 
 router = APIRouter()
@@ -64,11 +77,7 @@ async def sign_in(
     )
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UnauthorizedError("Invalid email or password")
 
     access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     payload = build_token_payload(user.email, user.id, user.role)
@@ -77,7 +86,7 @@ async def sign_in(
         expires_delta=access_token_expires,
     )
     refresh_token, family_id, jti = create_refresh_token(data=payload)
-    await token_service.create_family(user_id=user.id, jti=jti)
+    await token_service.create_family(user_id=user.id, jti=jti, family_id=family_id)
 
     return LoginResponse(
         data=TokenData(
@@ -104,6 +113,22 @@ async def verify_token_endpoint(
     )
 
 
+async def _create_and_respond_user(
+    name: str,
+    email: str,
+    password: str,
+    user_service: UserService,
+) -> UserCreateResponse:
+    """Create a user and return the response."""
+    user = await user_service.create_user(
+        name=name,
+        email=email,
+        password=password,
+        role=UserRole.USER,
+    )
+    return UserCreateResponse(data=UserResponse.model_validate(user))
+
+
 @router.post(
     "/register", response_model=UserCreateResponse, status_code=status.HTTP_201_CREATED
 )
@@ -112,13 +137,12 @@ async def register_user(
     user_service: UserServiceDep,
 ) -> UserCreateResponse:
     """Register a new user (self-registration)."""
-    user = await user_service.create_user(
+    return await _create_and_respond_user(
         name=request.name,
         email=request.email,
         password=request.password,
-        role=UserRole.USER,
+        user_service=user_service,
     )
-    return UserCreateResponse(data=UserResponse.model_validate(user))
 
 
 # --- Email verification code APIs ---
@@ -138,8 +162,6 @@ async def send_verify_code(
     (notification vs verification code) cannot be used to distinguish them.
     """
     start = time.monotonic()
-    # Floor time masks SMTP timing differences between branches.
-    MIN_ELAPSED = 2.0
 
     existing_user = await user_service.get_by_email(request.email)
     if existing_user:
@@ -150,13 +172,13 @@ async def send_verify_code(
             await verify_code_service.send_already_registered_notification(
                 request.email,
             )
-        except Exception:
-            pass  # swallow errors to avoid leaking registered-user info
+        except Exception as e:
+            logger.warning("Failed to send already registered notification: {}", e)
         elapsed = time.monotonic() - start
-        if elapsed < MIN_ELAPSED:
-            await asyncio.sleep(MIN_ELAPSED - elapsed)
+        if elapsed < VERIFY_CODE_MIN_ELAPSED:
+            await asyncio.sleep(VERIFY_CODE_MIN_ELAPSED - elapsed)
         return SendVerifyCodeResponse(
-            data=SendVerifyCodeData(resend_after=60),
+            data=SendVerifyCodeData(resend_after=VERIFY_CODE_RESEND_AFTER),
         )
 
     success, message, resend_after = await verify_code_service.send_code(
@@ -164,14 +186,11 @@ async def send_verify_code(
     )
 
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=message,
-        )
+        raise ValidationError(message)
 
     elapsed = time.monotonic() - start
-    if elapsed < MIN_ELAPSED:
-        await asyncio.sleep(MIN_ELAPSED - elapsed)
+    if elapsed < VERIFY_CODE_MIN_ELAPSED:
+        await asyncio.sleep(VERIFY_CODE_MIN_ELAPSED - elapsed)
     return SendVerifyCodeResponse(
         data=SendVerifyCodeData(resend_after=resend_after),
     )
@@ -190,10 +209,7 @@ async def verify_email(
     )
 
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=message,
-        )
+        raise ValidationError(message)
 
     return VerifyEmailResponse(
         data=VerifyEmailData(verified=True, email=request.email),
@@ -223,19 +239,19 @@ async def register_with_code(
     )
 
     if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=message,
-        )
+        raise ValidationError(message)
 
     # Re-check email after verification to close TOCTOU window
-    user = await user_service.create_user(
+    existing_user = await user_service.get_by_email(request.email)
+    if existing_user:
+        raise ConflictError("A user with this email already exists")
+
+    return await _create_and_respond_user(
         name=request.name,
         email=request.email,
         password=request.password,
-        role=UserRole.USER,
+        user_service=user_service,
     )
-    return UserCreateResponse(data=UserResponse.model_validate(user))
 
 
 @router.post("/refresh", response_model=RefreshTokenResponse)
@@ -251,11 +267,7 @@ async def refresh_access_token(
     - Issues new access + refresh tokens, rotating the jti
     """
     if not user.family_id or not user.jti:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token: missing family_id or jti",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UnauthorizedError("Invalid refresh token: missing family_id or jti")
 
     try:
         new_refresh_token, family_id, new_jti = create_refresh_token(
@@ -269,11 +281,7 @@ async def refresh_access_token(
         )
     except TokenReplayError as e:
         logger.warning("Refresh token replay: {}", e)
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token has been revoked. Please sign in again.",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UnauthorizedError("Refresh token has been revoked. Please sign in again.")
 
     access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token, _access_jti = create_access_token(
@@ -293,24 +301,24 @@ async def refresh_access_token(
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(
-    request: Request,
+    body: LogoutRequest,
     user: RefreshUser,
     token_service: TokenServiceDep,
 ) -> None:
     """Logout by revoking the refresh token family and the current access token.
 
     Accepts the refresh token in the Authorization header and an optional
-    X-Access-Token header with the current access token for immediate revocation.
+    access_token in the request body for immediate revocation.
     Revokes the entire refresh token family on the server side.
     """
+    logger.info("User {} logged out", user.email)
     if user.family_id:
         await token_service.revoke_family(user.family_id)
 
     # Revoke the current access token so it cannot be reused
-    access_token = request.headers.get("X-Access-Token")
-    if access_token:
-        from mgmt_server.core.security import decode_access_token
-
-        payload = decode_access_token(access_token)
-        if payload and payload.get("jti"):
+    payload = decode_access_token(body.access_token)
+    if payload:
+        if payload.get("sub") != user.email:
+            raise PermissionDeniedError("Access token does not belong to the authenticated user")
+        if payload.get("jti"):
             await token_service.revoke_access_token(payload["jti"])

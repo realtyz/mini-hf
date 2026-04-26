@@ -20,13 +20,22 @@ Example:
     # Using ConfigService (recommended for external code)
     config_service = ConfigService(session)
     smtp_config = await config_service.get_smtp_config()
-    email_client = await config_service.get_email_client()
 """
 
-from services.config.service import ConfigService, ConfigUpdateItem, HFEndpointConfig
+from services.config.service import (
+    ConfigService,
+    ConfigUpdateItem,
+    HFEndpointConfig,
+    NotificationConfig,
+    AnnouncementConfig,
+    SMTPConfig,
+)
 
 __all__ = [
     "ConfigService",
     "ConfigUpdateItem",
     "HFEndpointConfig",
+    "NotificationConfig",
+    "AnnouncementConfig",
+    "SMTPConfig",
 ]

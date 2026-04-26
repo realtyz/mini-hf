@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 
 from loguru import logger
 from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
@@ -56,10 +57,26 @@ app.include_router(v1_router, prefix="/api/v1")
 
 @app.exception_handler(BusinessError)
 async def business_error_handler(request: Request, exc: BusinessError) -> JSONResponse:
-    """Convert BusinessError subclasses to proper HTTP responses."""
+    """Convert BusinessError subclasses to unified API responses."""
     return JSONResponse(
         status_code=exc.status_code,
-        content={"detail": exc.message},
+        content={"code": exc.status_code, "message": exc.message, "data": None},
+        headers=exc.headers,
+    )
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_error_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    """Convert Pydantic validation errors to unified API responses."""
+    errors = exc.errors()
+    detail = "; ".join(
+        f"{'.'.join(str(loc) for loc in e['loc'])}: {e['msg']}" for e in errors
+    )
+    return JSONResponse(
+        status_code=422,
+        content={"code": 422, "message": detail, "data": None},
     )
 
 

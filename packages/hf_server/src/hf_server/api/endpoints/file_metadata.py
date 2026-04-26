@@ -19,8 +19,46 @@ ERR_INTERNAL_HEADERS = {
 }
 
 
+def _validate_file_path(path: str) -> str:
+    """Validate file path to prevent path traversal attacks.
+
+    Checks for:
+    - Path traversal sequences (..)
+    - Absolute paths (starting with /)
+    - Windows-style absolute paths (starting with C:, etc.)
+
+    Returns normalized path without leading slashes.
+    """
+    # Block path traversal
+    if ".." in path:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid path: '..' sequence not allowed",
+        )
+
+    # Block absolute paths
+    if path.startswith("/"):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid path: absolute paths not allowed",
+        )
+
+    # Block Windows absolute paths (C:, D:, etc.)
+    if len(path) >= 2 and path[1] == ":":
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid path: absolute paths not allowed",
+        )
+
+    # Normalize and return
+    normalized = path.replace("\\", "/")
+    return normalized
+
+
 @router.head("/{namespace}/{repo_name}/resolve/{rev}/{rfilename:path}")
 @router.head("/models/{namespace}/{repo_name}/resolve/{rev}/{rfilename:path}")
+@router.get("/{namespace}/{repo_name}/resolve/{rev}/{rfilename:path}")
+@router.get("/models/{namespace}/{repo_name}/resolve/{rev}/{rfilename:path}")
 async def get_model_file_metadata(
     namespace: str,
     repo_name: str,
@@ -29,6 +67,7 @@ async def get_model_file_metadata(
     db: DbDep,
 ):
     """Get model file metadata and redirect to presigned URL."""
+    rfilename = _validate_file_path(rfilename)
     repo_id = f"{namespace}/{repo_name}"
     service = MetadataService(db)
 
@@ -86,6 +125,7 @@ async def get_model_file_metadata(
 
 
 @router.head("/datasets/{namespace}/{repo_name}/resolve/{rev}/{rfilename:path}")
+@router.get("/datasets/{namespace}/{repo_name}/resolve/{rev}/{rfilename:path}")
 async def get_dataset_file_metadata(
     namespace: str,
     repo_name: str,
@@ -94,6 +134,7 @@ async def get_dataset_file_metadata(
     db: DbDep,
 ):
     """Get dataset file metadata and redirect to presigned URL."""
+    rfilename = _validate_file_path(rfilename)
     repo_id = f"{namespace}/{repo_name}"
     service = MetadataService(db)
 

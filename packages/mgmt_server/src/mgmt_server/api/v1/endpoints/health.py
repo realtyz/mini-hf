@@ -27,6 +27,8 @@ async def get_public_announcement(
     Returns active announcement content and type for display on landing page.
     """
     config = await config_service.get_announcement_config()
+    if not config.is_active:
+        return BaseResponse[AnnouncementConfigResponse](data=None)
     return BaseResponse[AnnouncementConfigResponse](
         data=AnnouncementConfigResponse(
             content=config.content,

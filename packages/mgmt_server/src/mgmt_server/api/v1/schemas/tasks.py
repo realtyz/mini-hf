@@ -14,7 +14,6 @@ class TaskListQueryParams(PaginationQueryParams):
     """Query parameters for authenticated task list endpoint."""
 
     status: TaskStatus | None = None
-    limit: int = Field(20, ge=1, le=1000)
 
 
 class PublicTaskListQueryParams(PaginationQueryParams):

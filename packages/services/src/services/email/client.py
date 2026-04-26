@@ -12,7 +12,7 @@ import aiosmtplib
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 from loguru import logger
 
-from .config import SMTPConfig
+from services.config.service import SMTPConfig
 from .exceptions import (
     ConfigurationError,
     EmailSendError,

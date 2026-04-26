@@ -13,14 +13,13 @@ from services.email import (
     EmailSendError,
     SMTPAuthenticationError,
     SMTPConnectionError,
-    SMTPConfig,
     TaskNotificationService,
     TemplateError,
     VerifyCodeService,
     task_notification_service,
     verify_code_service,
 )
-from services.config import ConfigService
+from services.config import ConfigService, SMTPConfig
 
 __all__ = [
     "EmailClient",

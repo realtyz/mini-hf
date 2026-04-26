@@ -66,12 +66,18 @@ class VerifyEmailRequest(BaseModel):
 class VerifyEmailData(BaseModel):
     """Verify email response data."""
 
-    verified: bool = True
+    verified: bool
     email: str = ""
 
 
 class VerifyEmailResponse(BaseResponse[VerifyEmailData]):
     """Verify email response."""
+
+
+class LogoutRequest(BaseModel):
+    """Logout request with optional access token for immediate revocation."""
+
+    access_token: str = Field(..., description="Current access token to revoke")
 
 
 class RegisterWithCodeRequest(BaseModel):

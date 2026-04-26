@@ -7,6 +7,14 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from database.db_models.system_config import SystemConfig
+from services.config import (
+    HFEndpointConfig,
+    AnnouncementConfig,
+    NotificationConfig,
+    SMTPConfig,
+)
+
 from mgmt_server.api.v1.schemas.base import BaseResponse
 
 
@@ -23,7 +31,7 @@ class ConfigItem(BaseModel):
     updated_at: datetime = Field(..., description="Last update time")
 
     @classmethod
-    def from_model(cls, config) -> "ConfigItem":
+    def from_model(cls, config: SystemConfig) -> "ConfigItem":
         """Create ConfigItem from a SystemConfig database model."""
         return cls(
             key=config.key,
@@ -113,7 +121,7 @@ class SMTPConfigResponse(BaseModel):
     is_configured: bool = Field(..., description="Whether SMTP is fully configured")
 
     @classmethod
-    def from_model(cls, config) -> SMTPConfigResponse:
+    def from_model(cls, config: SMTPConfig) -> SMTPConfigResponse:
         """Create from SMTPConfig dataclass (password excluded)."""
         return cls(
             host=config.host,
@@ -166,7 +174,7 @@ class HFEndpointConfigResponse(BaseModel):
     default_endpoint: str = Field(..., description="Default HF endpoint to use")
 
     @classmethod
-    def from_model(cls, config) -> HFEndpointConfigResponse:
+    def from_model(cls, config: HFEndpointConfig) -> HFEndpointConfigResponse:
         """Create from HFEndpointConfig dataclass."""
         return cls(
             endpoints=config.endpoints,
@@ -198,7 +206,7 @@ class NotificationConfigResponse(BaseModel):
     )
 
     @classmethod
-    def from_model(cls, config) -> NotificationConfigResponse:
+    def from_model(cls, config: NotificationConfig) -> NotificationConfigResponse:
         """Create from NotificationConfig dataclass."""
         return cls(
             email=config.email,
@@ -237,7 +245,7 @@ class AnnouncementConfigResponse(BaseModel):
     )
 
     @classmethod
-    def from_model(cls, config) -> AnnouncementConfigResponse:
+    def from_model(cls, config: AnnouncementConfig) -> AnnouncementConfigResponse:
         """Create from AnnouncementConfig dataclass."""
         return cls(
             content=config.content,

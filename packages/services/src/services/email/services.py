@@ -15,7 +15,7 @@ from loguru import logger
 
 from database.db_models import Task
 from .client import EmailClient
-from .config import SMTPConfig
+from services.config import SMTPConfig
 from .exceptions import EmailError
 
 

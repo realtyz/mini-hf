@@ -11,11 +11,11 @@ Features:
 - High-level abstractions built on top of the internal ConfigProvider
 
 Example:
-    async def send_email(db: AsyncSession):
-        config_service = ConfigService(db)
-        email_client = await config_service.get_email_client()
-        if email_client:
-            await email_client.send_email(...)
+    config_service = ConfigService(session)
+    smtp_config = await config_service.get_smtp_config()
+    if smtp_config.is_configured:
+        client = EmailClient(smtp_config)
+        await client.send_email(...)
 """
 
 import json
@@ -28,7 +28,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.db_models.system_config import SystemConfig
 from services.config._provider import ConfigProvider
-from services import SMTPConfig, EmailClient
 
 
 @dataclass
@@ -40,6 +39,23 @@ class ConfigUpdateItem:
     category: str = "general"
     description: str | None = None
     is_sensitive: bool = False
+
+
+@dataclass
+class SMTPConfig:
+    """SMTP configuration for email client."""
+
+    host: str = ""
+    port: int = 587
+    username: str = ""
+    password: str = ""
+    use_tls: bool = True
+    from_email: str = ""
+
+    @property
+    def is_configured(self) -> bool:
+        """Check if SMTP is properly configured."""
+        return bool(self.host and self.username and self.password)
 
 
 @dataclass
@@ -83,11 +99,11 @@ class ConfigService:
     - Default configuration initialization for first-time setup
 
     Example:
-        async def send_email(db: AsyncSession):
-            config_service = ConfigService(db)
-            email_client = await config_service.get_email_client()
-            if email_client:
-                await email_client.send_email(...)
+        config_service = ConfigService(session)
+        smtp_config = await config_service.get_smtp_config()
+        if smtp_config.is_configured:
+            client = EmailClient(smtp_config)
+            await client.send_email(...)
     """
 
     # Default configurations for initialization
@@ -538,7 +554,7 @@ class ConfigService:
     async def save_announcement_config(
         self,
         content: str,
-        announcement_type: str,
+        announcement_type: Literal["info", "warning", "urgent"],
         is_active: bool,
     ) -> AnnouncementConfig:
         """Save announcement configuration atomically."""
@@ -627,23 +643,6 @@ class ConfigService:
         default = await self.get_hf_default_endpoint()
         return HFEndpointConfig(endpoints=endpoints, default_endpoint=default)
 
-    async def get_email_client(
-        self, template_dir: str | None = None
-    ) -> EmailClient | None:
-        """Get configured email client.
-
-        Args:
-            template_dir: Optional directory containing Jinja2 templates
-
-        Returns:
-            EmailClient instance if SMTP is configured, None otherwise
-        """
-        config = await self.get_smtp_config()
-        if not config.is_configured:
-            logger.debug("SMTP not configured, email client unavailable")
-            return None
-        return EmailClient(config, template_dir=template_dir)
-
     async def initialize_defaults(self) -> int:
         """Initialize default configurations if they don't exist.
 
@@ -678,10 +677,12 @@ class ConfigService:
 
     async def get_announcement_config(self) -> AnnouncementConfig:
         """Get announcement configuration as typed object."""
+        raw_type = await self._provider.get("system_announcement_type", "info")
+        announcement_type: Literal["info", "warning", "urgent"] = (
+            raw_type if raw_type in ("info", "warning", "urgent") else "info"
+        )
         return AnnouncementConfig(
             content=await self._provider.get("system_announcement", ""),
-            announcement_type=await self._provider.get(
-                "system_announcement_type", "info"
-            ),
+            announcement_type=announcement_type,
             is_active=await self._provider.get_bool("system_announcement_active", True),
         )

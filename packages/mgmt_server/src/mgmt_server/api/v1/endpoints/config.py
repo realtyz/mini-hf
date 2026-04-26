@@ -1,12 +1,12 @@
 """System configuration management endpoints."""
 
-import asyncio
 from typing import Annotated
 
 from loguru import logger
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 
-from mgmt_server.api.deps import AdminUserDep, ConfigServiceDep
+from mgmt_server.api.deps import AdminUserDep, ConfigManagementServiceDep
+from mgmt_server.core.exceptions import NotFoundError
 from mgmt_server.api.v1.schemas.base import BaseResponse
 from mgmt_server.api.v1.schemas.configs import (
     AnnouncementConfigResponse,
@@ -29,39 +29,19 @@ from mgmt_server.api.v1.schemas.configs import (
     SMTPTestRequest,
     SMTPTestResponse,
 )
-from services import EmailClient, SMTPConfig
-from services.config import ConfigUpdateItem, HFEndpointConfig
+from services import SMTPConfig
+from services.config import ConfigUpdateItem
 
 router = APIRouter()
-
-
-async def _test_smtp_connection(
-    smtp_config: SMTPConfig, timeout: float = 10.0
-) -> tuple[bool, str]:
-    """Test SMTP connection with timeout."""
-    client = EmailClient(smtp_config)
-    try:
-        success, message = await asyncio.wait_for(
-            client.test_connection(),
-            timeout=timeout,
-        )
-    except asyncio.TimeoutError:
-        success = False
-        message = f"SMTP connection timed out after {int(timeout)} seconds"
-    except ConnectionError as e:
-        success = False
-        message = f"SMTP connection test failed: {e}"
-    return success, message
 
 
 @router.get("", response_model=ConfigListResponse)
 async def list_configs(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
     category: Annotated[str | None, Query(description="Filter by category")] = None,
 ) -> ConfigListResponse:
-    """List all system configurations (admin only)."""
-    configs = await config_service.get_all_models(category=category)
+    configs = await svc.list_configs(category=category)
     return ConfigListResponse(
         data=[ConfigItem.from_model(c) for c in configs],
         total=len(configs),
@@ -71,10 +51,9 @@ async def list_configs(
 @router.get("/category/smtp", response_model=BaseResponse[SMTPConfigResponse])
 async def get_smtp_config(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> BaseResponse[SMTPConfigResponse]:
-    """Get SMTP configuration (admin only)."""
-    smtp_config = await config_service.get_smtp_config()
+    smtp_config = await svc.get_smtp_config()
     return BaseResponse[SMTPConfigResponse](
         data=SMTPConfigResponse.from_model(smtp_config)
     )
@@ -85,10 +64,9 @@ async def get_smtp_config(
 )
 async def get_hf_endpoint_config(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> BaseResponse[HFEndpointConfigResponse]:
-    """Get HuggingFace endpoint configuration (admin only)."""
-    config = await config_service.get_hf_config()
+    config = await svc.get_hf_config()
     return BaseResponse[HFEndpointConfigResponse](
         data=HFEndpointConfigResponse.from_model(config)
     )
@@ -98,8 +76,8 @@ async def get_hf_endpoint_config(
 async def test_smtp_connection(
     admin_user: AdminUserDep,
     request: SMTPTestRequest,
+    svc: ConfigManagementServiceDep,
 ) -> SMTPTestResponse:
-    """Test SMTP connection (admin only)."""
     smtp_config = SMTPConfig(
         host=request.host,
         port=request.port,
@@ -108,9 +86,7 @@ async def test_smtp_connection(
         use_tls=request.use_tls,
         from_email=request.from_email or request.username,
     )
-
-    success, message = await _test_smtp_connection(smtp_config)
-
+    success, message = await svc.test_smtp(smtp_config)
     logger.info(
         "SMTP connection test by admin {} to {}:{} - {}",
         admin_user.email,
@@ -118,17 +94,15 @@ async def test_smtp_connection(
         request.port,
         "success" if success else "failed",
     )
-
     return SMTPTestResponse(data=success, test_message=message)
 
 
 @router.put("/category/smtp", response_model=BaseResponse[SMTPConfigResponse])
 async def save_smtp_config(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
     request: SMTPSaveRequest,
 ) -> BaseResponse[SMTPConfigResponse]:
-    """Save SMTP configuration (admin only)."""
     smtp_config = SMTPConfig(
         host=request.host,
         port=request.port,
@@ -137,33 +111,13 @@ async def save_smtp_config(
         use_tls=request.use_tls,
         from_email=request.from_email,
     )
-
-    if request.test_before_save:
-        success, message = await _test_smtp_connection(smtp_config)
-        if not success:
-            logger.warning(
-                "SMTP save rejected for admin {} - connection test failed: {}",
-                admin_user.email,
-                message,
-            )
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"SMTP connection test failed: {message}",
-            )
-
-    smtp_config = await config_service.save_smtp_config(
-        host=smtp_config.host,
-        port=smtp_config.port,
-        username=smtp_config.username,
-        password=smtp_config.password,
-        use_tls=smtp_config.use_tls,
-        from_email=smtp_config.from_email,
+    result = await svc.save_smtp_config(
+        smtp_config=smtp_config,
+        test_before_save=request.test_before_save,
+        admin_email=admin_user.email,
     )
-
-    logger.info("SMTP configuration saved by admin {}", admin_user.email)
-
     return BaseResponse[SMTPConfigResponse](
-        data=SMTPConfigResponse.from_model(smtp_config)
+        data=SMTPConfigResponse.from_model(result)
     )
 
 
@@ -172,23 +126,14 @@ async def save_smtp_config(
 )
 async def save_hf_endpoint_config(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
     request: HFEndpointSaveRequest,
 ) -> BaseResponse[HFEndpointConfigResponse]:
-    """Save HuggingFace endpoint configuration (admin only)."""
-    cleaned_endpoints = [e.strip() for e in request.endpoints if e.strip()]
-    if request.default_endpoint not in cleaned_endpoints:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Default endpoint must be in the endpoints list",
-        )
-
-    config = await config_service.save_hf_endpoint_config(
-        endpoints=cleaned_endpoints,
-        default_endpoint=request.default_endpoint.strip(),
+    config = await svc.save_hf_config(
+        endpoints=request.endpoints,
+        default_endpoint=request.default_endpoint,
+        admin_email=admin_user.email,
     )
-
-    logger.info("HF endpoint configuration saved by admin {}", admin_user.email)
     return BaseResponse[HFEndpointConfigResponse](
         data=HFEndpointConfigResponse.from_model(config)
     )
@@ -199,10 +144,9 @@ async def save_hf_endpoint_config(
 )
 async def get_notification_config(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> BaseResponse[NotificationConfigResponse]:
-    """Get notification configuration (admin only)."""
-    config = await config_service.get_notification_config()
+    config = await svc.get_notification_config()
     return BaseResponse[NotificationConfigResponse](
         data=NotificationConfigResponse.from_model(config)
     )
@@ -213,18 +157,16 @@ async def get_notification_config(
 )
 async def save_notification_config(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
     request: NotificationSaveRequest,
 ) -> BaseResponse[NotificationConfigResponse]:
-    """Save notification configuration (admin only)."""
-    config = await config_service.save_notification_config(
+    config = await svc.save_notification_config(
         email=request.email,
         task_approval_push=request.task_approval_push,
         auto_approve_enabled=request.auto_approve_enabled,
         auto_approve_threshold_gb=request.auto_approve_threshold_gb,
+        admin_email=admin_user.email,
     )
-
-    logger.info("Notification configuration saved by admin {}", admin_user.email)
     return BaseResponse[NotificationConfigResponse](
         data=NotificationConfigResponse.from_model(config)
     )
@@ -235,10 +177,9 @@ async def save_notification_config(
 )
 async def get_announcement_config(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> BaseResponse[AnnouncementConfigResponse]:
-    """Get announcement configuration (admin only)."""
-    config = await config_service.get_announcement_config()
+    config = await svc.get_announcement_config()
     return BaseResponse[AnnouncementConfigResponse](
         data=AnnouncementConfigResponse.from_model(config)
     )
@@ -249,16 +190,14 @@ async def get_announcement_config(
 )
 async def save_announcement_config(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
     request: AnnouncementSaveRequest,
 ) -> BaseResponse[AnnouncementConfigResponse]:
-    """Save announcement configuration (admin only)."""
-    config = await config_service.save_announcement_config(
+    config = await svc.save_announcement_config(
         content=request.content,
         announcement_type=request.announcement_type,
         is_active=request.is_active,
     )
-
     return BaseResponse[AnnouncementConfigResponse](
         data=AnnouncementConfigResponse.from_model(config)
     )
@@ -268,15 +207,11 @@ async def save_announcement_config(
 async def get_config(
     key: str,
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> ConfigDetailResponse:
-    """Get a specific configuration by key (admin only)."""
-    config = await config_service.get_model(key)
+    config = await svc.get_config(key)
     if not config:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Configuration with key '{key}' not found",
-        )
+        raise NotFoundError(f"Configuration with key '{key}' not found")
     return ConfigDetailResponse(data=ConfigItem.from_model(config))
 
 
@@ -286,17 +221,15 @@ async def get_config(
 async def create_config(
     request: ConfigCreateRequest,
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> ConfigCreateResponse:
-    """Create a new configuration (admin only)."""
-    config = await config_service.create(
+    config = await svc.create_config(
         key=request.key,
         value=request.value,
         category=request.category,
         description=request.description,
         is_sensitive=request.is_sensitive,
     )
-
     logger.info("Config created by admin {}: {}", admin_user.email, request.key)
     return ConfigCreateResponse(data=ConfigItem.from_model(config))
 
@@ -304,14 +237,10 @@ async def create_config(
 @router.post("/init", response_model=ConfigListResponse)
 async def initialize_default_configs(
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> ConfigListResponse:
-    """Initialize default configurations (admin only).
-
-    Safe to call multiple times - existing configs won't be overwritten.
-    """
-    await config_service.initialize_defaults()
-    configs = await config_service.get_all_models()
+    await svc.initialize_defaults()
+    configs = await svc.list_configs()
     return ConfigListResponse(
         data=[ConfigItem.from_model(c) for c in configs],
         total=len(configs),
@@ -322,9 +251,8 @@ async def initialize_default_configs(
 async def batch_update_configs(
     request: ConfigBatchUpdateRequest,
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> ConfigListResponse:
-    """Batch update configurations (admin only)."""
     items = [
         ConfigUpdateItem(
             key=item.key,
@@ -335,14 +263,13 @@ async def batch_update_configs(
         )
         for item in request.configs
     ]
-    await config_service.batch_update(items)
+    await svc.batch_update(items)
     logger.info(
-        "Batch config update by admin {}: %d items",
+        "Batch config update by admin {}: {} items",
         admin_user.email,
         len(request.configs),
     )
-
-    configs = await config_service.get_all_models()
+    configs = await svc.list_configs()
     return ConfigListResponse(
         data=[ConfigItem.from_model(c) for c in configs],
         total=len(configs),
@@ -354,25 +281,15 @@ async def update_config(
     key: str,
     request: ConfigUpdateRequest,
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> ConfigUpdateResponse:
-    """Update a configuration (admin only).
-
-    Uses set_partial to preserve existing category and is_sensitive
-    without a separate read-modify-write cycle.
-    """
-    config = await config_service.set_partial(
+    config = await svc.update_config(
         key=key,
         value=request.value,
         description=request.description,
     )
-
     if config is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Configuration with key '{key}' not found",
-        )
-
+        raise NotFoundError(f"Configuration with key '{key}' not found")
     logger.info("Config updated by admin {}: {}", admin_user.email, key)
     return ConfigUpdateResponse(data=ConfigItem.from_model(config))
 
@@ -381,14 +298,10 @@ async def update_config(
 async def delete_config(
     key: str,
     admin_user: AdminUserDep,
-    config_service: ConfigServiceDep,
+    svc: ConfigManagementServiceDep,
 ) -> ConfigDeleteResponse:
-    """Delete a configuration (admin only)."""
-    deleted = await config_service.delete(key)
+    deleted = await svc.delete_config(key)
     if not deleted:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Configuration with key '{key}' not found",
-        )
+        raise NotFoundError(f"Configuration with key '{key}' not found")
     logger.info("Config deleted by admin {}: {}", admin_user.email, key)
     return ConfigDeleteResponse()

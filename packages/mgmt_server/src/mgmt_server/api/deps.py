@@ -2,7 +2,7 @@
 
 from typing import Annotated
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 
 from cache import cache_service
 from cache.services.cache import CacheService
@@ -13,11 +13,13 @@ from services import task_notification_service, verify_code_service
 from services.config import ConfigService
 from services.task import TaskService
 from mgmt_server.core.constants import UserRole
+from mgmt_server.core.exceptions import PermissionDeniedError, UnauthorizedError
 from mgmt_server.core.security import (
     verify_bearer_token,
     verify_refresh_token,
     TokenPayload,
 )
+from mgmt_server.services.config_management_service import ConfigManagementService
 from mgmt_server.services.dashboard_service import DashboardService
 from mgmt_server.services.task_preview_service import TaskPreviewService
 from mgmt_server.services.repo_service import RepoService
@@ -67,6 +69,13 @@ async def get_config_service(
     return ConfigService(db)
 
 
+async def get_config_management_service(
+    config_service: Annotated[ConfigService, Depends(get_config_service)],
+) -> ConfigManagementService:
+    """Get config management service dependency."""
+    return ConfigManagementService(config_service)
+
+
 async def get_dashboard_service(
     db: Annotated[AsyncSession, Depends(get_db)],
     cache: Annotated[CacheService, Depends(get_cache_service)],
@@ -100,7 +109,7 @@ async def get_task_lifecycle_service(
     )
 
 
-async def get_preview_task_service(
+async def get_task_preview_service(
     db: Annotated[AsyncSession, Depends(get_db)],
     task_service: Annotated[TaskService, Depends(get_task_service)],
     cache: Annotated[CacheService, Depends(get_cache_service)],
@@ -148,9 +157,12 @@ TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
 TaskLifecycleServiceDep = Annotated[
     TaskLifecycleService, Depends(get_task_lifecycle_service)
 ]
-PreviewTaskServiceDep = Annotated[TaskPreviewService, Depends(get_preview_task_service)]
+TaskPreviewServiceDep = Annotated[TaskPreviewService, Depends(get_task_preview_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 ConfigServiceDep = Annotated[ConfigService, Depends(get_config_service)]
+ConfigManagementServiceDep = Annotated[
+    ConfigManagementService, Depends(get_config_management_service)
+]
 VerifyCodeServiceDep = Annotated[VerifyCodeService, Depends(get_verify_code_service)]
 TokenServiceDep = Annotated[TokenService, Depends(get_token_service)]
 CurrentUserToken = Annotated[TokenPayload, Depends(verify_bearer_token)]
@@ -169,15 +181,9 @@ async def get_current_user(
     """Get current authenticated user entity."""
     user = await user_service.get_by_email(current_user_token.email)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-        )
+        raise UnauthorizedError("User not found")
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is inactive",
-        )
+        raise PermissionDeniedError("User is inactive")
     return user
 
 
@@ -186,10 +192,7 @@ async def require_admin(
 ) -> User:
     """Require admin role for access."""
     if current_user.role != UserRole.ADMIN:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required",
-        )
+        raise PermissionDeniedError("Admin access required")
     return current_user
 
 
@@ -200,16 +203,9 @@ async def get_refresh_user(
     """Get user entity from refresh token, with active check."""
     user = await user_service.get_by_email(refresh_user.email)
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="User not found",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UnauthorizedError("User not found")
     if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is inactive",
-        )
+        raise PermissionDeniedError("User is inactive")
     return user
 
 

@@ -60,17 +60,16 @@ export const useAuthStore = create<AuthState>()(
 
       serverLogout: async () => {
         const { token, refreshToken } = get()
-        if (refreshToken) {
+        if (refreshToken && token) {
           try {
             const headers: Record<string, string> = {
               Authorization: `Bearer ${refreshToken}`,
-            }
-            if (token) {
-              headers['X-Access-Token'] = token
+              'Content-Type': 'application/json',
             }
             await fetch(`${config.API_BASE_URL}/auth/logout`, {
               method: 'POST',
               headers,
+              body: JSON.stringify({ access_token: token }),
             })
           } catch {
             // Server logout is best-effort; clear local state regardless

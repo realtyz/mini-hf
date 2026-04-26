@@ -47,16 +47,12 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 
   try {
-    const response = await axios.post<{
-      code: number
-      message: string
-      data: {
-        access_token: string
-        refresh_token: string
-        token_type: string
-        expires_in: number
-      }
-    }>(
+    const response = await axios.post<ApiResponse<{
+      access_token: string
+      refresh_token: string
+      token_type: string
+      expires_in: number
+    }>>(
       `${config.API_BASE_URL}/auth/refresh`,
       {},
       {
@@ -141,7 +137,7 @@ api.interceptors.response.use(
   // 错误处理
   async (error: AxiosError<ApiResponse<unknown>>) => {
     const responseData = error.response?.data as
-      | { detail?: string; message?: string; code?: number }
+      | { code?: number; message?: string; data?: unknown }
       | undefined
     const status = error.response?.status
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -183,10 +179,10 @@ api.interceptors.response.use(
     }
 
     // 返回格式化的错误对象
-    // FastAPI HTTPException 返回 detail 字段，我们的 API 返回 message 字段
+    // 所有 API 错误响应统一使用 {code, message, data} 格式
     const apiError: ApiError = {
       code: responseData?.code ?? status ?? -1,
-      message: responseData?.detail ?? responseData?.message ?? error.message ?? '请求失败',
+      message: responseData?.message ?? error.message ?? '请求失败',
     }
 
     return Promise.reject(apiError)

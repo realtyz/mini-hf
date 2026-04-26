@@ -5,6 +5,7 @@ from __future__ import annotations
 from database.db_models import User
 from database.db_repositories import UserRepository
 from loguru import logger
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from mgmt_server.core.constants import UserRole
@@ -76,13 +77,20 @@ class UserService:
             raise ConflictError("A user with this email already exists")
 
         hashed_password = hash_password(password)
-        user = await self._repo.create(
-            name=name,
-            email=email,
-            hashed_password=hashed_password,
-            role=role,
-            is_active=is_active,
-        )
+        try:
+            user = await self._repo.create(
+                name=name,
+                email=email,
+                hashed_password=hashed_password,
+                role=role,
+                is_active=is_active,
+            )
+        except IntegrityError:
+            # Race condition: another request created the user between check and create
+            await self._session.rollback()
+            logger.warning("Integrity error when creating user (email conflict): {}", _mask_email(email))
+            raise ConflictError("A user with this email already exists")
+
         logger.info("User created successfully: {}", _mask_email(email))
         return user
 
@@ -106,11 +114,7 @@ class UserService:
         if not user:
             raise NotFoundError(f"User with ID {user_id} not found")
         return user
-
-    async def _get_user_or_raise(self, user_id: int) -> User:
-        """Fetch user by ID or raise NotFoundError. Deprecated: use get_or_raise."""
-        return await self.get_or_raise(user_id)
-
+    
     async def _update_password(self, user: User, new_password: str) -> None:
         """Hash and set new password for a user."""
         user.hashed_password = hash_password(new_password)
@@ -132,7 +136,7 @@ class UserService:
         """
         logger.info("Updating user {}", user_id)
 
-        user = await self._get_user_or_raise(user_id)
+        user = await self.get_or_raise(user_id)
 
         if email is not None and email != user.email:
             existing = await self._repo.get_by_email(email)
@@ -162,7 +166,7 @@ class UserService:
         """
         logger.info("Changing password for user {}", user_id)
 
-        user = await self._get_user_or_raise(user_id)
+        user = await self.get_or_raise(user_id)
 
         if not verify_password(current_password, user.hashed_password):
             raise ValidationError("Current password is incorrect")
@@ -178,7 +182,7 @@ class UserService:
         """
         logger.info("Admin resetting password for user {}", user_id)
 
-        user = await self._get_user_or_raise(user_id)
+        user = await self.get_or_raise(user_id)
 
         await self._update_password(user, new_password)
         logger.info("Password reset successfully for user {}", user_id)
@@ -195,7 +199,7 @@ class UserService:
         """
         logger.info("Deactivating user {} with admin check", user_id)
 
-        user = await self._get_user_or_raise(user_id)
+        user = await self.get_or_raise(user_id)
 
         if user.role == UserRole.ADMIN and user.is_active:
             remaining = await self._repo.lock_and_count_active_admins(
@@ -217,7 +221,7 @@ class UserService:
         """
         logger.info("Deactivating user {}", user_id)
 
-        user = await self._get_user_or_raise(user_id)
+        user = await self.get_or_raise(user_id)
 
         user.is_active = False
         user.is_deleted = True

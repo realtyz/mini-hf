@@ -3,9 +3,10 @@
 from typing import Annotated
 
 from loguru import logger
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 
 from mgmt_server.api.deps import AdminUserDep, CurrentUserDep, UserServiceDep
+from mgmt_server.core.exceptions import ValidationError
 from mgmt_server.core.constants import UserRole
 from mgmt_server.api.v1.schemas.users import (
     AdminPasswordResetRequest,
@@ -126,10 +127,7 @@ async def update_user(
         and request.role is not None
         and request.role != UserRole.ADMIN
     ):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot change your own admin role",
-        )
+        raise ValidationError("Cannot change your own admin role")
 
     updated_user = await user_service.update_user(
         user_id=user_id,
@@ -153,10 +151,7 @@ async def delete_user(
     one admin always remains in the system.
     """
     if user_id == admin_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot delete yourself",
-        )
+        raise ValidationError("Cannot delete yourself")
 
     await user_service.deactivate_user_with_admin_check(user_id)
 

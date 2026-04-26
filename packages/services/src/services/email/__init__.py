@@ -30,7 +30,6 @@ Example:
 """
 
 from .client import EmailClient
-from .config import SMTPConfig
 from .exceptions import (
     ConfigurationError,
     EmailError,
@@ -48,7 +47,6 @@ from .services import (
 
 __all__ = [
     "EmailClient",
-    "SMTPConfig",
     "EmailError",
     "ConfigurationError",
     "EmailSendError",

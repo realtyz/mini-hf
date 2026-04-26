@@ -7,7 +7,7 @@ from fastapi import APIRouter, BackgroundTasks, Depends
 from mgmt_server.api.deps import (
     AdminUserDep,
     CurrentUserDep,
-    PreviewTaskServiceDep,
+    TaskPreviewServiceDep,
     TaskLifecycleServiceDep,
 )
 from mgmt_server.api.v1.schemas import (
@@ -84,7 +84,7 @@ async def preview_task(
     request: TaskPreviewRequest,
     current_user: CurrentUserDep,
     background_tasks: BackgroundTasks,
-    service: PreviewTaskServiceDep,
+    service: TaskPreviewServiceDep,
 ) -> AsyncPreviewTaskResponse:
     """Start an async preview task for repository download."""
     response, bg_callable = await service.start_preview_task(
@@ -106,7 +106,7 @@ async def preview_task(
 async def get_preview_task_status(
     task_id: str,
     current_user: CurrentUserDep,
-    service: PreviewTaskServiceDep,
+    service: TaskPreviewServiceDep,
 ) -> AsyncPreviewTaskStatusResponse:
     """Get async preview task status and result."""
     return await service.get_preview_task_status(task_id)
@@ -116,7 +116,7 @@ async def get_preview_task_status(
 async def create_repo_download_task(
     request: CreateTaskFromCacheRequest,
     current_user: CurrentUserDep,
-    service: PreviewTaskServiceDep,
+    service: TaskPreviewServiceDep,
 ) -> TaskDetailResponse:
     """Create a download task from cached preview data."""
     return await service.create_task_from_cache(

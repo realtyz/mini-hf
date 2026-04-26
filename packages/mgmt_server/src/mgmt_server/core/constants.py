@@ -19,3 +19,10 @@ TASK_RETRY_WINDOW_DAYS = 7
 # Preview task cache
 PREVIEW_TASK_TTL = 600  # 10 minutes
 PREVIEW_CACHE_TTL = 300  # 5 minutes
+
+# Auth timing
+VERIFY_CODE_MIN_ELAPSED = 2.0  # seconds — masks SMTP timing differences
+VERIFY_CODE_RESEND_AFTER = 60  # seconds — cooldown before resending code
+
+# SMTP
+SMTP_TEST_TIMEOUT = 10.0  # seconds

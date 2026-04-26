@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Optional
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from pydantic import BaseModel
@@ -12,6 +12,7 @@ from pwdlib import PasswordHash
 from pwdlib.hashers.bcrypt import BcryptHasher
 
 from core.settings import settings
+from mgmt_server.core.exceptions import UnauthorizedError
 from cache import cache_service as _cache_service
 from cache.services.cache import CacheService
 
@@ -206,31 +207,19 @@ async def verify_bearer_token(
     payload = decode_access_token(token)
 
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UnauthorizedError("Invalid authentication credentials")
 
     try:
         tp = TokenPayload.from_jwt_payload(payload)
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token: missing required fields",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UnauthorizedError("Invalid token: missing required fields")
 
     # Check access token revocation list in Redis
     jti = payload.get("jti")
     if jti:
         revoked = await cache_service.exists(f"access_revoke:{jti}")
         if revoked:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Token has been revoked",
-                headers={"WWW-Authenticate": "Bearer"},
-            )
+            raise UnauthorizedError("Token has been revoked")
 
     return tp
 
@@ -250,26 +239,14 @@ async def verify_refresh_token(
         HTTPException: If token is missing or invalid
     """
     if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Refresh token required",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UnauthorizedError("Refresh token required")
 
     payload = decode_refresh_token(token)
 
     if payload is None:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or expired refresh token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UnauthorizedError("Invalid or expired refresh token")
 
     try:
         return TokenPayload.from_jwt_payload(payload)
     except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid refresh token: missing required fields",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise UnauthorizedError("Invalid refresh token: missing required fields")
