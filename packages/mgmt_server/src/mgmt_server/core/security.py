@@ -20,6 +20,7 @@ from cache.services.cache import CacheService
 async def _get_cache_service() -> CacheService:
     return _cache_service
 
+
 # Password hashing using bcrypt (Windows compatible)
 password_hash = PasswordHash((BcryptHasher(),))
 
@@ -83,7 +84,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return password_hash.verify(plain_password, hashed_password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> tuple[str, str]:
+def create_access_token(
+    data: dict, expires_delta: Optional[timedelta] = None
+) -> tuple[str, str]:
     """Create a JWT access token with user info.
 
     Args:

@@ -1,7 +1,9 @@
 """File download and upload processing."""
 
 import asyncio
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from services.huggingface import hf_url
 from huggingface_hub import RepoFile
@@ -17,110 +19,96 @@ from worker.handlers._downloader import (
     DownloadPausedError,
 )
 from worker.services import TaskProgressTracker
-from storage import s3_client, build_blob_key
+from storage import S3Client, s3_client, build_blob_key
 
 
-# Default concurrent download count
-DEFAULT_CONCURRENT_DOWNLOADS = 3
+@dataclass
+class FileProcessResult:
+    """Result of processing a single file (download + upload)."""
 
-# Default concurrent upload count (can be higher than download as uploads are usually faster)
-DEFAULT_CONCURRENT_UPLOADS = 3
+    status: Literal["uploaded", "exists"]
+    path: str
+    blob_id: str
+    size: int
 
-# Default concurrent S3 existence checks
-DEFAULT_CONCURRENT_CHECKS = 5
 
-# Progress reporting interval (seconds)
-PROGRESS_INTERVAL = 2.0
+@dataclass
+class FileProcessInfrastructure:
+    """Concurrency controls and shared clients for file processing.
+
+    Separated from business data so FileProcessContext focuses on
+    repo-level parameters and control signals.
+    """
+
+    download_semaphore: asyncio.Semaphore
+    upload_semaphore: asyncio.Semaphore
+    check_semaphore: asyncio.Semaphore
+    shared_client: httpx.AsyncClient | None = None
+    s3: S3Client = None  # type: ignore[assignment]
+
+
+@dataclass
+class FileProcessContext:
+    """Business data and control signals for file download/upload."""
+
+    repo_id: str
+    repo_type: str
+    commit_hash: str
+    access_token: str | None
+    cancel_event: asyncio.Event
+    pause_event: asyncio.Event
+    progress_tracker: TaskProgressTracker | None
+    endpoint: str
+    infra: FileProcessInfrastructure
+    skip_s3_check_paths: set[str] = None  # type: ignore[assignment]
 
 
 async def download_and_upload_files(
-    repo_id: str,
-    repo_type: str,
-    commit_hash: str,
+    ctx: FileProcessContext,
     files: list[RepoFile],
-    access_token: str | None,
-    cancel_event: asyncio.Event,
-    pause_event: asyncio.Event,
-    progress_tracker: TaskProgressTracker | None = None,
-    endpoint: str | None = None,
-) -> list[dict]:
+) -> list[FileProcessResult]:
     """Download files concurrently to local temp directory and upload to S3.
 
     This function performs pure IO (download + upload) and returns the list of
     successful results. Database updates are the caller's responsibility.
 
     Args:
-        repo_id: Repository ID
-        repo_type: Repository type
-        commit_hash: Commit hash (used for constructing download URLs)
-        files: List of RepoFile objects to download
-        access_token: Optional access token for authentication
-        cancel_event: Event to signal cancellation
-        pause_event: Event to signal pause (files already downloading will
-            complete, but no new files will start)
-        progress_tracker: Optional progress tracker
-        endpoint: Optional HF endpoint URL to use for downloads
+        ctx: Shared context with repo info, semaphores, and control events.
+        files: List of RepoFile objects to download.
 
     Returns:
-        List of result dicts for successfully processed files. Each dict has:
-        - status: "uploaded" | "exists"
-        - path: File path
-        - blob_id: Blob ID
-        - size: File size
+        List of FileProcessResult for successfully processed files.
 
     Raises:
         DownloadError: If any files fail to process
         DownloadPausedError: If pause was requested and no real failures occurred
     """
-    if endpoint is None:
-        endpoint = "https://huggingface.co"
+    # Step 0: Initialize defaults
+    if ctx.infra.s3 is None:
+        ctx.infra.s3 = s3_client
 
-    # Step 0: Create a shared AsyncClient for connection reuse across all downloads
-    shared_client = httpx.AsyncClient(
-        follow_redirects=True,
-        timeout=30.0,
-        limits=httpx.Limits(
-            max_connections=DEFAULT_CONCURRENT_DOWNLOADS
-            + DEFAULT_CONCURRENT_UPLOADS
-            + 2,
-            max_keepalive_connections=DEFAULT_CONCURRENT_DOWNLOADS + 2,
-        ),
-    )
-
-    # Use separate semaphores for download and upload concurrency
-    # Download semaphore is released after download completes, allowing other tasks to start
-    # Upload uses separate semaphore, allowing download and upload to run in parallel
-    download_semaphore = asyncio.Semaphore(DEFAULT_CONCURRENT_DOWNLOADS)
-    upload_semaphore = asyncio.Semaphore(DEFAULT_CONCURRENT_UPLOADS)
-    # Semaphore for S3 existence checks (runs before download/upload, can overwhelm S3 if unbounded)
-    check_semaphore = asyncio.Semaphore(DEFAULT_CONCURRENT_CHECKS)
+    # Create a shared AsyncClient for connection reuse across all downloads
+    if ctx.infra.shared_client is None:
+        ctx.infra.shared_client = httpx.AsyncClient(
+            follow_redirects=True,
+            timeout=30.0,
+            limits=httpx.Limits(
+                max_connections=settings.WORKER_CONCURRENT_DOWNLOADS
+                + settings.WORKER_CONCURRENT_UPLOADS
+                + 2,
+                max_keepalive_connections=settings.WORKER_CONCURRENT_DOWNLOADS + 2,
+            ),
+        )
 
     # Step 1: Initialize all files' progress to pending
-    if progress_tracker:
+    if ctx.progress_tracker:
         logger.debug("Initializing progress for {} files...", len(files))
-        await progress_tracker.batch_start_files([(f.path, f.size) for f in files])
+        await ctx.progress_tracker.batch_start_files([(f.path, f.size) for f in files])
         logger.debug("Progress initialization completed for {} files", len(files))
 
     # Step 2: Create all download+upload tasks (pure IO, no database)
     logger.debug("Creating {} download tasks...", len(files))
-    download_tasks = [
-        _process_single_file(
-            download_semaphore=download_semaphore,
-            upload_semaphore=upload_semaphore,
-            check_semaphore=check_semaphore,
-            repo_id=repo_id,
-            repo_type=repo_type,
-            commit_hash=commit_hash,
-            repo_file=repo_file,
-            access_token=access_token,
-            cancel_event=cancel_event,
-            pause_event=pause_event,
-            progress_tracker=progress_tracker,
-            endpoint=endpoint,
-            shared_client=shared_client,
-        )
-        for repo_file in files
-    ]
+    download_tasks = [_process_single_file(ctx, repo_file) for repo_file in files]
 
     # Wait for all tasks to complete, collect results
     try:
@@ -130,10 +118,11 @@ async def download_and_upload_files(
         results = await asyncio.gather(*download_tasks, return_exceptions=True)
         logger.debug("All download tasks completed, processing results...")
     finally:
-        await shared_client.aclose()
+        if ctx.infra.shared_client is not None:
+            await ctx.infra.shared_client.aclose()
 
     # Step 2: Categorize results
-    successful_results: list[dict] = []
+    successful_results: list[FileProcessResult] = []
     failures: list[tuple[str, Exception]] = []
     paused_count = 0
 
@@ -148,10 +137,9 @@ async def download_and_upload_files(
             failures.append((repo_file.path, result))
             logger.error("Failed to process {}: {}", repo_file.path, result)
             # Mark file as failed
-            if progress_tracker:
-                await progress_tracker.fail_file(repo_file.path, str(result))
-        elif isinstance(result, dict):
-            # result is a dict with status, path, blob_id, size
+            if ctx.progress_tracker:
+                await ctx.progress_tracker.fail_file(repo_file.path, str(result))
+        elif isinstance(result, FileProcessResult):
             successful_results.append(result)
         else:
             logger.error(
@@ -183,194 +171,144 @@ async def download_and_upload_files(
 
 
 async def _process_single_file(
-    download_semaphore: asyncio.Semaphore,
-    upload_semaphore: asyncio.Semaphore,
-    check_semaphore: asyncio.Semaphore,
-    repo_id: str,
-    repo_type: str,
-    commit_hash: str,
+    ctx: FileProcessContext,
     repo_file: RepoFile,
-    access_token: str | None,
-    cancel_event: asyncio.Event,
-    pause_event: asyncio.Event,
-    progress_tracker: TaskProgressTracker | None = None,
-    endpoint: str | None = None,
-    shared_client: httpx.AsyncClient | None = None,
-) -> dict:
+) -> FileProcessResult:
     """Process a single file: download from HF and upload to S3.
 
-    Separates download and upload into two phases with independent semaphores:
-    - Download phase: Holds download_semaphore
-    - Upload phase: Holds upload_semaphore (download_semaphore is released)
-
-    This allows other downloads to start while this file is being uploaded.
-
-    Args:
-        download_semaphore: Semaphore for controlling download concurrency
-        upload_semaphore: Semaphore for controlling upload concurrency
-        check_semaphore: Semaphore for controlling S3 existence check concurrency
-        repo_id: Repository ID
-        repo_type: Repository type
-        commit_hash: Commit hash (for logging)
-        repo_file: RepoFile object
-        access_token: Optional access token
-        cancel_event: Event to signal cancellation
-        pause_event: Event to signal pause
-        progress_tracker: Progress tracker for reporting
-
-    Returns:
-        Result dict with keys:
-        - status: "uploaded" | "exists"
-        - path: File path
-        - blob_id: Blob ID
-        - size: File size
-
-    Raises:
-        DownloadError: If download or upload fails
-        DownloadPausedError: If pause was requested before starting this file
+    Uses independent semaphores for download and upload so other files
+    can download while this one uploads.
     """
-    # Calculate blob_id
     blob_id = (
         repo_file.lfs.sha256
         if repo_file.lfs is not None and repo_file.lfs.sha256
         else repo_file.blob_id
     )
-
     if not blob_id:
-        logger.error("No blob_id or lfs_oid for file: {}", repo_file.path)
         raise DownloadError(f"Missing blob_id for {repo_file.path}")
 
-    # Build S3 key (based on blob_id)
-    s3_key = build_blob_key(repo_id, repo_type, blob_id)
+    s3_key = build_blob_key(ctx.repo_id, ctx.repo_type, blob_id)
 
-    # Check if blob already exists in S3 (throttled to avoid overwhelming S3 connection pool)
-    async with check_semaphore:
-        exists = await s3_client.file_exists(s3_key)
+    # Check if already in S3 (throttled).
+    # Skip for new-download files where the blob is almost certainly absent;
+    # the upload-phase check still guards against duplicate uploads.
+    skip_paths = ctx.skip_s3_check_paths or set()
+    if repo_file.path not in skip_paths:
+        async with ctx.infra.check_semaphore:
+            if await ctx.infra.s3.file_exists(s3_key):
+                if ctx.progress_tracker:
+                    await ctx.progress_tracker.complete_file(repo_file.path)
+                return FileProcessResult(
+                    status="exists",
+                    path=repo_file.path,
+                    blob_id=blob_id,
+                    size=repo_file.size,
+                )
 
-    if exists:
-        logger.debug(
-            "Blob already exists in S3: {} ({})",
-            repo_file.path,
-            blob_id[:12],
-        )
-        # Mark file as completed (S3 already exists, no download needed)
-        if progress_tracker:
-            await progress_tracker.complete_file(repo_file.path)
-        # Return result, database update handled by outer batch
-        return {
-            "status": "exists",
-            "path": repo_file.path,
-            "blob_id": blob_id,
-            "size": repo_file.size,
-        }
-
-    # ==================== Handle empty files (size == 0) ====================
+    # Empty files: skip download, upload a zero-byte object
     if repo_file.size == 0:
-        logger.debug("Processing empty file: {}", repo_file.path)
+        return await _process_empty_file(ctx, repo_file, blob_id, s3_key)
 
-        # Mark file as downloading
-        if progress_tracker:
-            await progress_tracker.mark_file_downloading(repo_file.path)
+    # Download phase
+    target_path = await _download_phase(ctx, repo_file)
 
-        # Create empty temp file
-        repo_dir = repo_id.replace("/", "--")
-        target_path = Path(settings.INCOMPLETE_FILE_PATH) / repo_dir / repo_file.path
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.touch()  # Create empty file
+    # Upload phase
+    return await _upload_phase(ctx, repo_file, blob_id, s3_key, target_path)
 
-        # Mark download complete
-        if progress_tracker:
-            await progress_tracker.complete_file(repo_file.path)
 
-        # Upload empty file to S3
-        async with upload_semaphore:
-            # Double-check S3 existence
-            if await s3_client.file_exists(s3_key):
-                logger.debug(
-                    "Empty file was uploaded by another task: {} ({})",
-                    repo_file.path,
-                    blob_id[:12],
-                )
-                try:
-                    target_path.unlink(missing_ok=True)
-                except Exception as e:
-                    logger.warning(
-                        "Failed to clean up temp file {}: {}", target_path, e
-                    )
-                return {
-                    "status": "exists",
-                    "path": repo_file.path,
+# ---------------------------------------------------------------------------
+# Helper functions for _process_single_file
+# ---------------------------------------------------------------------------
+
+
+async def _process_empty_file(
+    ctx: FileProcessContext,
+    repo_file: RepoFile,
+    blob_id: str,
+    s3_key: str,
+) -> FileProcessResult:
+    """Create a local empty file and upload it to S3."""
+    if ctx.progress_tracker:
+        await ctx.progress_tracker.mark_file_downloading(repo_file.path)
+
+    repo_dir = ctx.repo_id.replace("/", "--")
+    target_path = Path(settings.INCOMPLETE_FILE_PATH) / repo_dir / repo_file.path
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.touch()
+
+    if ctx.progress_tracker:
+        await ctx.progress_tracker.complete_file(repo_file.path)
+
+    async with ctx.infra.upload_semaphore:
+        if await ctx.infra.s3.file_exists(s3_key):
+            _cleanup_temp_file(target_path)
+            return FileProcessResult(
+                status="exists",
+                path=repo_file.path,
+                blob_id=blob_id,
+                size=0,
+            )
+
+        try:
+            if ctx.progress_tracker:
+                await ctx.progress_tracker.start_file_upload(repo_file.path, 0)
+
+            await ctx.infra.s3.upload_file_from_path(
+                key=s3_key,
+                file_path=str(target_path),
+                metadata={
+                    "repo_id": ctx.repo_id,
                     "blob_id": blob_id,
-                    "size": 0,
-                }
+                    "size": "0",
+                    "source_path": repo_file.path,
+                },
+            )
 
-            try:
-                if progress_tracker:
-                    await progress_tracker.start_file_upload(
-                        file_path=repo_file.path,
-                        total_bytes=0,
-                    )
+            if ctx.progress_tracker:
+                await ctx.progress_tracker.complete_file_upload(repo_file.path)
 
-                result = await s3_client.upload_file_from_path(
-                    key=s3_key,
-                    file_path=str(target_path),
-                    metadata={
-                        "repo_id": repo_id,
-                        "blob_id": blob_id,
-                        "size": "0",
-                        "source_path": repo_file.path,
-                    },
-                )
+            logger.debug(
+                "Uploaded empty file to S3: {} ({})", repo_file.path, blob_id[:12]
+            )
+        except Exception as e:
+            if ctx.progress_tracker:
+                await ctx.progress_tracker.fail_file_upload(repo_file.path, str(e))
+            raise
+        finally:
+            _cleanup_temp_file(target_path)
 
-                if progress_tracker:
-                    await progress_tracker.complete_file_upload(repo_file.path)
+    return FileProcessResult(
+        status="uploaded",
+        path=repo_file.path,
+        blob_id=blob_id,
+        size=0,
+    )
 
-                logger.debug(
-                    "Uploaded empty file to S3: {} (blob: {}, etag: {})",
-                    repo_file.path,
-                    blob_id[:12],
-                    result["etag"],
-                )
 
-            except Exception as e:
-                if progress_tracker:
-                    await progress_tracker.fail_file_upload(repo_file.path, str(e))
-                raise
+async def _download_phase(
+    ctx: FileProcessContext,
+    repo_file: RepoFile,
+) -> Path:
+    """Download a file from HF Hub, returning the local path.
 
-            finally:
-                try:
-                    target_path.unlink(missing_ok=True)
-                except Exception as e:
-                    logger.warning(
-                        "Failed to clean up temp file {}: {}", target_path, e
-                    )
-
-        return {
-            "status": "uploaded",
-            "path": repo_file.path,
-            "blob_id": blob_id,
-            "size": 0,
-        }
-
-    # ==================== Phase 1: Download (holds download semaphore) ====================
-    logger.debug("Waiting for download semaphore: {}", repo_file.path)
-    async with download_semaphore:
-        logger.debug("Acquired download semaphore for: {}", repo_file.path)
-
-        # Check pause before starting this file
-        if pause_event.is_set():
+    Holds the download semaphore during the entire download.
+    Pause is checked before starting; cancellation is checked during download.
+    """
+    async with ctx.infra.download_semaphore:
+        if ctx.pause_event.is_set():
             raise DownloadPausedError
 
-        # Mark file as downloading (from pending to downloading)
-        if progress_tracker:
-            await progress_tracker.mark_file_downloading(repo_file.path)
+        if ctx.progress_tracker:
+            await ctx.progress_tracker.mark_file_downloading(repo_file.path)
 
-        # Create progress callback (async callback, directly updates progress)
+        repo_dir = ctx.repo_id.replace("/", "--")
+        target_path = Path(settings.INCOMPLETE_FILE_PATH) / repo_dir / repo_file.path
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+
         async def progress_callback(info: ProgressInfo) -> None:
-            # Directly update progress to Redis
-            if progress_tracker:
+            if ctx.progress_tracker:
                 try:
-                    await progress_tracker.update_file_progress(
+                    await ctx.progress_tracker.update_file_progress(
                         file_path=repo_file.path,
                         downloaded=info.downloaded_bytes,
                         total=info.total_bytes or repo_file.size,
@@ -379,31 +317,24 @@ async def _process_single_file(
                 except Exception as e:
                     logger.debug("Failed to update progress: {}", e)
 
-        # Create downloader instance, reusing shared client if available
         async with HttpFileDownloader(
             temp_dir=settings.INCOMPLETE_FILE_PATH,
             progress_callback=progress_callback,
-            progress_interval=PROGRESS_INTERVAL,
-            client=shared_client,
+            progress_interval=settings.WORKER_PROGRESS_INTERVAL,
+            client=ctx.infra.shared_client,
         ) as downloader:
-            # Download file
             url = hf_url(
-                repo_id=repo_id,
+                repo_id=ctx.repo_id,
                 filename=repo_file.path,
-                repo_type=repo_type,
-                revision=commit_hash,
-                endpoint=endpoint,
+                repo_type=ctx.repo_type,
+                revision=ctx.commit_hash,
+                endpoint=ctx.endpoint,
             )
             headers = (
-                {"Authorization": f"Bearer {access_token}"} if access_token else None
+                {"Authorization": f"Bearer {ctx.access_token}"}
+                if ctx.access_token
+                else None
             )
-
-            # Use repo_id as temp directory, replace "/" with "--"
-            repo_dir = repo_id.replace("/", "--")
-            target_path = (
-                Path(settings.INCOMPLETE_FILE_PATH) / repo_dir / repo_file.path
-            )
-            target_path.parent.mkdir(parents=True, exist_ok=True)
 
             logger.debug("Downloading: {} -> {}", repo_file.path, target_path)
 
@@ -413,81 +344,65 @@ async def _process_single_file(
                     target_path=target_path,
                     expected_size=repo_file.size,
                     headers=headers,
-                    cancel_event=cancel_event,
+                    cancel_event=ctx.cancel_event,
+                    pause_event=ctx.pause_event,
                 )
-
-                # Download completed, mark file as completed
-                if progress_tracker:
-                    await progress_tracker.complete_file(repo_file.path)
+                if ctx.progress_tracker:
+                    await ctx.progress_tracker.complete_file(repo_file.path)
+                return downloaded_path
 
             except DownloadCancelledError:
                 logger.info("Download cancelled for {}", repo_file.path)
                 raise
             except Exception as e:
-                # Mark file download as failed
                 logger.error("Download failed for {}: {}", repo_file.path, e)
-                if progress_tracker:
-                    await progress_tracker.fail_file(repo_file.path, str(e))
+                if ctx.progress_tracker:
+                    await ctx.progress_tracker.fail_file(repo_file.path, str(e))
                 raise
 
-        # Download completed, download_semaphore is automatically released (async with exit)
-        # This allows other download tasks to start immediately
 
-    # ==================== Phase 2: Upload (holds upload semaphore) ====================
-    logger.debug(
-        "Waiting for upload semaphore: {} -> {} ({})",
-        repo_file.path,
-        s3_key,
-        blob_id[:12],
-    )
+async def _upload_phase(
+    ctx: FileProcessContext,
+    repo_file: RepoFile,
+    blob_id: str,
+    s3_key: str,
+    downloaded_path: Path,
+) -> FileProcessResult:
+    """Upload a downloaded file to S3, returning the result.
 
-    async with upload_semaphore:
-        logger.debug("Acquired upload semaphore for: {}", repo_file.path)
-
-        # Check again if S3 already exists (might have been uploaded by another task while waiting)
-        if await s3_client.file_exists(s3_key):
-            logger.debug(
-                "Blob was uploaded by another task while waiting: {} ({})",
-                repo_file.path,
-                blob_id[:12],
+    Holds the upload semaphore during the upload.
+    Handles race conditions where another task uploaded the same blob first.
+    """
+    async with ctx.infra.upload_semaphore:
+        # Another task may have uploaded the same blob while we waited
+        if await ctx.infra.s3.file_exists(s3_key):
+            _cleanup_temp_file(downloaded_path)
+            return FileProcessResult(
+                status="exists",
+                path=repo_file.path,
+                blob_id=blob_id,
+                size=repo_file.size,
             )
-            # Clean up local temp file
-            try:
-                downloaded_path.unlink(missing_ok=True)
-            except Exception as e:
-                logger.warning(
-                    "Failed to clean up temp file {}: {}", downloaded_path, e
-                )
-            # Return exists status
-            return {
-                "status": "exists",
-                "path": repo_file.path,
-                "blob_id": blob_id,
-                "size": repo_file.size,
-            }
 
         try:
-            # Mark file as uploading
-            if progress_tracker:
-                await progress_tracker.start_file_upload(
-                    file_path=repo_file.path,
-                    total_bytes=repo_file.size,
+            if ctx.progress_tracker:
+                await ctx.progress_tracker.start_file_upload(
+                    repo_file.path, repo_file.size
                 )
 
-            result = await s3_client.upload_file_from_path(
+            result = await ctx.infra.s3.upload_file_from_path(
                 key=s3_key,
                 file_path=str(downloaded_path),
                 metadata={
-                    "repo_id": repo_id,
+                    "repo_id": ctx.repo_id,
                     "blob_id": blob_id,
                     "size": str(repo_file.size),
                     "source_path": repo_file.path,
                 },
             )
 
-            # Mark file upload as completed
-            if progress_tracker:
-                await progress_tracker.complete_file_upload(repo_file.path)
+            if ctx.progress_tracker:
+                await ctx.progress_tracker.complete_file_upload(repo_file.path)
 
             logger.debug(
                 "Uploaded to S3: {} (blob: {}, etag: {}, size: {})",
@@ -496,54 +411,24 @@ async def _process_single_file(
                 result["etag"],
                 result["size"],
             )
-
         except Exception as e:
-            # Mark file upload as failed
-            if progress_tracker:
-                await progress_tracker.fail_file_upload(repo_file.path, str(e))
+            if ctx.progress_tracker:
+                await ctx.progress_tracker.fail_file_upload(repo_file.path, str(e))
             raise
-
         finally:
-            # Clean up local temp file
-            try:
-                downloaded_path.unlink(missing_ok=True)
-                logger.debug("Cleaned up temp file: {}", downloaded_path)
-            except Exception as e:
-                logger.warning(
-                    "Failed to clean up temp file {}: {}", downloaded_path, e
-                )
+            _cleanup_temp_file(downloaded_path)
 
-    # Return result, database update handled by outer batch
-    return {
-        "status": "uploaded",
-        "path": repo_file.path,
-        "blob_id": blob_id,
-        "size": repo_file.size,
-    }
+    return FileProcessResult(
+        status="uploaded",
+        path=repo_file.path,
+        blob_id=blob_id,
+        size=repo_file.size,
+    )
 
 
-def _on_download_progress(info: ProgressInfo, file_path: str | None = None) -> None:
-    """Handle download progress updates (currently just logs).
-
-    Args:
-        info: Progress information
-        file_path: Optional file path for logging context
-    """
-    name = file_path or info.target_path.name
-    if info.total_bytes:
-        percent = info.downloaded_bytes / info.total_bytes * 100
-        logger.info(
-            "Downloading {}: {:.1f}% ({}/{} bytes, {:.1f} KB/s)",
-            name,
-            percent,
-            info.downloaded_bytes,
-            info.total_bytes,
-            info.speed_bytes_per_sec / 1024,
-        )
-    else:
-        logger.info(
-            "Downloading {}: {} bytes (unknown total, {:.1f} KB/s)",
-            name,
-            info.downloaded_bytes,
-            info.speed_bytes_per_sec / 1024,
-        )
+def _cleanup_temp_file(path: Path) -> None:
+    """Remove a temp file, swallowing any OSError."""
+    try:
+        path.unlink(missing_ok=True)
+    except OSError as e:
+        logger.warning("Failed to clean up temp file {}: {}", path, e)

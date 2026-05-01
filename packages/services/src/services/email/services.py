@@ -60,10 +60,10 @@ class VerifyCodeService:
             SMTPConfig instance if configured, None otherwise
         """
         try:
-            from database import get_session
+            from database import new_session
             from services.config import ConfigService
 
-            async with get_session() as session:
+            async with new_session() as session:
                 config_service = ConfigService(session)
                 smtp_config = await config_service.get_smtp_config()
                 return smtp_config if smtp_config.is_configured else None
@@ -236,10 +236,10 @@ class TaskNotificationService:
             SMTPConfig instance if configured, None otherwise
         """
         try:
-            from database import get_session
+            from database import new_session
             from services.config import ConfigService
 
-            async with get_session() as session:
+            async with new_session() as session:
                 config_service = ConfigService(session)
                 smtp_config = await config_service.get_smtp_config()
                 return smtp_config if smtp_config.is_configured else None
@@ -257,9 +257,9 @@ class TaskNotificationService:
             User email if found, None otherwise
         """
         try:
-            from database import UserRepository, get_session
+            from database import UserRepository, new_session
 
-            async with get_session() as session:
+            async with new_session() as session:
                 repo = UserRepository(session)
                 user = await repo.get_by_id(user_id)
                 return user.email if user else None

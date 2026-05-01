@@ -18,7 +18,6 @@ Usage:
 """
 
 import asyncio
-import os
 import sys
 
 import click
@@ -35,10 +34,6 @@ from worker.handlers import register_handlers
     "--debug", is_flag=True, help="Enable debug mode (SQL echo and debug logging)"
 )
 def cli(debug: bool) -> None:
-    """Worker entry point."""
-    if debug:
-        os.environ["DEBUG"] = "true"
-
     # Configure loguru log level based on debug flag
     logger.remove()
     logger.add(sys.stderr, level="DEBUG" if debug else "INFO")

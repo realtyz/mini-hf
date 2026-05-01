@@ -6,7 +6,7 @@ from fastapi import Depends
 
 from cache import cache_service
 from cache.services.cache import CacheService
-from database import AsyncSession, get_db
+from database import AsyncSession, unit_of_work
 from database.db_models import User
 from services import TaskNotificationService, VerifyCodeService
 from services import task_notification_service, verify_code_service
@@ -49,21 +49,21 @@ async def get_task_notification_service() -> TaskNotificationService:
 
 
 async def get_user_service(
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
 ) -> UserService:
     """Get user service dependency."""
     return UserService(db)
 
 
 async def get_task_service(
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
 ) -> TaskService:
     """Get core task service dependency."""
     return TaskService(db)
 
 
 async def get_config_service(
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
 ) -> ConfigService:
     """Get config service dependency."""
     return ConfigService(db)
@@ -77,7 +77,7 @@ async def get_config_management_service(
 
 
 async def get_dashboard_service(
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
     cache: Annotated[CacheService, Depends(get_cache_service)],
 ) -> DashboardService:
     """Get dashboard service dependency."""
@@ -85,7 +85,7 @@ async def get_dashboard_service(
 
 
 async def get_repo_service(
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
     task_service: Annotated[TaskService, Depends(get_task_service)],
 ) -> RepoService:
     """Get repository service dependency."""
@@ -93,7 +93,7 @@ async def get_repo_service(
 
 
 async def get_task_lifecycle_service(
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
     task_service: Annotated[TaskService, Depends(get_task_service)],
     user_service: Annotated[UserService, Depends(get_user_service)],
     config_service: Annotated[ConfigService, Depends(get_config_service)],
@@ -110,7 +110,7 @@ async def get_task_lifecycle_service(
 
 
 async def get_task_preview_service(
-    db: Annotated[AsyncSession, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
     task_service: Annotated[TaskService, Depends(get_task_service)],
     cache: Annotated[CacheService, Depends(get_cache_service)],
     config_service: Annotated[ConfigService, Depends(get_config_service)],
@@ -149,7 +149,7 @@ async def get_token_service(
 # Dependency aliases for cleaner imports
 # ------------------------------------------------------------------
 
-DbDep = Annotated[AsyncSession, Depends(get_db)]
+DbDep = Annotated[AsyncSession, Depends(unit_of_work)]
 CacheServiceDep = Annotated[CacheService, Depends(get_cache_service)]
 DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]
 RepoServiceDep = Annotated[RepoService, Depends(get_repo_service)]

@@ -36,9 +36,7 @@ class ConfigManagementService:
     # Generic config CRUD
     # ------------------------------------------------------------------
 
-    async def list_configs(
-        self, category: str | None = None
-    ) -> list[SystemConfig]:
+    async def list_configs(self, category: str | None = None) -> list[SystemConfig]:
         return await self._config.get_all_models(category=category)
 
     async def get_config(self, key: str) -> SystemConfig | None:
@@ -91,7 +89,9 @@ class ConfigManagementService:
             )
         except asyncio.TimeoutError:
             success = False
-            message = f"SMTP connection timed out after {int(SMTP_TEST_TIMEOUT)} seconds"
+            message = (
+                f"SMTP connection timed out after {int(SMTP_TEST_TIMEOUT)} seconds"
+            )
         except ConnectionError as e:
             success = False
             message = f"SMTP connection test failed: {e}"
@@ -149,9 +149,7 @@ class ConfigManagementService:
         cleaned = [e.strip() for e in endpoints if e.strip()]
         cleaned_default = default_endpoint.strip()
         if cleaned_default not in cleaned:
-            raise ValidationError(
-                "Default endpoint must be in the endpoints list"
-            )
+            raise ValidationError("Default endpoint must be in the endpoints list")
 
         result = await self._config.save_hf_endpoint_config(
             endpoints=cleaned,

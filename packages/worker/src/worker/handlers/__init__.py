@@ -1,6 +1,15 @@
 """Task handlers for the worker."""
 
-from worker.handlers.base import HandlerFunc, TaskControl, TaskHandler
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from worker.handlers.base import HandlerFunc, TaskControl
+from worker.handlers.exceptions import (
+    TaskControlError,
+    TaskCancelledError,
+    TaskPausedError,
+)
 from worker.handlers.hf import handle_download_huggingface
 from worker.handlers._downloader import (
     HttpFileDownloader,
@@ -11,10 +20,15 @@ from worker.handlers._downloader import (
     DownloadError,
 )
 
+if TYPE_CHECKING:
+    from worker.worker import Worker
+
 __all__ = [
     "HandlerFunc",
     "TaskControl",
-    "TaskHandler",
+    "TaskControlError",
+    "TaskCancelledError",
+    "TaskPausedError",
     "handle_download_huggingface",
     "register_handlers",
     "HttpFileDownloader",
@@ -26,10 +40,6 @@ __all__ = [
 ]
 
 
-def register_handlers(worker) -> None:
-    """Register all task handlers to the worker instance.
-
-    Args:
-        worker: The Worker instance to register handlers with
-    """
-    worker.register("download_huggingface")(handle_download_huggingface)
+def register_handlers(worker: Worker) -> None:
+    """Register all task handlers to the worker instance."""
+    worker.register("download_huggingface", handle_download_huggingface)

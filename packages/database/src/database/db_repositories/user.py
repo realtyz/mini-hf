@@ -81,7 +81,7 @@ class UserRepository:
             is_active=is_active,
         )
         self.session.add(user)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(user)
         return user
 
@@ -124,7 +124,7 @@ class UserRepository:
             Updated user
         """
         self.session.add(user)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(user)
         return user
 

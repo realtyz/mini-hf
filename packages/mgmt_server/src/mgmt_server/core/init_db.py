@@ -3,7 +3,7 @@
 from loguru import logger
 
 from core.settings import settings
-from database.core import AsyncSessionLocal
+from database import new_session
 from database.db_repositories import UserRepository
 from mgmt_server.core.constants import UserRole
 from mgmt_server.core.security import hash_password
@@ -16,7 +16,7 @@ async def init_db() -> None:
     If not, it creates a default admin user using the environment
     variables DEFAULT_ADMIN_EMAIL and DEFAULT_ADMIN_PASSWORD.
     """
-    async with AsyncSessionLocal() as session:
+    async with new_session() as session:
         repo = UserRepository(session)
 
         try:

@@ -153,10 +153,10 @@ async def check_cache_status_with_fresh_session(
 
     Standalone function — does not depend on any request-scoped objects.
     """
-    from database.core import AsyncSessionLocal
+    from database import new_session
 
     try:
-        async with AsyncSessionLocal() as session:
+        async with new_session() as session:
             repo_service = RepoService(session, task_service=TaskService(session))
             all_cached, commit_hash = await repo_service.check_cached_status(
                 repo_id=repo_id,

@@ -44,7 +44,7 @@ class ConfigDbRepository:
             is_sensitive=is_sensitive,
         )
         self._session.add(config)
-        await self._session.commit()
+        await self._session.flush()
         await self._session.refresh(config)
         return config
 
@@ -67,7 +67,7 @@ class ConfigDbRepository:
         if is_sensitive is not None:
             config.is_sensitive = is_sensitive
 
-        await self._session.commit()
+        await self._session.flush()
         await self._session.refresh(config)
         return config
 
@@ -78,7 +78,7 @@ class ConfigDbRepository:
             return False
 
         await self._session.delete(config)
-        await self._session.commit()
+        await self._session.flush()
         return True
 
     async def get_by_category(self, category: str) -> Sequence[SystemConfig]:
@@ -119,4 +119,4 @@ class ConfigDbRepository:
                     is_sensitive=item.get("is_sensitive", False),
                 )
                 self._session.add(config)
-        await self._session.commit()
+        await self._session.flush()

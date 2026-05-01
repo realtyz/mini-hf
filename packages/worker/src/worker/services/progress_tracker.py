@@ -5,18 +5,9 @@ task-level and file-level progress in Redis for real-time querying.
 """
 
 from datetime import datetime, timezone
-from typing import Protocol
 
 from cache import cache_service
 from loguru import logger
-
-
-class ProgressInfo(Protocol):
-    """Protocol for progress information."""
-
-    processed_bytes: int
-    total_bytes: int | None
-    speed_bytes_per_sec: float
 
 
 class TaskProgressTracker:
@@ -42,17 +33,34 @@ class TaskProgressTracker:
 
     DEFAULT_TTL = 86400  # 24 hours
 
-    def __init__(self, task_id: int):
+    def __init__(self, task_id: int, cache=None):
         self.task_id = task_id
         self._task_key = f"task_progress:{task_id}"
         self._files_key = f"task_files:{task_id}"
         self._files_list_key = f"task_files_list:{task_id}"
+        self._cache = cache or cache_service
 
     def _file_key(self, file_path: str) -> str:
         """Generate Redis key for a specific file."""
         # Replace special characters to make safe Redis key
         safe_path = file_path.replace(":", "_").replace(" ", "_")
         return f"{self._files_key}:{safe_path}"
+
+    async def _update_file_data(self, file_path: str, **updates) -> dict | None:
+        """Read-modify-write a file progress entry.
+
+        Returns the existing data if found (after writing), or None if the key
+        doesn't exist. For methods that need computed fields based on existing
+        data (e.g. downloaded_bytes = total_bytes), use the returned dict.
+        """
+        file_key = self._file_key(file_path)
+        existing = await self._cache.get(file_key)
+        if existing is None:
+            logger.warning("File progress not found: {}", file_path)
+            return None
+        data = {**existing, **updates}
+        await self._cache.set(file_key, data, ttl=self.DEFAULT_TTL)
+        return data
 
     async def init_task(
         self,
@@ -74,10 +82,10 @@ class TaskProgressTracker:
             "current_file": None,
             "updated_at": now,
         }
-        await cache_service.set(self._task_key, data, ttl=self.DEFAULT_TTL)
+        await self._cache.set(self._task_key, data, ttl=self.DEFAULT_TTL)
 
         # Initialize empty file list
-        await cache_service.set(self._files_list_key, [], ttl=self.DEFAULT_TTL)
+        await self._cache.set(self._files_list_key, [], ttl=self.DEFAULT_TTL)
 
         logger.debug("Initialized progress tracking for task {}", self.task_id)
 
@@ -103,15 +111,13 @@ class TaskProgressTracker:
             "completed_at": None,
             "error_message": None,
         }
-        await cache_service.set(self._file_key(file_path), data, ttl=self.DEFAULT_TTL)
+        await self._cache.set(self._file_key(file_path), data, ttl=self.DEFAULT_TTL)
 
         # Add file to tracking list
-        file_list = await cache_service.get(self._files_list_key) or []
+        file_list = await self._cache.get(self._files_list_key) or []
         if file_path not in file_list:
             file_list.append(file_path)
-            await cache_service.set(
-                self._files_list_key, file_list, ttl=self.DEFAULT_TTL
-            )
+            await self._cache.set(self._files_list_key, file_list, ttl=self.DEFAULT_TTL)
 
         # Update current file in task summary
         await self._update_task_summary(current_file=file_path)
@@ -148,10 +154,10 @@ class TaskProgressTracker:
             }
 
         # 批量写入所有文件数据（一次 Redis 往返）
-        await cache_service.mset(file_data_mapping, ttl=self.DEFAULT_TTL)
+        await self._cache.mset(file_data_mapping, ttl=self.DEFAULT_TTL)
 
         # 写入文件列表（只写一次）
-        await cache_service.set(self._files_list_key, file_paths, ttl=self.DEFAULT_TTL)
+        await self._cache.set(self._files_list_key, file_paths, ttl=self.DEFAULT_TTL)
 
         logger.debug("Initialized tracking for {} files (batch)", len(files))
 
@@ -164,20 +170,11 @@ class TaskProgressTracker:
         Args:
             file_path: Path of the file starting download
         """
-        file_key = self._file_key(file_path)
-        existing = await cache_service.get(file_key)
-
-        if existing is None:
-            logger.warning("Cannot mark as downloading, file not found: {}", file_path)
-            return
-
-        now = datetime.now(timezone.utc).isoformat()
-        data = {
-            **existing,
-            "status": "downloading",
-            "download_started_at": now,
-        }
-        await cache_service.set(file_key, data, ttl=self.DEFAULT_TTL)
+        await self._update_file_data(
+            file_path,
+            status="downloading",
+            download_started_at=datetime.now(timezone.utc).isoformat(),
+        )
         logger.debug("File is now downloading: {}", file_path)
 
     async def update_file_progress(
@@ -195,27 +192,13 @@ class TaskProgressTracker:
             total: Total file size (optional)
             speed: Download speed in bytes per second
         """
-        file_key = self._file_key(file_path)
-        existing = await cache_service.get(file_key)
-
-        if existing is None:
-            # File not initialized, initialize it first
-            await self.start_file(file_path, total or 0)
-            existing = await cache_service.get(file_key)
-
-        if existing is None:
-            logger.warning("Failed to get or create file progress for {}", file_path)
+        if not await self._update_file_data(
+            file_path,
+            downloaded_bytes=downloaded,
+            total_bytes=total or 0,
+            speed_bytes_per_sec=round(speed, 2),
+        ):
             return
-
-        total_bytes = total or existing.get("total_bytes", 0)
-
-        data = {
-            **existing,
-            "downloaded_bytes": downloaded,
-            "total_bytes": total_bytes,
-            "speed_bytes_per_sec": round(speed, 2),
-        }
-        await cache_service.set(file_key, data, ttl=self.DEFAULT_TTL)
 
         # Update current file in task summary
         await self._update_task_summary(current_file=file_path)
@@ -226,23 +209,19 @@ class TaskProgressTracker:
         Args:
             file_path: Path of the completed file
         """
-        file_key = self._file_key(file_path)
-        existing = await cache_service.get(file_key)
-
-        if existing is None:
-            logger.warning("Cannot complete file progress, not found: {}", file_path)
-            return
-
         now = datetime.now(timezone.utc).isoformat()
-        data = {
-            **existing,
-            "status": "completed",
-            "downloaded_bytes": existing.get("total_bytes", 0),
-            "speed_bytes_per_sec": 0.0,
-            "completed_at": now,
-        }
-        await cache_service.set(file_key, data, ttl=self.DEFAULT_TTL)
-
+        file_key = self._file_key(file_path)
+        existing = await self._cache.get(file_key)
+        if existing is None:
+            logger.warning("File progress not found: {}", file_path)
+            return
+        existing.update(
+            status="completed",
+            speed_bytes_per_sec=0.0,
+            completed_at=now,
+            downloaded_bytes=existing.get("total_bytes", 0),
+        )
+        await self._cache.set(file_key, existing, ttl=self.DEFAULT_TTL)
         logger.debug("Completed file: {}", file_path)
 
     async def start_file_upload(self, file_path: str, total_bytes: int) -> None:
@@ -252,23 +231,13 @@ class TaskProgressTracker:
             file_path: 文件路径
             total_bytes: 文件总大小（字节）
         """
-        file_key = self._file_key(file_path)
-        existing = await cache_service.get(file_key)
-
-        if existing is None:
-            logger.warning("Cannot start upload for non-existent file: {}", file_path)
-            return
-
-        now = datetime.now(timezone.utc).isoformat()
-        data = {
-            **existing,
-            "status": "uploading",
-            "processed_bytes": 0,
-            "speed_bytes_per_sec": 0.0,
-            "upload_started_at": now,
-        }
-        await cache_service.set(file_key, data, ttl=self.DEFAULT_TTL)
-
+        await self._update_file_data(
+            file_path,
+            status="uploading",
+            processed_bytes=0,
+            speed_bytes_per_sec=0.0,
+            upload_started_at=datetime.now(timezone.utc).isoformat(),
+        )
         logger.debug("Started upload tracking for file: {}", file_path)
 
     async def update_file_upload_progress(
@@ -286,25 +255,13 @@ class TaskProgressTracker:
             total: 文件总大小（可选）
             speed: 上传速度（字节/秒）
         """
-        file_key = self._file_key(file_path)
-        existing = await cache_service.get(file_key)
-
-        if existing is None:
-            logger.warning(
-                "Cannot update upload progress for non-existent file: {}", file_path
-            )
-            return
-
-        total_bytes = total or existing.get("total_bytes", 0)
-
-        data = {
-            **existing,
-            "status": "uploading",
-            "processed_bytes": uploaded,
-            "total_bytes": total_bytes,
-            "speed_bytes_per_sec": round(speed, 2),
-        }
-        await cache_service.set(file_key, data, ttl=self.DEFAULT_TTL)
+        await self._update_file_data(
+            file_path,
+            status="uploading",
+            processed_bytes=uploaded,
+            total_bytes=total or 0,
+            speed_bytes_per_sec=round(speed, 2),
+        )
 
     async def complete_file_upload(self, file_path: str) -> None:
         """标记文件上传完成。
@@ -312,25 +269,19 @@ class TaskProgressTracker:
         Args:
             file_path: 文件路径
         """
-        file_key = self._file_key(file_path)
-        existing = await cache_service.get(file_key)
-
-        if existing is None:
-            logger.warning(
-                "Cannot complete upload for non-existent file: {}", file_path
-            )
-            return
-
         now = datetime.now(timezone.utc).isoformat()
-        data = {
-            **existing,
-            "status": "completed",
-            "processed_bytes": existing.get("total_bytes", 0),
-            "speed_bytes_per_sec": 0.0,
-            "upload_completed_at": now,
-        }
-        await cache_service.set(file_key, data, ttl=self.DEFAULT_TTL)
-
+        file_key = self._file_key(file_path)
+        existing = await self._cache.get(file_key)
+        if existing is None:
+            logger.warning("File progress not found: {}", file_path)
+            return
+        existing.update(
+            status="completed",
+            speed_bytes_per_sec=0.0,
+            upload_completed_at=now,
+            processed_bytes=existing.get("total_bytes", 0),
+        )
+        await self._cache.set(file_key, existing, ttl=self.DEFAULT_TTL)
         logger.debug("Completed upload for file: {}", file_path)
 
     async def fail_file_upload(self, file_path: str, error_message: str) -> None:
@@ -340,22 +291,12 @@ class TaskProgressTracker:
             file_path: 文件路径
             error_message: 错误信息
         """
-        file_key = self._file_key(file_path)
-        existing = await cache_service.get(file_key)
-
-        if existing is None:
-            logger.warning("Cannot fail upload for non-existent file: {}", file_path)
-            return
-
-        now = datetime.now(timezone.utc).isoformat()
-        data = {
-            **existing,
-            "status": "failed",
-            "upload_error_message": error_message,
-            "upload_completed_at": now,
-        }
-        await cache_service.set(file_key, data, ttl=self.DEFAULT_TTL)
-
+        await self._update_file_data(
+            file_path,
+            status="failed",
+            upload_error_message=error_message,
+            upload_completed_at=datetime.now(timezone.utc).isoformat(),
+        )
         logger.debug("Failed upload for file: {} - {}", file_path, error_message)
 
     async def fail_file(self, file_path: str, error_message: str) -> None:
@@ -365,27 +306,17 @@ class TaskProgressTracker:
             file_path: Path of the failed file
             error_message: Error message describing the failure
         """
-        file_key = self._file_key(file_path)
-        existing = await cache_service.get(file_key)
-
-        if existing is None:
-            logger.warning("Cannot fail file progress, not found: {}", file_path)
-            return
-
-        now = datetime.now(timezone.utc).isoformat()
-        data = {
-            **existing,
-            "status": "failed",
-            "error_message": error_message,
-            "completed_at": now,
-        }
-        await cache_service.set(file_key, data, ttl=self.DEFAULT_TTL)
-
+        await self._update_file_data(
+            file_path,
+            status="failed",
+            error_message=error_message,
+            completed_at=datetime.now(timezone.utc).isoformat(),
+        )
         logger.debug("Failed file: {} - {}", file_path, error_message)
 
     async def _update_task_summary(self, **updates) -> None:
         """Update specific fields in task summary."""
-        existing = await cache_service.get(self._task_key)
+        existing = await self._cache.get(self._task_key)
         if existing is None:
             return
 
@@ -394,7 +325,7 @@ class TaskProgressTracker:
             **updates,
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
-        await cache_service.set(self._task_key, data, ttl=self.DEFAULT_TTL)
+        await self._cache.set(self._task_key, data, ttl=self.DEFAULT_TTL)
 
     async def complete_task(self) -> None:
         """Mark the entire task as completed."""
@@ -419,7 +350,7 @@ class TaskProgressTracker:
         Returns:
             Task progress data or None if not initialized
         """
-        return await cache_service.get(self._task_key)
+        return await self._cache.get(self._task_key)
 
     async def get_file_progress(self, file_path: str) -> dict | None:
         """Get progress for a specific file.
@@ -430,24 +361,22 @@ class TaskProgressTracker:
         Returns:
             File progress data or None if not found
         """
-        return await cache_service.get(self._file_key(file_path))
+        return await self._cache.get(self._file_key(file_path))
 
     async def get_all_file_progress(self) -> list[dict]:
         """Get progress for all files in the task.
 
         Returns:
-            List of file progress data
+            List of file progress data, sorted by path.
         """
-        # Get all file paths from tracking list
-        file_list = await cache_service.get(self._files_list_key) or []
+        file_list = await self._cache.get(self._files_list_key) or []
+        if not file_list:
+            return []
 
-        files = []
-        for file_path in file_list:
-            file_data = await cache_service.get(self._file_key(file_path))
-            if file_data:
-                files.append(file_data)
+        keys = [self._file_key(path) for path in file_list]
+        values = await self._cache.mget(keys)
 
-        # Already sorted by insertion order, but ensure consistent ordering
+        files = [v for v in values if v]
         files.sort(key=lambda x: x.get("path", ""))
         return files
 
@@ -468,16 +397,16 @@ class TaskProgressTracker:
         Should be called when the task completes or fails.
         """
         # Delete task summary
-        await cache_service.delete(self._task_key)
+        await self._cache.delete(self._task_key)
 
         # Delete all file progress entries using the tracking list
-        file_list = await cache_service.get(self._files_list_key) or []
+        file_list = await self._cache.get(self._files_list_key) or []
         file_keys = [self._file_key(path) for path in file_list]
         if file_keys:
-            await cache_service.delete_many(file_keys)
+            await self._cache.delete_many(file_keys)
 
         # Delete the tracking list
-        await cache_service.delete(self._files_list_key)
+        await self._cache.delete(self._files_list_key)
 
         logger.debug(
             "Cleared progress tracking for task {} ({} files)",

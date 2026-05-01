@@ -8,7 +8,7 @@ dist
 
 # Git worktrees
 .worktrees/
-
+.code_review/results
 
 # AI coding tools
 .claude

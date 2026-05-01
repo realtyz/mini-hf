@@ -65,10 +65,10 @@ async def _rebuild_cache_in_background(cache: CacheService) -> None:
     Creates its own session and cache client so it does not depend on
     any request-scoped objects.
     """
-    from database.core import AsyncSessionLocal
+    from database import new_session
 
     try:
-        async with AsyncSessionLocal() as session:
+        async with new_session() as session:
             stats = await _fetch_stats_from_sources(session)
             await session.commit()
 

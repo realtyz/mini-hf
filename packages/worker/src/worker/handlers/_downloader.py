@@ -1,42 +1,53 @@
-"""异步 HTTP 文件下载器，支持断点续传、中断控制和进度报告。"""
+"""Async HTTP file downloader with resume, cancellation, and progress reporting."""
 
 import asyncio
 import time
 from dataclasses import dataclass
+from enum import Enum, auto
 from pathlib import Path
 from typing import Callable, Awaitable
 
 import httpx
 from loguru import logger
 
+from worker.handlers.exceptions import TaskCancelledError, TaskPausedError
+
 
 class DownloaderError(Exception):
-    """下载器基础异常"""
+    """Base exception for download errors."""
 
     pass
 
 
-class DownloadCancelledError(DownloaderError):
-    """下载被取消"""
+class DownloadCancelledError(TaskCancelledError, DownloaderError):
+    """Download was cancelled."""
 
     pass
 
 
-class DownloadPausedError(DownloaderError):
-    """下载被暂停"""
+class DownloadPausedError(TaskPausedError, DownloaderError):
+    """Download was paused."""
 
     pass
 
 
 class DownloadError(DownloaderError):
-    """下载失败（网络错误、校验失败等）"""
+    """Download failed (network error, checksum mismatch, etc.)."""
 
     pass
 
 
+class RetryAction(Enum):
+    """Possible retry decisions after a download attempt fails."""
+
+    NO_RETRY = auto()
+    RETRY = auto()
+    RETRY_WITH_RESET = auto()  # Delete temp file and restart from byte 0
+
+
 @dataclass
 class ProgressInfo:
-    """下载进度信息"""
+    """Download progress snapshot."""
 
     url: str
     target_path: Path
@@ -47,16 +58,16 @@ class ProgressInfo:
 
 
 class HttpFileDownloader:
-    """异步 HTTP 文件下载器。
+    """Async HTTP file downloader.
 
-    特性：
-    - 使用 httpx 进行异步下载
-    - 支持断点续传（临时文件使用 .incomplete 后缀）
-    - 支持外部中断（通过 cancel() 方法）
-    - 支持进度回调（带频率控制）
-    - 指数退避重试策略
+    Features:
+    - Async download via httpx
+    - Resume support (partial downloads saved as .incomplete)
+    - External cancellation via cancel_event
+    - Progress callback with rate limiting
+    - Exponential backoff retry
 
-    使用示例：
+    Usage:
         downloader = HttpFileDownloader(temp_dir="/tmp")
         try:
             await downloader.download(
@@ -68,7 +79,7 @@ class HttpFileDownloader:
             await downloader.close()
     """
 
-    # 不应重试的 HTTP 状态码
+    # HTTP status codes that should not be retried
     NO_RETRY_STATUS_CODES = {400, 401, 403, 404, 405, 406, 410}
 
     def __init__(
@@ -98,7 +109,7 @@ class HttpFileDownloader:
 
     @property
     def client(self) -> httpx.AsyncClient:
-        """延迟初始化 httpx client，优先使用外部注入的 client"""
+        """Lazily-initialized httpx client — prefers externally injected client."""
         if self._external_client is not None:
             return self._external_client
         if self._client is None:
@@ -109,33 +120,48 @@ class HttpFileDownloader:
         return self._client
 
     def cancel(self) -> None:
-        """请求取消当前下载。可从任何线程安全调用。"""
+        """Request cancellation of the current download."""
         self._cancel_event.set()
 
     def reset(self) -> None:
-        """重置取消状态，允许复用下载器实例。"""
+        """Reset cancellation state so the downloader can be reused."""
         self._cancel_event.clear()
 
     async def close(self) -> None:
-        """关闭下载器，释放资源。仅关闭内部创建的 client，外部注入的 client 由调用方管理。"""
+        """Close the downloader and release resources.
+
+        Only closes the internally-created client. Externally-injected
+        clients are the caller's responsibility.
+        """
         if self._client is not None:
             await self._client.aclose()
             self._client = None
 
     def _check_cancelled(self, external_event: asyncio.Event | None, url: str) -> None:
-        """检查是否被取消，如果是则抛出异常。
+        """Raise DownloadCancelledError if the internal or external cancel event is set.
 
         Args:
-            external_event: 外部取消事件
-            url: 用于错误信息的 URL
+            external_event: External cancel event
+            url: URL being downloaded (for error message)
 
         Raises:
-            DownloadCancelledError: 如果内部或外部取消事件被设置
+            DownloadCancelledError: If either cancel event is set
         """
         if self._cancel_event.is_set():
             raise DownloadCancelledError(f"Download cancelled: {url}")
         if external_event is not None and external_event.is_set():
             raise DownloadCancelledError(f"Download cancelled by task: {url}")
+
+    @staticmethod
+    def _check_paused(pause_event: asyncio.Event | None, url: str) -> None:
+        """Raise DownloadPausedError if the external pause event is set.
+
+        Unlike cancel which interrupts immediately, pause is checked
+        after the current chunk is fully written, preserving file
+        consistency for potential resume.
+        """
+        if pause_event is not None and pause_event.is_set():
+            raise DownloadPausedError(f"Download paused: {url}")
 
     async def download(
         self,
@@ -144,37 +170,39 @@ class HttpFileDownloader:
         expected_size: int | None = None,
         headers: dict[str, str] | None = None,
         cancel_event: asyncio.Event | None = None,
+        pause_event: asyncio.Event | None = None,
     ) -> Path:
-        """下载单个文件。
+        """Download a single file.
 
         Args:
-            url: 文件 URL
-            target_path: 最终保存路径
-            expected_size: 期望的文件大小（用于校验）
-            headers: 额外的请求头
-            cancel_event: 外部取消事件，用于任务级取消
+            url: File URL
+            target_path: Final destination path
+            expected_size: Expected file size for verification
+            headers: Additional request headers
+            cancel_event: External cancel event for task-level cancellation
+            pause_event: External pause event for task-level pause
 
         Returns:
-            下载完成的文件路径
+            Path to the downloaded file
 
         Raises:
-            DownloadCancelledError: 下载被取消
-            DownloadError: 下载失败
+            DownloadCancelledError: Download was cancelled
+            DownloadPausedError: Download was paused
+            DownloadError: Download failed after all retries
         """
         self.reset()
 
-        # 准备临时文件路径
+        # Prepare temp file and check for prior partial download
         temp_file = self._get_temp_path(target_path)
         temp_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # 获取已下载大小（用于断点续传）
         downloaded_size = temp_file.stat().st_size if temp_file.exists() else 0
         is_resumed = downloaded_size > 0
 
         if is_resumed:
             logger.info(f"Resuming download from {downloaded_size} bytes: {url}")
 
-        # 构建请求头
+        # Build request headers
         request_headers = dict(headers) if headers else {}
         if downloaded_size > 0:
             request_headers["Range"] = f"bytes={downloaded_size}-"
@@ -194,19 +222,19 @@ class HttpFileDownloader:
                     headers=request_headers,
                     expected_size=expected_size,
                     cancel_event=cancel_event,
+                    pause_event=pause_event,
                 )
-            except DownloadCancelledError:
+            except (DownloadCancelledError, DownloadPausedError):
                 raise
             except Exception as e:
                 last_error = e
 
-                # 判断是否重试以及是否需要重置状态
-                should_retry, reset_state = self._should_retry(e, attempt)
-                if not should_retry:
+                action = self._should_retry(e, attempt)
+                if action == RetryAction.NO_RETRY:
                     break
 
-                # 如果需要重置状态（如 416 错误），删除临时文件并从头开始
-                if reset_state:
+                # If reset needed (e.g. 416 error), delete temp file and restart from byte 0
+                if action == RetryAction.RETRY_WITH_RESET:
                     logger.warning(
                         f"Download attempt {attempt + 1} failed for {url}: {e}. "
                         f"Resetting and restarting from byte 0..."
@@ -223,7 +251,7 @@ class HttpFileDownloader:
                     is_resumed = False
                     request_headers.pop("Range", None)
                 else:
-                    # 正常断点续传：更新已下载大小和 Range 头部
+                    # Normal resume: update downloaded size and Range header
                     downloaded_size = (
                         temp_file.stat().st_size if temp_file.exists() else 0
                     )
@@ -231,7 +259,7 @@ class HttpFileDownloader:
                         request_headers["Range"] = f"bytes={downloaded_size}-"
                         is_resumed = True
 
-                    # 计算退避延迟
+                    # Calculate backoff delay
                     delay = min(
                         self.retry_base_delay * (2**attempt), self.retry_max_delay
                     )
@@ -241,7 +269,7 @@ class HttpFileDownloader:
                     )
                     await asyncio.sleep(delay)
 
-        # 所有重试失败
+        # All retries exhausted
         raise DownloadError(
             f"Failed to download {url} after {self.max_retries + 1} attempts: {last_error}"
         ) from last_error
@@ -256,34 +284,35 @@ class HttpFileDownloader:
         headers: dict[str, str],
         expected_size: int | None,
         cancel_event: asyncio.Event | None = None,
+        pause_event: asyncio.Event | None = None,
     ) -> Path:
-        """执行实际下载"""
+        """Stream the file from URL and write to temp path, then rename to target."""
         mode = "ab" if is_resumed else "wb"
 
         async with self.client.stream("GET", url, headers=headers) as response:
-            # 检查服务器是否真正支持 Range 请求
-            # 如果我们发送了 Range 头但服务器返回 200 OK（而非 206 Partial Content），
-            # 说明服务器忽略了 Range 头，返回了完整内容
+            # Verify the server honored our Range request. If we sent Range but
+            # got 200 OK (instead of 206 Partial Content), the server is returning
+            # the full file and we need to restart from scratch.
             if is_resumed and response.status_code == 200:
                 raise DownloadError(
                     "Server ignored Range header, full content returned. "
                     "Need to restart from beginning."
                 )
 
-            # 检查响应状态
+            # Check response status
             if response.status_code in self.NO_RETRY_STATUS_CODES:
                 raise DownloadError(
                     f"HTTP {response.status_code} for {url}: {response.reason_phrase}"
                 )
             response.raise_for_status()
 
-            # 获取总大小
+            # Get total size from response headers
             total_size = self._get_total_size(response, downloaded_size)
 
-            # 检查取消
+            # Check cancellation before streaming
             self._check_cancelled(cancel_event, url)
 
-            # 下载循环
+            # Stream download loop
             bytes_since_last_update = 0
             last_update_time = time.monotonic()
             current_size = downloaded_size
@@ -294,9 +323,12 @@ class HttpFileDownloader:
 
                     f.write(chunk)
                     current_size += len(chunk)
+
+                    # Check pause after chunk is written to keep file consistent
+                    self._check_paused(pause_event, url)
                     bytes_since_last_update += len(chunk)
 
-                    # 检查是否需要报告进度
+                    # Rate-limited progress reporting
                     now = time.monotonic()
                     elapsed = now - last_update_time
                     if elapsed >= self.progress_interval:
@@ -312,8 +344,7 @@ class HttpFileDownloader:
                         bytes_since_last_update = 0
                         last_update_time = now
 
-            # 最终进度报告
-            if self.progress_callback:
+                # Final progress report
                 await self._report_progress(
                     url=url,
                     target_path=target_path,
@@ -323,14 +354,14 @@ class HttpFileDownloader:
                     is_resumed=is_resumed,
                 )
 
-        # 校验文件大小
+        # Verify downloaded size matches expected
         if expected_size is not None and current_size != expected_size:
             raise DownloadError(
                 f"Size mismatch for {target_path}: "
                 f"expected {expected_size}, got {current_size}"
             )
 
-        # 原子重命名
+        # Atomic rename from temp to target
         target_path.parent.mkdir(parents=True, exist_ok=True)
         temp_file.rename(target_path)
         logger.info(f"Downloaded: {target_path}")
@@ -338,13 +369,13 @@ class HttpFileDownloader:
         return target_path
 
     def _get_temp_path(self, target_path: Path) -> Path:
-        """获取临时文件路径（与目标文件同目录，添加 .incomplete 后缀）"""
+        """Return the .incomplete temp path for the given target file."""
         return target_path.with_suffix(target_path.suffix + ".incomplete")
 
     def _get_total_size(
         self, response: httpx.Response, downloaded_size: int
     ) -> int | None:
-        """从响应中获取总文件大小"""
+        """Extract total file size from response headers."""
         if response.status_code == 206:  # Partial Content
             content_range = response.headers.get("Content-Range", "")
             if "/" in content_range:
@@ -368,7 +399,7 @@ class HttpFileDownloader:
         speed: float,
         is_resumed: bool,
     ) -> None:
-        """报告下载进度"""
+        """Call the progress callback with current download progress."""
         if self.progress_callback:
             try:
                 info = ProgressInfo(
@@ -380,40 +411,38 @@ class HttpFileDownloader:
                     is_resumed=is_resumed,
                 )
                 result = self.progress_callback(info)
-                # 如果回调是协程，等待它完成
+                # If the callback is a coroutine, await it
                 if asyncio.iscoroutine(result):
                     await result
             except Exception as e:
                 logger.warning(f"Progress callback failed: {e}")
 
-    def _should_retry(self, error: Exception, attempt: int) -> tuple[bool, bool]:
-        """判断是否应该重试。
+    def _should_retry(self, error: Exception, attempt: int) -> RetryAction:
+        """Decide whether to retry a failed download attempt.
 
         Returns:
-            tuple[bool, bool]: (should_retry, reset_state)
-            - should_retry: 是否应该重试
-            - reset_state: 是否需要重置下载状态（删除临时文件，从头开始）
+            RetryAction indicating whether to retry and whether to reset state.
         """
         if attempt >= self.max_retries:
-            return False, False
+            return RetryAction.NO_RETRY
 
-        # HTTP 状态码检查
+        # HTTP status code checks
         if isinstance(error, httpx.HTTPStatusError):
             status_code = error.response.status_code
 
-            # 416 Range Not Satisfiable: 临时文件大小可能超过服务器文件
-            # 需要删除临时文件并从头开始下载
+            # 416 Range Not Satisfiable: temp file may exceed server file,
+            # need to delete and restart from scratch
             if status_code == 416:
-                return True, True
+                return RetryAction.RETRY_WITH_RESET
 
-            # 其他不应重试的状态码
+            # Non-retryable status codes
             if status_code in self.NO_RETRY_STATUS_CODES:
-                return False, False
+                return RetryAction.NO_RETRY
 
-            # 其他 HTTP 错误可以重试
-            return True, False
+            # Other HTTP errors are retryable
+            return RetryAction.RETRY
 
-        # 网络错误应该重试
+        # Network errors are retryable
         if isinstance(
             error,
             (
@@ -424,17 +453,17 @@ class HttpFileDownloader:
                 httpx.NetworkError,
             ),
         ):
-            return True, False
+            return RetryAction.RETRY
 
-        # 检查是否是 Range 被忽略的情况（服务器返回 200 而非 206）
+        # Check if Range header was ignored (server returned 200 instead of 206)
         if isinstance(error, DownloadError):
             error_msg = str(error)
             if "Server ignored Range header" in error_msg:
-                # 需要删除临时文件并从头开始下载
-                return True, True
+                # Need to delete temp file and restart from scratch
+                return RetryAction.RETRY_WITH_RESET
 
-        # 其他错误不重试
-        return False, False
+        # Other errors are not retryable
+        return RetryAction.NO_RETRY
 
     async def __aenter__(self):
         return self

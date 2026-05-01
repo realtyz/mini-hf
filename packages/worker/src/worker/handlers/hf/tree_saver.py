@@ -27,11 +27,10 @@ async def save_repo_tree(
     commit_hash: str,
     committed_at: datetime | None,
 ) -> bool:
-    """Save repo tree to database atomically.
+    """Save repo tree to database.
 
-    Creates new snapshot and tree items in a single transaction,
-    then commits. Both operations must succeed together, or both
-    will be rolled back.
+    Creates new snapshot and tree items in the session.
+    The caller is responsible for committing the session.
 
     Args:
         session: Database session for the transaction
@@ -143,9 +142,7 @@ async def save_repo_tree(
         result = await session.execute(stmt)
         total_inserted += result.rowcount  # type: ignore[attr-defined]
 
-    # Commit snapshot and tree items atomically
-    await session.commit()
-
+    # Note: session commit is the caller's responsibility
     files_count = sum(1 for item in items if item["item_type"] == "file")
     folders_count = sum(1 for item in items if item["item_type"] == "directory")
     logger.info(

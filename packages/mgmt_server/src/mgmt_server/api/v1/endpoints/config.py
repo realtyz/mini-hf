@@ -116,9 +116,7 @@ async def save_smtp_config(
         test_before_save=request.test_before_save,
         admin_email=admin_user.email,
     )
-    return BaseResponse[SMTPConfigResponse](
-        data=SMTPConfigResponse.from_model(result)
-    )
+    return BaseResponse[SMTPConfigResponse](data=SMTPConfigResponse.from_model(result))
 
 
 @router.put(

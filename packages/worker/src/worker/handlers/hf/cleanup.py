@@ -11,7 +11,6 @@ from database.db_repositories import HfRepoTreeRepository
 from storage import s3_client, build_blob_key
 
 INCOMPLETE_SUFFIX = ".incomplete"
-DEFAULT_STALE_FILE_AGE_SECONDS = 86400  # 24 hours
 
 
 async def cleanup_deleted_files(
@@ -65,7 +64,7 @@ async def cleanup_deleted_files(
 
 
 def cleanup_stale_incomplete_files(
-    max_age_seconds: int = DEFAULT_STALE_FILE_AGE_SECONDS,
+    max_age_seconds: int | None = None,
 ) -> int:
     """Remove stale .incomplete files and empty directories from the temp path.
 
@@ -80,18 +79,23 @@ def cleanup_stale_incomplete_files(
     Returns:
         Number of stale files removed.
     """
+    if max_age_seconds is None:
+        max_age_seconds = settings.WORKER_STALE_FILE_AGE_SECONDS
+
     incomplete_path = Path(settings.INCOMPLETE_FILE_PATH)
     if not incomplete_path.exists():
         return 0
 
     now = time.time()
     removed = 0
+    scanned = 0
 
     for dirpath, dirnames, filenames in os.walk(incomplete_path, topdown=False):
         dir_path = Path(dirpath)
         for filename in filenames:
             if not filename.endswith(INCOMPLETE_SUFFIX):
                 continue
+            scanned += 1
             file_path = dir_path / filename
             try:
                 file_age = now - file_path.stat().st_mtime
@@ -101,6 +105,14 @@ def cleanup_stale_incomplete_files(
                     logger.debug("Removed stale incomplete file: {}", file_path)
             except OSError:
                 pass
+
+        # Log progress periodically for large temp directories
+        if scanned > 0 and scanned % 500 == 0:
+            logger.debug(
+                "Cleanup scan progress: {} files scanned, {} removed...",
+                scanned,
+                removed,
+            )
 
         for dirname in dirnames:
             sub_dir = dir_path / dirname

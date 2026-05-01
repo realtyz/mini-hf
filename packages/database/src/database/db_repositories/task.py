@@ -69,7 +69,7 @@ class TaskRepository:
             required_storage=required_storage,
         )
         self.session.add(task)
-        await self.session.commit()
+        await self.session.flush()
         await self.session.refresh(task)
         return task
 
@@ -125,7 +125,7 @@ class TaskRepository:
                 updated_at=now,
             )
         )
-        await self.session.commit()
+        await self.session.flush()
 
         # Refresh all tasks in a single query
         result = await self.session.execute(select(Task).where(Task.id.in_(task_ids)))
@@ -173,7 +173,7 @@ class TaskRepository:
         await self.session.execute(
             update(Task).where(Task.id == task_id).values(**values)
         )
-        await self.session.commit()
+        await self.session.flush()
 
     async def list_tasks(
         self,
@@ -341,6 +341,41 @@ class TaskRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_tasks_with_status(
+        self, task_ids: list[int], statuses: list[TaskStatus]
+    ) -> list[tuple[int, TaskStatus]]:
+        """Batch query: return (id, status) for tasks matching given statuses.
+
+        Used by the worker's single watch coroutine to find tasks that
+        need cancel/pause signals without per-task queries.
+        """
+        if not task_ids:
+            return []
+        stmt = select(Task.id, Task.status).where(
+            Task.id.in_(task_ids),
+            Task.status.in_(statuses),
+        )
+        result = await self.session.execute(stmt)
+        return [(row[0], row[1]) for row in result.all()]
+
+    async def has_running_task(self, repo_id: str, repo_type: str) -> bool:
+        """Check if a repo has a RUNNING task.
+
+        Used at worker startup to decide whether an UPDATING profile
+        should be recovered or left for the active worker.
+        """
+        stmt = (
+            select(Task)
+            .where(
+                Task.repo_id == repo_id,
+                Task.repo_type == repo_type,
+                Task.status == TaskStatus.RUNNING,
+            )
+            .limit(1)
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none() is not None
+
     async def has_active_download_task(self, repo_id: str) -> bool:
         """Check if repository has an active download task.
 
@@ -398,6 +433,48 @@ class TaskRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def increment_retry_count(self, task_id: int) -> int:
+        """Increment retry_count and return the new value."""
+        stmt = (
+            update(Task)
+            .where(Task.id == task_id)
+            .values(retry_count=Task.retry_count + 1)
+            .returning(Task.retry_count)
+        )
+        result = await self.session.execute(stmt)
+        row = result.scalar_one_or_none()
+        await self.session.flush()
+        return row if row is not None else 0
+
+    async def requeue_task(self, task_id: int) -> None:
+        """Reset task to PENDING status for retry."""
+        await self.session.execute(
+            update(Task)
+            .where(Task.id == task_id)
+            .values(
+                status=TaskStatus.PENDING,
+                started_at=None,
+                error_message=None,
+            )
+        )
+        await self.session.flush()
+
+    async def get_download_stats(
+        self, task_id: int
+    ) -> tuple[int, int]:
+        """Return (downloaded_file_count, downloaded_bytes) for a task.
+
+        Used as DB fallback when Redis progress data is unavailable.
+        """
+        stmt = select(
+            Task.downloaded_file_count, Task.downloaded_bytes
+        ).where(Task.id == task_id)
+        result = await self.session.execute(stmt)
+        row = result.one_or_none()
+        if row is None:
+            return 0, 0
+        return row[0] or 0, row[1] or 0
+
     async def update_download_stats(
         self,
         task_id: int,
@@ -419,7 +496,7 @@ class TaskRepository:
                 downloaded_bytes=downloaded_bytes,
             )
         )
-        await self.session.commit()
+        await self.session.flush()
 
     async def set_pinned(self, task_id: int, pinned: bool) -> None:
         """Set or clear pinned status for a task.
@@ -437,4 +514,4 @@ class TaskRepository:
                 updated_at=now,
             )
         )
-        await self.session.commit()
+        await self.session.flush()

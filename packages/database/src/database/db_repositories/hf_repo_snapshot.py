@@ -87,7 +87,7 @@ class HfRepoSnapshotRepository:
             status=status,
         )
         self._session.add(snapshot)
-        await self._session.commit()
+        await self._session.flush()
         return snapshot, True
 
     async def get_active_snapshot(
@@ -147,7 +147,7 @@ class HfRepoSnapshotRepository:
 
         if snapshot:
             snapshot.status = SnapshotStatus.ACTIVE
-            await self._session.commit()
+            await self._session.flush()
 
         return snapshot
 
@@ -185,7 +185,7 @@ class HfRepoSnapshotRepository:
 
         if snapshot:
             snapshot.status = SnapshotStatus.ARCHIVED
-            await self._session.commit()
+            await self._session.flush()
 
         return snapshot
 
@@ -244,7 +244,30 @@ class HfRepoSnapshotRepository:
         await self._session.execute(
             delete(HfRepoSnapshot).where(HfRepoSnapshot.commit_hash == commit_hash)
         )
-        await self._session.commit()
+        await self._session.flush()
+
+    async def delete_snapshot_and_tree(
+        self,
+        snapshot_id: int,
+        commit_hash: str,
+    ) -> None:
+        """Delete a snapshot and its associated tree items in one transaction.
+
+        Args:
+            snapshot_id: Primary key of the snapshot to delete
+            commit_hash: Commit hash whose tree items should be removed
+        """
+        from database.db_models import HfRepoTreeItem
+
+        await self._session.execute(
+            delete(HfRepoTreeItem).where(
+                HfRepoTreeItem.commit_hash == commit_hash
+            )
+        )
+        await self._session.execute(
+            delete(HfRepoSnapshot).where(HfRepoSnapshot.id == snapshot_id)
+        )
+        await self._session.flush()
 
     async def get_snapshot_size_stats(
         self,

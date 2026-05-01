@@ -48,7 +48,7 @@ class HfRepoProfileRepository:
                 status=initial_status if initial_status else RepoStatus.UPDATING,
             )
             self._session.add(profile)
-            await self._session.commit()
+            await self._session.flush()
 
         return profile
 
@@ -118,7 +118,7 @@ class HfRepoProfileRepository:
         if new_status:
             profile.status = new_status
 
-        await self._session.commit()
+        await self._session.flush()
 
     async def increment_downloads(
         self,
@@ -139,7 +139,7 @@ class HfRepoProfileRepository:
             return False
         profile.downloads += 1
         profile.last_downloaded_at = datetime.now()
-        await self._session.commit()
+        await self._session.flush()
         return True
 
     async def set_profile_status(
@@ -169,7 +169,7 @@ class HfRepoProfileRepository:
             return False
 
         profile.status = status
-        await self._session.commit()
+        await self._session.flush()
         return True
 
     async def soft_delete_profile(
@@ -201,7 +201,7 @@ class HfRepoProfileRepository:
             )
         )
         result = await self._session.execute(stmt)
-        await self._session.commit()
+        await self._session.flush()
         return result.rowcount > 0  # type: ignore[attr-defined]
 
     async def delete_profile(
@@ -229,7 +229,7 @@ class HfRepoProfileRepository:
             return False
 
         await self._session.delete(profile)
-        await self._session.commit()
+        await self._session.flush()
         return True
 
     async def get_profile_by_repo_id(
@@ -346,6 +346,18 @@ class HfRepoProfileRepository:
         profiles = list(result.scalars().all())
 
         return profiles, total
+
+    async def get_updating_profiles(self) -> list[HfRepoProfile]:
+        """Get all profiles stuck in UPDATING status.
+
+        Used at worker startup to recover profiles left in UPDATING by a
+        crashed worker process.
+        """
+        stmt = select(HfRepoProfile).where(
+            HfRepoProfile.status == RepoStatus.UPDATING
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
 
     async def count_repos(
         self,

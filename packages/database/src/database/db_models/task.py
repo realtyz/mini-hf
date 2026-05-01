@@ -122,6 +122,9 @@ class Task(Base):
     downloaded_bytes: Mapped[int] = mapped_column(
         BigInteger, nullable=False, default=0, comment="实际下载完成的字节数"
     )
+    retry_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, comment="自动重试次数"
+    )
 
     creator_user_id: Mapped[int] = mapped_column(nullable=False)
 

@@ -319,6 +319,8 @@ async def logout(
     payload = decode_access_token(body.access_token)
     if payload:
         if payload.get("sub") != user.email:
-            raise PermissionDeniedError("Access token does not belong to the authenticated user")
+            raise PermissionDeniedError(
+                "Access token does not belong to the authenticated user"
+            )
         if payload.get("jti"):
             await token_service.revoke_access_token(payload["jti"])

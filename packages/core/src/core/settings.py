@@ -40,6 +40,19 @@ class Settings(BaseSettings):
 
     INCOMPLETE_FILE_PATH: str
 
+    # Worker settings
+    WORKER_POLL_INTERVAL: float = 2.0
+    WORKER_MAX_CONCURRENT: int = 1
+    WORKER_CANCEL_CHECK_INTERVAL: float = 5.0
+    WORKER_CONCURRENT_DOWNLOADS: int = 3
+    WORKER_CONCURRENT_UPLOADS: int = 3
+    WORKER_CONCURRENT_S3_CHECKS: int = 5
+    WORKER_PROGRESS_INTERVAL: float = 2.0
+    WORKER_STALE_FILE_AGE_SECONDS: int = 86400
+    WORKER_MAX_RETRIES: int = 3
+    WORKER_RETRY_BASE_DELAY: float = 10.0
+    WORKER_RETRY_MAX_DELAY: float = 120.0
+
     # S3 settings
     S3_ENDPOINT: str
     S3_ACCESS_KEY: str

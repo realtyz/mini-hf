@@ -69,7 +69,7 @@ class HfRepoTreeRepository:
             constraint="uq_hf_repo_tree_items_commit_path"
         )
         result = await self._session.execute(stmt)
-        await self._session.commit()
+        await self._session.flush()
         return result.rowcount  # type: ignore[attr-defined]
 
     async def get_file_tree(
@@ -158,7 +158,7 @@ class HfRepoTreeRepository:
             .values(is_cached=True)
         )
         result = await self._session.execute(stmt)
-        await self._session.commit()
+        await self._session.flush()
         return result.rowcount > 0  # type: ignore[attr-defined]
 
     async def get_blob_ids_by_snapshot(
@@ -239,7 +239,7 @@ class HfRepoTreeRepository:
         result = await self._session.execute(
             delete(HfRepoTreeItem).where(HfRepoTreeItem.commit_hash == commit_hash)
         )
-        await self._session.commit()
+        await self._session.flush()
         return result.rowcount  # type: ignore[attr-defined]
 
     async def get_cached_files_count(

@@ -88,7 +88,10 @@ class UserService:
         except IntegrityError:
             # Race condition: another request created the user between check and create
             await self._session.rollback()
-            logger.warning("Integrity error when creating user (email conflict): {}", _mask_email(email))
+            logger.warning(
+                "Integrity error when creating user (email conflict): {}",
+                _mask_email(email),
+            )
             raise ConflictError("A user with this email already exists")
 
         logger.info("User created successfully: {}", _mask_email(email))
@@ -114,7 +117,7 @@ class UserService:
         if not user:
             raise NotFoundError(f"User with ID {user_id} not found")
         return user
-    
+
     async def _update_password(self, user: User, new_password: str) -> None:
         """Hash and set new password for a user."""
         user.hashed_password = hash_password(new_password)
