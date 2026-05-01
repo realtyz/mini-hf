@@ -260,9 +260,7 @@ class HfRepoSnapshotRepository:
         from database.db_models import HfRepoTreeItem
 
         await self._session.execute(
-            delete(HfRepoTreeItem).where(
-                HfRepoTreeItem.commit_hash == commit_hash
-            )
+            delete(HfRepoTreeItem).where(HfRepoTreeItem.commit_hash == commit_hash)
         )
         await self._session.execute(
             delete(HfRepoSnapshot).where(HfRepoSnapshot.id == snapshot_id)

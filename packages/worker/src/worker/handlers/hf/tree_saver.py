@@ -2,7 +2,6 @@
 
 from datetime import datetime
 
-from huggingface_hub import RepoFile, RepoFolder
 from loguru import logger
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,13 +13,14 @@ from database.db_models import (
     TreeItemType,
 )
 from database.db_repositories import HfRepoSnapshotRepository, HfRepoTreeRepository
+from worker.handlers.types import SourceFile, SourceFolder, SourceTreeItem
 
 
 async def save_repo_tree(
     session: AsyncSession,
     snapshot_repo: HfRepoSnapshotRepository,
     tree_repo: HfRepoTreeRepository,
-    tree_items: list[RepoFile | RepoFolder],
+    tree_items: list[SourceTreeItem],
     repo_id: str,
     repo_type: str,
     revision: str,
@@ -36,7 +36,7 @@ async def save_repo_tree(
         session: Database session for the transaction
         snapshot_repo: Snapshot repository instance
         tree_repo: Tree repository instance
-        tree_items: List of RepoFile/RepoFolder objects
+        tree_items: List of SourceTreeItem objects
         repo_id: Repository ID
         repo_type: Repository type
         revision: Git revision
@@ -83,20 +83,19 @@ async def save_repo_tree(
     # Convert to database items
     items = []
     for item in tree_items:
-        if isinstance(item, RepoFile):
-            item_data = {
+        if isinstance(item, SourceFile):
+            item_data: dict = {
                 "path": item.path,
                 "item_type": "file",
                 "size": item.size,
                 "oid": item.blob_id,
             }
-            # Save LFS fields if file has LFS info
-            if item.lfs is not None:
-                item_data["lfs_oid"] = item.lfs.sha256
-                item_data["lfs_size"] = item.lfs.size
-                item_data["lfs_pointer_size"] = item.lfs.pointer_size
+            if item.lfs_sha256 is not None:
+                item_data["lfs_oid"] = item.lfs_sha256
+                item_data["lfs_size"] = item.lfs_size
+                item_data["lfs_pointer_size"] = item.lfs_pointer_size
             items.append(item_data)
-        else:  # RepoFolder
+        elif isinstance(item, SourceFolder):
             items.append(
                 {
                     "path": item.path,

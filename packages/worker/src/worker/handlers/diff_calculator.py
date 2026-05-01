@@ -2,8 +2,7 @@
 
 from dataclasses import dataclass
 
-from database.db_models import HfRepoTreeItem
-from huggingface_hub import RepoFile
+from worker.handlers.types import CachedFileInfo, SourceFile
 
 
 @dataclass
@@ -21,34 +20,35 @@ class FileDiff:
               Format: [(path, blob_id), ...]
 
         download: Files that exist in the new commit but not in the old commit.
-                  These are brand new files that need to be downloaded from HF Hub.
-                  Format: [RepoFile, ...]
+                  These are brand new files that need to be downloaded.
+                  Format: [SourceFile, ...]
 
         update: Files that exist in both commits but with different content (different blob_id).
-                The old version needs cleanup (possibly delete from S3 if not used by other commits)
-                and the new version needs to be downloaded.
+                The old version needs cleanup and the new version needs to be downloaded.
                 Format: [(old_blob_id, new_file), ...]
 
         delete: Files that exist in the old commit but have been removed in the new commit.
-                These need cleanup to possibly delete from S3 if not used by other commits.
+                These need cleanup to possibly delete from S3.
                 Format: [(path, blob_id), ...]
     """
 
     keep: list[tuple[str, str]]  # [(path, blob_id), ...] - files to keep
-    download: list[RepoFile]  # files to download (new)
-    update: list[tuple[str, RepoFile]]  # [(old_blob_id, new_file), ...] - files changed
+    download: list[SourceFile]  # files to download (new)
+    update: list[
+        tuple[str, SourceFile]
+    ]  # [(old_blob_id, new_file), ...] - files changed
     delete: list[tuple[str, str]]  # [(path, blob_id), ...] - files to delete
 
 
 def calculate_file_diff(
-    old_tree: list[HfRepoTreeItem],
-    new_files: list[RepoFile],
+    old_tree: list[CachedFileInfo],
+    new_files: list[SourceFile],
 ) -> FileDiff:
     """Calculate file diff between old and new commit.
 
     Args:
         old_tree: Old commit tree items from database
-        new_files: New commit files from HF Hub
+        new_files: New commit files from source
 
     Returns:
         FileDiff with categorized file operations
@@ -60,40 +60,33 @@ def calculate_file_diff(
     new_files_map = {f.path: f for f in new_files}
 
     keep: list[tuple[str, str]] = []
-    download: list[RepoFile] = []
-    update: list[tuple[str, RepoFile]] = []
+    download: list[SourceFile] = []
+    update: list[tuple[str, SourceFile]] = []
     delete: list[tuple[str, str]] = []
 
     # Compare new files against old
     for path, new_file in new_files_map.items():
-        new_blob_id = new_file.lfs.sha256 if new_file.lfs else new_file.blob_id
-
-        if not new_blob_id:
-            # Skip files without blob_id
+        if not new_file.blob_id:
             continue
 
         if path not in old_files:
-            # New file
             download.append(new_file)
         else:
             old_file = old_files[path]
-            old_blob_id = old_file.lfs_oid if old_file.lfs_oid else old_file.oid
+            old_blob_id = old_file.oid or ""
 
-            if old_blob_id == new_blob_id:
-                # Same file, keep
-                keep.append((path, new_blob_id))
+            if old_blob_id == new_file.blob_id:
+                keep.append((path, new_file.blob_id))
             else:
-                # Changed file - store old blob_id for reference
                 if old_blob_id:
                     update.append((old_blob_id, new_file))
                 else:
-                    # If old blob_id is None, treat as new download
                     download.append(new_file)
 
     # Find deleted files
     for path, old_file in old_files.items():
         if path not in new_files_map:
-            old_blob_id = old_file.lfs_oid if old_file.lfs_oid else old_file.oid
+            old_blob_id = old_file.oid or ""
             if old_blob_id:
                 delete.append((path, old_blob_id))
 

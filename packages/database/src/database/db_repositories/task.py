@@ -459,16 +459,33 @@ class TaskRepository:
         )
         await self.session.flush()
 
-    async def get_download_stats(
-        self, task_id: int
-    ) -> tuple[int, int]:
+    async def reset_orphaned_running_tasks(self) -> int:
+        """Reset RUNNING and PAUSING tasks to PENDING at worker startup.
+
+        Tasks left in RUNNING or PAUSING from a crashed worker are orphaned
+        and must be requeued so a new worker picks them up.
+        """
+        result = await self.session.execute(
+            update(Task)
+            .where(Task.status.in_([TaskStatus.RUNNING, TaskStatus.PAUSING]))
+            .values(
+                status=TaskStatus.PENDING,
+                started_at=None,
+                error_message=None,
+                updated_at=datetime.now(),
+            )
+        )
+        await self.session.flush()
+        return result.rowcount
+
+    async def get_download_stats(self, task_id: int) -> tuple[int, int]:
         """Return (downloaded_file_count, downloaded_bytes) for a task.
 
         Used as DB fallback when Redis progress data is unavailable.
         """
-        stmt = select(
-            Task.downloaded_file_count, Task.downloaded_bytes
-        ).where(Task.id == task_id)
+        stmt = select(Task.downloaded_file_count, Task.downloaded_bytes).where(
+            Task.id == task_id
+        )
         result = await self.session.execute(stmt)
         row = result.one_or_none()
         if row is None:

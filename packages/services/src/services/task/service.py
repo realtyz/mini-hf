@@ -387,6 +387,10 @@ class TaskService:
         """Reset task to PENDING status for retry."""
         await self._repo.requeue_task(task_id)
 
+    async def recover_orphaned_running_tasks(self) -> int:
+        """Reset orphaned RUNNING/PAUSING tasks to PENDING at worker startup."""
+        return await self._repo.reset_orphaned_running_tasks()
+
     async def get_tasks_with_status(
         self, task_ids: list[int], statuses: list[TaskStatus]
     ) -> list[tuple[int, TaskStatus]]:

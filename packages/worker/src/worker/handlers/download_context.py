@@ -1,16 +1,15 @@
-"""Download context shared across HF download phases and error recovery."""
+"""Download context shared across download phases and error recovery."""
 
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from huggingface_hub import RepoFile
-
-from worker.handlers.hf.diff_calculator import FileDiff
+from worker.handlers.diff_calculator import FileDiff
+from worker.handlers.types import SourceFile
 
 
 @dataclass
 class DownloadContext:
-    """HF download workflow shared state, passed between phases and error handlers."""
+    """Download workflow shared state, passed between phases and error handlers."""
 
     repo_id: str
     repo_type: str
@@ -25,4 +24,4 @@ class DownloadContext:
     committed_at: datetime | None = None
     pipeline_tag: str | None = None
     diff: FileDiff | None = None
-    files_to_download: list[RepoFile] = field(default_factory=list)
+    files_to_download: list[SourceFile] = field(default_factory=list)

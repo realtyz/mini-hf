@@ -353,9 +353,7 @@ class HfRepoProfileRepository:
         Used at worker startup to recover profiles left in UPDATING by a
         crashed worker process.
         """
-        stmt = select(HfRepoProfile).where(
-            HfRepoProfile.status == RepoStatus.UPDATING
-        )
+        stmt = select(HfRepoProfile).where(HfRepoProfile.status == RepoStatus.UPDATING)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 

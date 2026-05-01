@@ -11,8 +11,7 @@ from typing import Awaitable, Callable, Literal
 
 from loguru import logger
 
-from database import new_session, RepoStatus
-from database.db_repositories import HfRepoProfileRepository, HfRepoSnapshotRepository
+from database import new_session
 from services import task_notification_service
 from services.task import TaskService, Task, TaskStatus
 from worker.handlers.hf.cleanup import cleanup_stale_incomplete_files
@@ -21,6 +20,8 @@ from worker.handlers.base import TaskControl
 from core import settings
 
 HandlerFunc = Callable[[Task, TaskControl], Awaitable[None]]
+ProfileRecoveryFunc = Callable[..., Awaitable[None]]
+StartupRecoveryFunc = Callable[[], Awaitable[None]]
 
 
 class Worker:
@@ -53,6 +54,8 @@ class Worker:
             cancel_check_interval or settings.WORKER_CANCEL_CHECK_INTERVAL
         )
         self._handlers: dict[str, HandlerFunc] = {}
+        self._profile_recoveries: dict[str, ProfileRecoveryFunc] = {}
+        self._startup_recoveries: list[StartupRecoveryFunc] = []
         self._running = False
         self._task_controls: dict[int, TaskControl] = {}
 
@@ -73,6 +76,25 @@ class Worker:
 
         return _do_register(handler) if handler is not None else _do_register
 
+    def register_profile_recovery(
+        self,
+        source: str,
+        recovery_func: ProfileRecoveryFunc,
+        startup_recovery: StartupRecoveryFunc | None = None,
+    ) -> None:
+        """Register profile recovery functions for a source.
+
+        Args:
+            source: Source identifier (e.g. "huggingface", "modelscope")
+            recovery_func: Async callable(session, repo_id, repo_type) that
+                restores a profile within an existing session.
+            startup_recovery: Optional async callable() that scans for and
+                recovers all UPDATING profiles for this source at worker start.
+        """
+        self._profile_recoveries[source] = recovery_func
+        if startup_recovery is not None:
+            self._startup_recoveries.append(startup_recovery)
+
     async def start(self) -> None:
         """Start the worker loop."""
         self._running = True
@@ -81,6 +103,10 @@ class Worker:
         logger.info("Press Ctrl+C to stop")
 
         await asyncio.to_thread(cleanup_stale_incomplete_files)
+
+        # Recover tasks orphaned by a previous crashed worker (RUNNING/PAUSING → PENDING).
+        # Must run before profile recovery so profiles see no RUNNING tasks.
+        await self._recover_orphaned_tasks()
 
         # Recover profiles stuck in UPDATING from a previous crashed worker
         await self._recover_updating_profiles()
@@ -149,65 +175,31 @@ class Worker:
 
         logger.info("Stopped")
 
+    async def _recover_orphaned_tasks(self) -> None:
+        """Recover tasks stuck in RUNNING/PAUSING after a worker crash.
+
+        Resets them to PENDING so they are picked up again by the poll loop.
+        """
+        async with new_session() as session:
+            ts = TaskService(session)
+            count = await ts.recover_orphaned_running_tasks()
+            await session.commit()
+        if count:
+            logger.info(
+                "Recovered {} orphaned task(s) from RUNNING/PAUSING to PENDING",
+                count,
+            )
+
     async def _recover_updating_profiles(self) -> None:
         """Recover profiles stuck in UPDATING after a worker crash.
 
-        Scans all UPDATING profiles and restores them to ACTIVE (if an
-        active snapshot exists) or INACTIVE, provided no RUNNING task is
-        currently processing the repo.
+        Delegates to each source's registered startup recovery function.
         """
-        async with new_session() as session:
-            profile_repo = HfRepoProfileRepository(session)
-            profiles = await profile_repo.get_updating_profiles()
-
-        if not profiles:
-            return
-
-        logger.info(
-            "Found {} profile(s) stuck in UPDATING, checking for recovery...",
-            len(profiles),
-        )
-
-        recovered = 0
-        for profile in profiles:
-            async with new_session() as session:
-                task_service = TaskService(session)
-                has_running = await task_service.has_running_task(
-                    profile.repo_id, profile.repo_type
-                )
-
-            if has_running:
-                logger.info(
-                    "  -> Skipping {}: RUNNING task exists, worker will handle it",
-                    profile.repo_id,
-                )
-                continue
-
-            # Determine target status based on whether snapshots exist
-            async with new_session() as session:
-                snapshot_repo = HfRepoSnapshotRepository(session)
-                snapshots, _ = await snapshot_repo.get_repo_with_snapshots(
-                    profile.repo_id, profile.repo_type
-                )
-                target = RepoStatus.ACTIVE if snapshots else RepoStatus.INACTIVE
-
-                profile_repo = HfRepoProfileRepository(session)
-                await profile_repo.set_profile_status(
-                    repo_id=profile.repo_id,
-                    repo_type=profile.repo_type,
-                    status=target,
-                )
-                await session.commit()
-
-            logger.info(
-                "  -> Recovered {} from UPDATING to {}",
-                profile.repo_id,
-                target.value,
-            )
-            recovered += 1
-
-        if recovered > 0:
-            logger.info("Recovered {} profile(s)", recovered)
+        for recovery_func in self._startup_recoveries:
+            try:
+                await recovery_func()
+            except Exception as e:
+                logger.warning("Error during startup profile recovery: {}", e)
 
     def stop(self) -> None:
         """Stop the worker gracefully."""
@@ -234,29 +226,21 @@ class Worker:
         except Exception:
             logger.warning("Failed to send {} notification", status)
 
-    @staticmethod
     async def _restore_profile_in_session(
-        session, repo_id: str, repo_type: str
+        self, session, repo_id: str, repo_type: str, source: str
     ) -> None:
         """Restore profile status within an existing session.
 
-        Checks for an active snapshot: sets profile to ACTIVE if one
-        exists, otherwise INACTIVE. Used as a safety net in exception
-        handlers so profile recovery and task status update share a
-        transaction.
+        Delegates to the source-specific recovery function registered
+        for the given source.
         """
-        snapshot_repo = HfRepoSnapshotRepository(session)
-        snapshots, _ = await snapshot_repo.get_repo_with_snapshots(
-            repo_id, repo_type
-        )
-        target = RepoStatus.ACTIVE if snapshots else RepoStatus.INACTIVE
-
-        profile_repo = HfRepoProfileRepository(session)
-        await profile_repo.set_profile_status(
-            repo_id=repo_id,
-            repo_type=repo_type,
-            status=target,
-        )
+        recovery_func = self._profile_recoveries.get(source)
+        if recovery_func is None:
+            logger.debug(
+                "No profile recovery registered for source '{}', skipping", source
+            )
+            return
+        await recovery_func(session, repo_id, repo_type)
 
     async def _maybe_retry_task(self, task: Task, error: Exception) -> bool:
         """Retry a failed task if the error is transient and retries remain.
@@ -277,7 +261,7 @@ class Worker:
             return False
 
         delay = min(
-            settings.WORKER_RETRY_BASE_DELAY * (2 ** retry_count),
+            settings.WORKER_RETRY_BASE_DELAY * (2**retry_count),
             settings.WORKER_RETRY_MAX_DELAY,
         )
         logger.info(
@@ -294,7 +278,7 @@ class Worker:
                 await ts.increment_retry_count(task.id)
                 await ts.requeue_task(task.id)
                 await self._restore_profile_in_session(
-                    session, task.repo_id, task.repo_type
+                    session, task.repo_id, task.repo_type, task.source
                 )
                 await session.commit()
         except Exception as retry_error:
@@ -349,7 +333,9 @@ class Worker:
         if not handler:
             async with new_session() as session:
                 task_service = TaskService(session)
-                await task_service.fail(task.id, f"No handler for source: {task.source}")
+                await task_service.fail(
+                    task.id, f"No handler for source: {task.source}"
+                )
                 await session.commit()
             return
 
@@ -396,7 +382,7 @@ class Worker:
                 ts = TaskService(session)
                 await ts.cancel(task.id)
                 await self._restore_profile_in_session(
-                    session, task.repo_id, task.repo_type
+                    session, task.repo_id, task.repo_type, task.source
                 )
                 await session.commit()
             logger.info("Task {} cancelled by user", task.id)
@@ -406,7 +392,7 @@ class Worker:
                 ts = TaskService(session)
                 await ts.pause(task.id)
                 await self._restore_profile_in_session(
-                    session, task.repo_id, task.repo_type
+                    session, task.repo_id, task.repo_type, task.source
                 )
                 await session.commit()
             logger.info("Task {} paused by user", task.id)
@@ -419,7 +405,7 @@ class Worker:
                     ts = TaskService(session)
                     await ts.fail(task.id, str(e))
                     await self._restore_profile_in_session(
-                        session, task.repo_id, task.repo_type
+                        session, task.repo_id, task.repo_type, task.source
                     )
                     await session.commit()
             except Exception as fail_error:
@@ -464,9 +450,7 @@ class Worker:
                         )
                         control.cancel_event.set()
                     elif status == TaskStatus.PAUSING:
-                        logger.info(
-                            "Detected pause request for task {}", task_id
-                        )
+                        logger.info("Detected pause request for task {}", task_id)
                         control.pause_event.set()
 
             except asyncio.CancelledError:
