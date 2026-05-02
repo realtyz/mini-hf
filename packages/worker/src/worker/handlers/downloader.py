@@ -7,6 +7,7 @@ from enum import Enum, auto
 from pathlib import Path
 from typing import Callable, Awaitable
 
+import aiofiles
 import httpx
 from loguru import logger
 
@@ -317,11 +318,11 @@ class HttpFileDownloader:
             last_update_time = time.monotonic()
             current_size = downloaded_size
 
-            with open(temp_file, mode) as f:
+            async with aiofiles.open(temp_file, mode) as f:
                 async for chunk in response.aiter_bytes(chunk_size=self.chunk_size):
                     self._check_cancelled(cancel_event, url)
 
-                    f.write(chunk)
+                    await f.write(chunk)
                     current_size += len(chunk)
 
                     # Check pause after chunk is written to keep file consistent

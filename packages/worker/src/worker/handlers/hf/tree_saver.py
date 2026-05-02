@@ -15,6 +15,8 @@ from database.db_models import (
 from database.db_repositories import HfRepoSnapshotRepository, HfRepoTreeRepository
 from worker.handlers.types import SourceFile, SourceFolder, SourceTreeItem
 
+_TREE_BATCH_SIZE = 1000
+
 
 async def save_repo_tree(
     session: AsyncSession,
@@ -106,7 +108,7 @@ async def save_repo_tree(
             )
 
     # Batch insert tree items directly using shared session (atomic transaction)
-    chunk_size = 1000
+    chunk_size = _TREE_BATCH_SIZE
     total_inserted = 0
 
     for i in range(0, len(items), chunk_size):
@@ -116,7 +118,7 @@ async def save_repo_tree(
         values = []
         for item in chunk:
             item_type = TreeItemType(item["item_type"])
-            # 根据类型设置 is_cached 默认值: directory=None, file=False
+            # Set is_cached default by type: directory=None, file=False
             is_cached = None if item_type == TreeItemType.DIRECTORY else False
 
             value = {

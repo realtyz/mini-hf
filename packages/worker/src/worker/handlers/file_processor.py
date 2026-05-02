@@ -20,6 +20,8 @@ from worker.handlers.downloader import (
 from worker.handlers.types import AuthHeaderBuilder, SourceFile, UrlBuilder
 from worker.services import TaskProgressTracker
 
+_HTTPX_CONNECTION_HEADROOM = 2
+
 
 @dataclass
 class FileProcessResult:
@@ -33,29 +35,29 @@ class FileProcessResult:
 
 @dataclass
 class FileProcessInfrastructure:
-    """Concurrency controls and shared clients for file processing.
+    """Concurrency controls, signals, and shared clients for file processing.
 
     Separated from business data so FileProcessContext focuses on
-    repo-level parameters and control signals.
+    repo-level parameters and callable builders.
     """
 
     download_semaphore: asyncio.Semaphore
     upload_semaphore: asyncio.Semaphore
     check_semaphore: asyncio.Semaphore
+    cancel_event: asyncio.Event
+    pause_event: asyncio.Event
     shared_client: httpx.AsyncClient | None = None
     s3: S3Client = None  # type: ignore[assignment]
 
 
 @dataclass
 class FileProcessContext:
-    """Business data and control signals for file download/upload."""
+    """Business data and callable builders for file download/upload."""
 
     repo_id: str
     repo_type: str
     commit_hash: str
     access_token: str | None
-    cancel_event: asyncio.Event
-    pause_event: asyncio.Event
     progress_tracker: TaskProgressTracker | None
     url_builder: UrlBuilder
     auth_header_builder: AuthHeaderBuilder
@@ -95,8 +97,9 @@ async def download_and_upload_files(
             limits=httpx.Limits(
                 max_connections=settings.WORKER_CONCURRENT_DOWNLOADS
                 + settings.WORKER_CONCURRENT_UPLOADS
-                + 2,
-                max_keepalive_connections=settings.WORKER_CONCURRENT_DOWNLOADS + 2,
+                + _HTTPX_CONNECTION_HEADROOM,
+                max_keepalive_connections=settings.WORKER_CONCURRENT_DOWNLOADS
+                + _HTTPX_CONNECTION_HEADROOM,
             ),
         )
 
@@ -291,7 +294,7 @@ async def _download_phase(
     Pause is checked before starting; cancellation is checked during download.
     """
     async with ctx.infra.download_semaphore:
-        if ctx.pause_event.is_set():
+        if ctx.infra.pause_event.is_set():
             raise DownloadPausedError
 
         if ctx.progress_tracker:
@@ -335,8 +338,8 @@ async def _download_phase(
                     target_path=target_path,
                     expected_size=src_file.size,
                     headers=headers,
-                    cancel_event=ctx.cancel_event,
-                    pause_event=ctx.pause_event,
+                    cancel_event=ctx.infra.cancel_event,
+                    pause_event=ctx.infra.pause_event,
                 )
                 if ctx.progress_tracker:
                     await ctx.progress_tracker.complete_file(src_file.path)

@@ -124,10 +124,11 @@ class TaskProgressTracker:
         logger.debug("Initialized tracking for file: {} (pending)", file_path)
 
     async def batch_start_files(self, files: list[tuple[str, int]]) -> None:
-        """批量初始化多个文件的进度跟踪。
+        """Initialize progress tracking for multiple files in batch.
 
-        比循环调用 start_file() 更高效：使用 mset 一次批量写入所有文件数据，
-        文件列表也只写一次，避免 O(n²) 的 read-modify-write。
+        More efficient than calling start_file() in a loop: uses mset to
+        write all file data in a single Redis round-trip, and writes the
+        file list only once, avoiding O(n²) read-modify-write.
 
         Args:
             files: List of (file_path, total_bytes) tuples
@@ -153,10 +154,10 @@ class TaskProgressTracker:
                 "error_message": None,
             }
 
-        # 批量写入所有文件数据（一次 Redis 往返）
+        # Batch-write all file data (single Redis round-trip)
         await self._cache.mset(file_data_mapping, ttl=self.DEFAULT_TTL)
 
-        # 写入文件列表（只写一次）
+        # Write file list once
         await self._cache.set(self._files_list_key, file_paths, ttl=self.DEFAULT_TTL)
 
         logger.debug("Initialized tracking for {} files (batch)", len(files))
@@ -225,11 +226,11 @@ class TaskProgressTracker:
         logger.debug("Completed file: {}", file_path)
 
     async def start_file_upload(self, file_path: str, total_bytes: int) -> None:
-        """标记文件开始上传。
+        """Mark a file as uploading.
 
         Args:
-            file_path: 文件路径
-            total_bytes: 文件总大小（字节）
+            file_path: Path of the file
+            total_bytes: Total file size in bytes
         """
         await self._update_file_data(
             file_path,
@@ -247,13 +248,13 @@ class TaskProgressTracker:
         total: int | None,
         speed: float,
     ) -> None:
-        """更新文件上传进度。
+        """Update file upload progress.
 
         Args:
-            file_path: 文件路径
-            uploaded: 已上传字节数
-            total: 文件总大小（可选）
-            speed: 上传速度（字节/秒）
+            file_path: Path of the file
+            uploaded: Bytes uploaded so far
+            total: Total file size (optional)
+            speed: Upload speed in bytes per second
         """
         await self._update_file_data(
             file_path,
@@ -264,10 +265,10 @@ class TaskProgressTracker:
         )
 
     async def complete_file_upload(self, file_path: str) -> None:
-        """标记文件上传完成。
+        """Mark a file upload as completed.
 
         Args:
-            file_path: 文件路径
+            file_path: Path of the file
         """
         now = datetime.now(timezone.utc).isoformat()
         file_key = self._file_key(file_path)
@@ -285,11 +286,11 @@ class TaskProgressTracker:
         logger.debug("Completed upload for file: {}", file_path)
 
     async def fail_file_upload(self, file_path: str, error_message: str) -> None:
-        """标记文件上传失败。
+        """Mark a file upload as failed.
 
         Args:
-            file_path: 文件路径
-            error_message: 错误信息
+            file_path: Path of the file
+            error_message: Error message describing the failure
         """
         await self._update_file_data(
             file_path,

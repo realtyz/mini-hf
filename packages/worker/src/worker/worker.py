@@ -15,11 +15,12 @@ from database import new_session
 from services import task_notification_service
 from services.task import TaskService, Task, TaskStatus
 from worker.handlers.hf.cleanup import cleanup_stale_incomplete_files
-from worker.handlers.exceptions import TaskCancelledError, TaskPausedError
-from worker.handlers.base import TaskControl
+from worker.handlers.base import TaskControl, ExecutionResult
 from core import settings
 
-HandlerFunc = Callable[[Task, TaskControl], Awaitable[None]]
+_TASK_FETCH_BATCH_SIZE = 1
+
+HandlerFunc = Callable[[Task, TaskControl], Awaitable[ExecutionResult]]
 ProfileRecoveryFunc = Callable[..., Awaitable[None]]
 StartupRecoveryFunc = Callable[[], Awaitable[None]]
 
@@ -104,7 +105,7 @@ class Worker:
 
         await asyncio.to_thread(cleanup_stale_incomplete_files)
 
-        # Recover tasks orphaned by a previous crashed worker (RUNNING/PAUSING → PENDING).
+        # Fail orphaned RUNNING tasks from a previous crashed worker.
         # Must run before profile recovery so profiles see no RUNNING tasks.
         await self._recover_orphaned_tasks()
 
@@ -140,7 +141,7 @@ class Worker:
 
                     async with new_session() as session:
                         task_service = TaskService(session)
-                        tasks = await task_service.get_next_task(batch_size=1)
+                        tasks = await task_service.get_next_task(batch_size=_TASK_FETCH_BATCH_SIZE)
                         await session.commit()
 
                     if not tasks:
@@ -151,8 +152,8 @@ class Worker:
                     task = tasks[0]
                     logger.info("Got task: {}", task.id)
 
-                    t = asyncio.create_task(self._run_task(task))
-                    # Semaphore is released when the task completes (success or failure)
+                    t = asyncio.create_task(self._process_task(task))
+                    # Semaphore released by done callback below
                     t.add_done_callback(lambda _: semaphore.release())
                     running_tasks.add(t)
                     t.add_done_callback(running_tasks.discard)
@@ -176,19 +177,18 @@ class Worker:
         logger.info("Stopped")
 
     async def _recover_orphaned_tasks(self) -> None:
-        """Recover tasks stuck in RUNNING/PAUSING after a worker crash.
+        """Mark RUNNING tasks as FAILED after a worker crash.
 
-        Resets them to PENDING so they are picked up again by the poll loop.
+        RUNNING means the previous worker crashed mid-processing. PAUSING
+        tasks are left alone — they were paused by user request and can be
+        resumed manually.
         """
         async with new_session() as session:
             ts = TaskService(session)
             count = await ts.recover_orphaned_running_tasks()
             await session.commit()
         if count:
-            logger.info(
-                "Recovered {} orphaned task(s) from RUNNING/PAUSING to PENDING",
-                count,
-            )
+            logger.info("Marked {} orphaned RUNNING task(s) as FAILED", count)
 
     async def _recover_updating_profiles(self) -> None:
         """Recover profiles stuck in UPDATING after a worker crash.
@@ -250,7 +250,7 @@ class Worker:
         if not self._is_retryable_error(error):
             return False
 
-        retry_count = getattr(task, "retry_count", 0)
+        retry_count = task.retry_count
         if retry_count >= settings.WORKER_MAX_RETRIES:
             logger.info(
                 "Task {} reached max retries ({}/{}) — failing permanently",
@@ -317,29 +317,39 @@ class Worker:
 
         return False
 
-    async def _run_task(self, task: Task) -> None:
-        """Process a single task (semaphore released by done callback in start())."""
-        await self._process_task(task)
+    async def _with_task_session(
+        self, task: Task, action, *, restore_profile: bool = False
+    ) -> None:
+        """Execute a task status update within a new session and commit."""
+        async with new_session() as session:
+            ts = TaskService(session)
+            await action(ts)
+            if restore_profile:
+                await self._restore_profile_in_session(
+                    session, task.repo_id, task.repo_type, task.source
+                )
+            await session.commit()
 
     async def _process_task(
         self,
         task: Task,
     ) -> None:
-        """Process a single task with cancellation support."""
-        # Determine handler based on source (huggingface or modelscope)
+        """Process a single task with cancellation support.
+
+        The handler returns an ExecutionResult after performing all
+        internal cleanup. This method translates the result into the
+        final database task status.
+        """
         handler_name = f"download_{task.source}"
         handler = self._handlers.get(handler_name)
 
         if not handler:
-            async with new_session() as session:
-                task_service = TaskService(session)
-                await task_service.fail(
-                    task.id, f"No handler for source: {task.source}"
-                )
-                await session.commit()
+            await self._with_task_session(
+                task,
+                lambda ts: ts.fail(task.id, f"No handler for source: {task.source}"),
+            )
             return
 
-        # Create task control for this task
         task_control = TaskControl()
         self._task_controls[task.id] = task_control
 
@@ -347,74 +357,67 @@ class Worker:
             logger.info(
                 "Processing task {}: {} ({})", task.id, task.repo_id, task.source
             )
-            await handler(task, task_control)
+            result = await handler(task, task_control)
 
-            # Check if cancelled or paused before marking complete
-            if task_control.cancel_event.is_set():
-                async with new_session() as session:
-                    ts = TaskService(session)
-                    await ts.cancel(task.id)
-                    await session.commit()
+            if result.status == "completed":
+                if task_control.cancel_event.is_set():
+                    await self._with_task_session(task, lambda ts: ts.cancel(task.id))
+                    logger.info("Task {} cancelled by user", task.id)
+                    await self._send_notification(task, "cancelled")
+                elif task_control.pause_event.is_set():
+                    await self._with_task_session(task, lambda ts: ts.complete(task.id))
+                    logger.info(
+                        "Task {} completed (pause request arrived after all work finished)",
+                        task.id,
+                    )
+                    await self._send_notification(task, "completed")
+                else:
+                    await self._with_task_session(task, lambda ts: ts.complete(task.id))
+                    logger.info("Completed task {}", task.id)
+                    await self._send_notification(task, "completed")
+
+            elif result.status == "cancelled":
+                await self._with_task_session(task, lambda ts: ts.cancel(task.id))
                 logger.info("Task {} cancelled by user", task.id)
                 await self._send_notification(task, "cancelled")
-            elif task_control.pause_event.is_set():
-                # Handler completed normally despite pause being requested — all
-                # work finished before the pause could take effect
-                async with new_session() as session:
-                    ts = TaskService(session)
-                    await ts.complete(task.id)
-                    await session.commit()
-                logger.info(
-                    "Task {} completed (pause request arrived after all work finished)",
-                    task.id,
-                )
-                await self._send_notification(task, "completed")
-            else:
-                async with new_session() as session:
-                    ts = TaskService(session)
-                    await ts.complete(task.id)
-                    await session.commit()
-                logger.info("Completed task {}", task.id)
-                await self._send_notification(task, "completed")
 
-        except TaskCancelledError:
-            async with new_session() as session:
-                ts = TaskService(session)
-                await ts.cancel(task.id)
-                await self._restore_profile_in_session(
-                    session, task.repo_id, task.repo_type, task.source
-                )
-                await session.commit()
-            logger.info("Task {} cancelled by user", task.id)
-            await self._send_notification(task, "cancelled")
-        except TaskPausedError:
-            async with new_session() as session:
-                ts = TaskService(session)
-                await ts.pause(task.id)
-                await self._restore_profile_in_session(
-                    session, task.repo_id, task.repo_type, task.source
-                )
-                await session.commit()
-            logger.info("Task {} paused by user", task.id)
-        except Exception as e:
-            logger.exception("Failed task {}: {}", task.id, e)
-            if await self._maybe_retry_task(task, e):
-                return
-            try:
-                async with new_session() as session:
-                    ts = TaskService(session)
-                    await ts.fail(task.id, str(e))
-                    await self._restore_profile_in_session(
-                        session, task.repo_id, task.repo_type, task.source
+            elif result.status == "paused":
+                await self._with_task_session(task, lambda ts: ts.pause(task.id))
+                logger.info("Task {} paused by user", task.id)
+
+            elif result.status == "failed":
+                logger.error("Failed task {}: {}", task.id, result.error)
+                if result.exception and await self._maybe_retry_task(
+                    task, result.exception
+                ):
+                    return
+                try:
+                    await self._with_task_session(
+                        task,
+                        lambda ts: ts.fail(task.id, result.error or "Unknown error"),
                     )
-                    await session.commit()
+                except Exception as fail_error:
+                    logger.error(
+                        "Critical: Failed to update task {} status to FAILED: {}",
+                        task.id,
+                        fail_error,
+                    )
+                await self._send_notification(task, "failed", result.error)
+
+        except Exception as e:
+            logger.exception("Unexpected error processing task {}: {}", task.id, e)
+            error_msg = str(e)
+            try:
+                await self._with_task_session(
+                    task, lambda ts: ts.fail(task.id, error_msg)
+                )
             except Exception as fail_error:
                 logger.error(
                     "Critical: Failed to update task {} status to FAILED: {}",
                     task.id,
                     fail_error,
                 )
-            await self._send_notification(task, "failed", str(e))
+            await self._send_notification(task, "failed", error_msg)
         finally:
             self._task_controls.pop(task.id, None)
 

@@ -16,8 +16,9 @@ from core import settings
 from database import new_session
 from database.db_models import Task
 from database.db_repositories import TaskRepository
+from cache.exceptions import CacheException
 from worker.handlers.downloader import DownloadCancelledError, DownloadPausedError
-from worker.handlers.base import TaskControl
+from worker.handlers.base import TaskControl, ExecutionResult
 from worker.handlers.diff_calculator import FileDiff
 from worker.handlers.download_context import DownloadContext
 from worker.handlers.file_processor import (
@@ -136,8 +137,14 @@ class BaseDownloadHandler(ABC):
     # Template method
     # ------------------------------------------------------------------
 
-    async def execute(self) -> None:
-        """Run the full download workflow (template method)."""
+    async def execute(self) -> ExecutionResult:
+        """Run the full download workflow (template method).
+
+        Returns an ExecutionResult indicating the outcome. The handler
+        handles all internal cleanup (stats, progress, snapshot, profile)
+        regardless of success or failure. The worker is responsible for
+        translating the result into the final task status.
+        """
         logger.info(
             "  -> Downloading from {}: {} (type: {})",
             self.source_name,
@@ -159,20 +166,22 @@ class BaseDownloadHandler(ABC):
             await self.save_tree(tree_items)
             await self.execute_downloads()
             await self.finalize_success()
+            return ExecutionResult(status="completed")
         except DownloadCancelledError:
             logger.info("  -> Download cancelled by user for {}", self.ctx.repo_id)
             await self._handle_abort("cancelled", "Cancelled by user")
-            raise
+            return ExecutionResult(status="cancelled", error="Cancelled by user")
         except DownloadPausedError as e:
+            msg = f"Paused: {e}"
             logger.info("  -> Download paused for {}: {}", self.ctx.repo_id, e)
-            await self._handle_abort("paused", f"Paused: {e}")
-            raise
+            await self._handle_abort("paused", msg)
+            return ExecutionResult(status="paused", error=msg)
         except Exception as e:
             logger.exception("  -> Download failed for {}: {}", self.ctx.repo_id, e)
             await self._handle_abort("failed", str(e))
-            raise
+            return ExecutionResult(status="failed", error=str(e), exception=e)
         finally:
-            self._cleanup_temp_dir()
+            await self._cleanup_temp_dir()
 
     # ------------------------------------------------------------------
     # Shared helpers (concrete)
@@ -197,7 +206,7 @@ class BaseDownloadHandler(ABC):
                 downloaded_bytes,
             ) = await self._progress_tracker.get_progress_snapshot()
             redis_ok = True
-        except Exception:
+        except CacheException:
             pass
 
         try:
@@ -225,7 +234,7 @@ class BaseDownloadHandler(ABC):
         try:
             await self._progress_tracker.fail_task(message)
             await self._progress_tracker.clear()
-        except Exception as tracker_error:
+        except CacheException as tracker_error:
             logger.warning("  -> Failed to update progress tracker: {}", tracker_error)
 
     async def _run_file_processor(
@@ -261,8 +270,6 @@ class BaseDownloadHandler(ABC):
             repo_type=self.ctx.repo_type,
             commit_hash=self.ctx.new_commit_hash,
             access_token=self.ctx.access_token,
-            cancel_event=self._task_control.cancel_event,
-            pause_event=self._task_control.pause_event,
             progress_tracker=self._progress_tracker,
             url_builder=self.build_url_builder(),
             auth_header_builder=self.build_auth_header_builder(),
@@ -272,6 +279,8 @@ class BaseDownloadHandler(ABC):
                 ),
                 upload_semaphore=asyncio.Semaphore(settings.WORKER_CONCURRENT_UPLOADS),
                 check_semaphore=asyncio.Semaphore(settings.WORKER_CONCURRENT_S3_CHECKS),
+                cancel_event=self._task_control.cancel_event,
+                pause_event=self._task_control.pause_event,
             ),
             skip_s3_check_paths=download_paths,
         )
@@ -280,14 +289,14 @@ class BaseDownloadHandler(ABC):
             files=files_to_download,
         )
 
-    def _cleanup_temp_dir(self) -> None:
+    async def _cleanup_temp_dir(self) -> None:
         """Remove the temp directory for a repo download."""
         try:
             repo_dir = Path(settings.INCOMPLETE_FILE_PATH) / self.ctx.repo_id.replace(
                 "/", "--"
             )
             if repo_dir.exists():
-                shutil.rmtree(repo_dir)
+                await asyncio.to_thread(shutil.rmtree, repo_dir)
                 logger.info("  -> Cleaned up temp directory: {}", repo_dir)
         except Exception as cleanup_error:
             logger.warning("  -> Failed to clean up temp directory: {}", cleanup_error)

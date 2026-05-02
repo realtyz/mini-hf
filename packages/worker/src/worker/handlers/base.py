@@ -1,7 +1,8 @@
 """Base handler types for task processors."""
 
 import asyncio
-from typing import Awaitable, Callable
+from dataclasses import dataclass
+from typing import Awaitable, Callable, Literal
 
 from services.task import Task
 
@@ -19,5 +20,19 @@ class TaskControl:
         self.pause_event = asyncio.Event()
 
 
+@dataclass
+class ExecutionResult:
+    """Result returned by handler execution.
+
+    The handler is responsible for internal cleanup (stats, progress,
+    snapshot, profile) regardless of outcome. The worker uses this
+    result to decide the final task status in the database.
+    """
+
+    status: Literal["completed", "cancelled", "paused", "failed"]
+    error: str | None = None
+    exception: Exception | None = None
+
+
 # Type alias for handler functions
-HandlerFunc = Callable[[Task, TaskControl], Awaitable[None]]
+HandlerFunc = Callable[[Task, TaskControl], Awaitable[ExecutionResult]]

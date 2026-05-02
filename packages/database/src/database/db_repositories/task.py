@@ -459,19 +459,20 @@ class TaskRepository:
         )
         await self.session.flush()
 
-    async def reset_orphaned_running_tasks(self) -> int:
-        """Reset RUNNING and PAUSING tasks to PENDING at worker startup.
+    async def fail_orphaned_running_tasks(self) -> int:
+        """Mark RUNNING tasks as FAILED at worker startup.
 
-        Tasks left in RUNNING or PAUSING from a crashed worker are orphaned
-        and must be requeued so a new worker picks them up.
+        Tasks left in RUNNING from a crashed worker are orphaned. PAUSING
+        tasks are intentionally left alone — the user requested a pause and
+        can resume the task manually.
         """
         result = await self.session.execute(
             update(Task)
-            .where(Task.status.in_([TaskStatus.RUNNING, TaskStatus.PAUSING]))
+            .where(Task.status == TaskStatus.RUNNING)
             .values(
-                status=TaskStatus.PENDING,
-                started_at=None,
-                error_message=None,
+                status=TaskStatus.FAILED,
+                error_message="Worker crashed while processing this task",
+                completed_at=datetime.now(),
                 updated_at=datetime.now(),
             )
         )
