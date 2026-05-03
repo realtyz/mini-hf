@@ -22,7 +22,7 @@ from worker.handlers.hf.adapter import (
 from worker.handlers.hf.cleanup import cleanup_deleted_files
 from worker.handlers.diff_calculator import calculate_file_diff
 from worker.handlers.hf.tree_saver import save_repo_tree
-from worker.handlers.types import AuthHeaderBuilder, UrlBuilder
+from worker.handlers.source_types import AuthHeaderBuilder, UrlBuilder
 
 
 def _hf_auth_header_builder(access_token: str | None) -> dict[str, str] | None:

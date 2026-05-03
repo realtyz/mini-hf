@@ -2,7 +2,7 @@
 
 This module is the *only* place in the worker that imports from
 huggingface_hub. All other handler modules work with the generic
-types from worker.handlers.types.
+types from worker.handlers.source_types.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from __future__ import annotations
 from services.huggingface import RepoFile, RepoFolder
 
 from database.db_models import HfRepoTreeItem
-from worker.handlers.types import (
+from worker.handlers.source_types import (
     CachedFileInfo,
     SourceFile,
     SourceFolder,

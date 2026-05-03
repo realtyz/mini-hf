@@ -13,7 +13,7 @@ from database.db_models import (
     TreeItemType,
 )
 from database.db_repositories import HfRepoSnapshotRepository, HfRepoTreeRepository
-from worker.handlers.types import SourceFile, SourceFolder, SourceTreeItem
+from worker.handlers.source_types import SourceFile, SourceFolder, SourceTreeItem
 
 _TREE_BATCH_SIZE = 1000
 

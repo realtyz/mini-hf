@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from worker.handlers.diff_calculator import FileDiff
-from worker.handlers.types import SourceFile
+from worker.handlers.source_types import SourceFile
 
 
 @dataclass

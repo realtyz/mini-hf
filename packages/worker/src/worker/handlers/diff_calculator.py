@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from worker.handlers.types import CachedFileInfo, SourceFile
+from worker.handlers.source_types import CachedFileInfo, SourceFile
 
 
 @dataclass

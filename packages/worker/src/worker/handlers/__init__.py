@@ -20,7 +20,7 @@ from worker.handlers.file_processor import (
     FileProcessResult,
     download_and_upload_files,
 )
-from worker.handlers.types import (
+from worker.handlers.source_types import (
     SourceFile,
     SourceFolder,
     SourceTreeItem,
