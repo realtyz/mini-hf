@@ -11,18 +11,18 @@ from typing import Awaitable, Callable, Literal
 
 from loguru import logger
 
+from core import settings
 from database import new_session
 from services import task_notification_service
-from services.task import TaskService, Task, TaskStatus
-from worker.handlers.hf.cleanup import cleanup_stale_incomplete_files
-from worker.handlers.base import TaskControl, ExecutionResult
-from core import settings
+from services.task import TaskService, Task
+from worker.handlers.contracts import HandlerFunc, TaskControl
+from worker.retry import RetryPolicy
+from worker.watchdog import TaskWatchdog
+from worker.recovery import StartupRecovery, StartupRecoveryFunc
 
 _TASK_FETCH_BATCH_SIZE = 1
 
-HandlerFunc = Callable[[Task, TaskControl], Awaitable[ExecutionResult]]
 ProfileRecoveryFunc = Callable[..., Awaitable[None]]
-StartupRecoveryFunc = Callable[[], Awaitable[None]]
 
 
 class Worker:
@@ -59,6 +59,7 @@ class Worker:
         self._startup_recoveries: list[StartupRecoveryFunc] = []
         self._running = False
         self._task_controls: dict[int, TaskControl] = {}
+        self._retry_policy = RetryPolicy()
 
     def register(self, name: str, handler: HandlerFunc | None = None):
         """Register a task handler.
@@ -103,14 +104,9 @@ class Worker:
         logger.info("Max concurrent tasks: {}", self.max_concurrent)
         logger.info("Press Ctrl+C to stop")
 
-        await asyncio.to_thread(cleanup_stale_incomplete_files)
-
-        # Fail orphaned RUNNING tasks from a previous crashed worker.
-        # Must run before profile recovery so profiles see no RUNNING tasks.
-        await self._recover_orphaned_tasks()
-
-        # Recover profiles stuck in UPDATING from a previous crashed worker
-        await self._recover_updating_profiles()
+        # Startup recovery: stale files, orphaned tasks, stuck profiles
+        recovery = StartupRecovery(self._startup_recoveries)
+        await recovery.recover()
 
         # Register signal handlers for graceful shutdown
         loop = asyncio.get_running_loop()
@@ -127,11 +123,13 @@ class Worker:
         semaphore = asyncio.Semaphore(self.max_concurrent)
         running_tasks: set[asyncio.Task] = set()
 
-        # Single background coroutine for batch status checking
-        watch_task = asyncio.create_task(self._watch_running_tasks())
+        # Background coroutine for batch status checking
+        watchdog = TaskWatchdog(self._task_controls, self.cancel_check_interval)
+        watch_task = watchdog.start()
 
         try:
             while self._running:
+                task_created = False
                 try:
                     await semaphore.acquire()
 
@@ -141,7 +139,9 @@ class Worker:
 
                     async with new_session() as session:
                         task_service = TaskService(session)
-                        tasks = await task_service.get_next_task(batch_size=_TASK_FETCH_BATCH_SIZE)
+                        tasks = await task_service.get_next_task(
+                            batch_size=_TASK_FETCH_BATCH_SIZE
+                        )
                         await session.commit()
 
                     if not tasks:
@@ -153,16 +153,19 @@ class Worker:
                     logger.info("Got task: {}", task.id)
 
                     t = asyncio.create_task(self._process_task(task))
+                    task_created = True
                     # Semaphore released by done callback below
                     t.add_done_callback(lambda _: semaphore.release())
                     running_tasks.add(t)
                     t.add_done_callback(running_tasks.discard)
 
                 except Exception as e:
-                    semaphore.release()
+                    if not task_created:
+                        semaphore.release()
                     logger.exception("Error in task processing: {}", e)
                     await asyncio.sleep(self.poll_interval)
         finally:
+            watchdog.stop()
             watch_task.cancel()
             try:
                 await watch_task
@@ -175,31 +178,6 @@ class Worker:
             await asyncio.gather(*running_tasks, return_exceptions=True)
 
         logger.info("Stopped")
-
-    async def _recover_orphaned_tasks(self) -> None:
-        """Mark RUNNING tasks as FAILED after a worker crash.
-
-        RUNNING means the previous worker crashed mid-processing. PAUSING
-        tasks are left alone — they were paused by user request and can be
-        resumed manually.
-        """
-        async with new_session() as session:
-            ts = TaskService(session)
-            count = await ts.recover_orphaned_running_tasks()
-            await session.commit()
-        if count:
-            logger.info("Marked {} orphaned RUNNING task(s) as FAILED", count)
-
-    async def _recover_updating_profiles(self) -> None:
-        """Recover profiles stuck in UPDATING after a worker crash.
-
-        Delegates to each source's registered startup recovery function.
-        """
-        for recovery_func in self._startup_recoveries:
-            try:
-                await recovery_func()
-            except Exception as e:
-                logger.warning("Error during startup profile recovery: {}", e)
 
     def stop(self) -> None:
         """Stop the worker gracefully."""
@@ -241,81 +219,6 @@ class Worker:
             )
             return
         await recovery_func(session, repo_id, repo_type)
-
-    async def _maybe_retry_task(self, task: Task, error: Exception) -> bool:
-        """Retry a failed task if the error is transient and retries remain.
-
-        Returns True if the task was requeued, False if it should be failed.
-        """
-        if not self._is_retryable_error(error):
-            return False
-
-        retry_count = task.retry_count
-        if retry_count >= settings.WORKER_MAX_RETRIES:
-            logger.info(
-                "Task {} reached max retries ({}/{}) — failing permanently",
-                task.id,
-                retry_count,
-                settings.WORKER_MAX_RETRIES,
-            )
-            return False
-
-        delay = min(
-            settings.WORKER_RETRY_BASE_DELAY * (2**retry_count),
-            settings.WORKER_RETRY_MAX_DELAY,
-        )
-        logger.info(
-            "Retrying task {} in {:.0f}s (attempt {}/{})",
-            task.id,
-            delay,
-            retry_count + 1,
-            settings.WORKER_MAX_RETRIES,
-        )
-
-        try:
-            async with new_session() as session:
-                ts = TaskService(session)
-                await ts.increment_retry_count(task.id)
-                await ts.requeue_task(task.id)
-                await self._restore_profile_in_session(
-                    session, task.repo_id, task.repo_type, task.source
-                )
-                await session.commit()
-        except Exception as retry_error:
-            logger.error(
-                "Failed to requeue task {} for retry: {}", task.id, retry_error
-            )
-            return False
-
-        await asyncio.sleep(delay)
-        return True
-
-    @staticmethod
-    def _is_retryable_error(error: Exception) -> bool:
-        """Check if an error is likely transient and worth retrying."""
-        import httpx
-
-        retryable_types = (
-            httpx.ConnectError,
-            httpx.ReadError,
-            httpx.WriteError,
-            httpx.TimeoutException,
-            httpx.NetworkError,
-            httpx.RemoteProtocolError,
-            ConnectionError,
-            TimeoutError,
-        )
-        if isinstance(error, retryable_types):
-            return True
-
-        # Check chained exceptions
-        cause = error.__cause__
-        while cause is not None:
-            if isinstance(cause, retryable_types):
-                return True
-            cause = cause.__cause__
-
-        return False
 
     async def _with_task_session(
         self, task: Task, action, *, restore_profile: bool = False
@@ -387,8 +290,8 @@ class Worker:
 
             elif result.status == "failed":
                 logger.error("Failed task {}: {}", task.id, result.error)
-                if result.exception and await self._maybe_retry_task(
-                    task, result.exception
+                if result.exception and await self._retry_policy.maybe_retry(
+                    task, result.exception, self._restore_profile_in_session
                 ):
                     return
                 try:
@@ -420,43 +323,3 @@ class Worker:
             await self._send_notification(task, "failed", error_msg)
         finally:
             self._task_controls.pop(task.id, None)
-
-    async def _watch_running_tasks(self) -> None:
-        """Single coroutine that batch-checks all running tasks for cancel/pause.
-
-        Replaces the old per-task watch pattern. Queries the database once
-        per cycle for all currently-running task IDs, looking for any that
-        have transitioned to CANCELING or PAUSING.
-        """
-        while self._running:
-            try:
-                await asyncio.sleep(self.cancel_check_interval)
-
-                if not self._task_controls:
-                    continue
-
-                running_ids = list(self._task_controls.keys())
-                async with new_session() as session:
-                    ts = TaskService(session)
-                    matches = await ts.get_tasks_with_status(
-                        running_ids,
-                        [TaskStatus.CANCELING, TaskStatus.PAUSING],
-                    )
-
-                for task_id, status in matches:
-                    control = self._task_controls.get(task_id)
-                    if control is None:
-                        continue
-                    if status == TaskStatus.CANCELING:
-                        logger.info(
-                            "Detected cancellation request for task {}", task_id
-                        )
-                        control.cancel_event.set()
-                    elif status == TaskStatus.PAUSING:
-                        logger.info("Detected pause request for task {}", task_id)
-                        control.pause_event.set()
-
-            except asyncio.CancelledError:
-                return
-            except Exception as e:
-                logger.warning("Error in batch watch: {}", e)

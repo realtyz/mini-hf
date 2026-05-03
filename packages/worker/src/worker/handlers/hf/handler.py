@@ -12,7 +12,7 @@ from database.db_repositories import (
     HfRepoSnapshotRepository,
     HfRepoTreeRepository,
 )
-from worker.handlers.base import ExecutionResult, TaskControl
+from worker.handlers.contracts import ExecutionResult, TaskControl
 from worker.handlers.base_handler import BaseDownloadHandler
 from worker.handlers.hf.adapter import (
     convert_cached_tree,
@@ -145,9 +145,7 @@ class HfDownloadHandler(BaseDownloadHandler):
 
         # Fetch tree from HF and convert to source-agnostic types
         if self._operator is None:
-            raise RuntimeError(
-                "resolve_commit must be called before calculate_diff"
-            )
+            raise RuntimeError("resolve_commit must be called before calculate_diff")
         raw_tree_items = await self._operator.get_tree(
             self.ctx.repo_id, self.ctx.repo_type, self.ctx.revision
         )

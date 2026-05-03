@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from worker.handlers.base import HandlerFunc, TaskControl, ExecutionResult
+from worker.handlers.contracts import HandlerFunc, TaskControl, ExecutionResult
 from worker.handlers.base_handler import (
     BaseDownloadHandler,
     ProfileLifecycle,

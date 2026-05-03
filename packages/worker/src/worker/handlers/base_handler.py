@@ -24,7 +24,7 @@ from database.db_models import Task
 from database.db_repositories import TaskRepository
 from cache.exceptions import CacheException
 from worker.handlers.downloader import DownloadCancelledError, DownloadPausedError
-from worker.handlers.base import TaskControl, ExecutionResult
+from worker.handlers.contracts import TaskControl, ExecutionResult
 from worker.handlers.diff_calculator import FileDiff
 from worker.handlers.download_context import DownloadContext
 from worker.handlers.file_processor import (
