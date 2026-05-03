@@ -11,8 +11,6 @@ import aiofiles
 import httpx
 from loguru import logger
 
-from worker.handlers.exceptions import TaskCancelledError, TaskPausedError
-
 
 class DownloaderError(Exception):
     """Base exception for download errors."""
@@ -20,14 +18,14 @@ class DownloaderError(Exception):
     pass
 
 
-class DownloadCancelledError(TaskCancelledError, DownloaderError):
-    """Download was cancelled."""
+class DownloadCancelledError(DownloaderError):
+    """Download was cancelled by user request."""
 
     pass
 
 
-class DownloadPausedError(TaskPausedError, DownloaderError):
-    """Download was paused."""
+class DownloadPausedError(DownloaderError):
+    """Download was paused by user request."""
 
     pass
 
