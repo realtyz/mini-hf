@@ -18,7 +18,7 @@ from worker.handlers.downloader import (
     ProgressInfo,
 )
 from worker.handlers.types import AuthHeaderBuilder, SourceFile, UrlBuilder
-from worker.services import TaskProgressTracker
+from worker.handlers.progress_tracker import TaskProgressTracker
 
 _HTTPX_CONNECTION_HEADROOM = 2
 

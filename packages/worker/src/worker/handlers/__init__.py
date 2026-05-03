@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from worker.handlers.base import HandlerFunc, TaskControl, ExecutionResult
-from worker.handlers.base_handler import BaseDownloadHandler
+from worker.handlers.base_handler import (
+    BaseDownloadHandler,
+    ProfileLifecycle,
+    TreeLifecycle,
+    DownloadInfrastructure,
+    CleanupLifecycle,
+)
 from worker.handlers.diff_calculator import FileDiff, calculate_file_diff
 from worker.handlers.download_context import DownloadContext
 from worker.handlers.file_processor import (
@@ -13,11 +19,6 @@ from worker.handlers.file_processor import (
     FileProcessInfrastructure,
     FileProcessResult,
     download_and_upload_files,
-)
-from worker.handlers.exceptions import (
-    TaskControlError,
-    TaskCancelledError,
-    TaskPausedError,
 )
 from worker.handlers.types import (
     SourceFile,
@@ -32,6 +33,7 @@ from worker.handlers.hf.profile_recovery import (
     recover_hf_updating_profiles,
     restore_hf_profile_in_session,
 )
+from worker.handlers.progress_tracker import TaskProgressTracker
 from worker.handlers.downloader import (
     HttpFileDownloader,
     ProgressInfo,
@@ -48,7 +50,12 @@ __all__ = [
     "HandlerFunc",
     "TaskControl",
     "ExecutionResult",
+    "TaskProgressTracker",
     "BaseDownloadHandler",
+    "ProfileLifecycle",
+    "TreeLifecycle",
+    "DownloadInfrastructure",
+    "CleanupLifecycle",
     "FileDiff",
     "calculate_file_diff",
     "DownloadContext",
@@ -56,9 +63,6 @@ __all__ = [
     "FileProcessInfrastructure",
     "FileProcessResult",
     "download_and_upload_files",
-    "TaskControlError",
-    "TaskCancelledError",
-    "TaskPausedError",
     "SourceFile",
     "SourceFolder",
     "SourceTreeItem",

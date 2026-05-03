@@ -3,6 +3,12 @@
 Subclasses implement the source-specific abstract methods while the base
 class provides the shared workflow orchestration, error recovery, and
 helper logic.
+
+The handler contract is split into four focused protocols (ISP):
+- ProfileLifecycle       — prepare_profile, restore_profile
+- TreeLifecycle          — resolve_commit, calculate_diff, save_tree
+- DownloadInfrastructure — execute_downloads, build_url_builder, build_auth_header_builder
+- CleanupLifecycle       — finalize_success, cleanup_new_snapshot
 """
 
 import asyncio
@@ -27,10 +33,85 @@ from worker.handlers.file_processor import (
     FileProcessResult,
     download_and_upload_files,
 )
-from worker.services import TaskProgressTracker
+from worker.handlers.types import AuthHeaderBuilder, UrlBuilder
+from worker.handlers.progress_tracker import TaskProgressTracker
 
 
-class BaseDownloadHandler(ABC):
+# ------------------------------------------------------------------
+# Protocol ABCs — group abstract methods by lifecycle phase
+# ------------------------------------------------------------------
+
+
+class ProfileLifecycle(ABC):
+    """Protocol for profile preparation and recovery (phases 1 + abort)."""
+
+    @abstractmethod
+    async def prepare_profile(self) -> None:
+        """Phase 1: Set profile status to UPDATING."""
+
+    @abstractmethod
+    async def restore_profile(
+        self, *, keep_active_on_commit_mismatch: bool = False
+    ) -> None:
+        """Restore profile status after a non-successful handler exit."""
+
+
+class TreeLifecycle(ABC):
+    """Protocol for commit resolution, diff calculation, and persistence (phases 2-4)."""
+
+    @abstractmethod
+    async def resolve_commit(self) -> None:
+        """Phase 2: Resolve endpoint and commit hash, populate context fields."""
+
+    @abstractmethod
+    async def calculate_diff(self) -> list:
+        """Phase 3: Get new tree, compare against old, compute file diff.
+
+        Must populate ``self.ctx.diff`` and ``self.ctx.files_to_download``.
+
+        Returns:
+            Raw tree items from source (passed to save_tree).
+        """
+
+    @abstractmethod
+    async def save_tree(self, tree_items: list) -> None:
+        """Phase 4: Save snapshot and tree items to database.
+
+        Must set ``self._new_snapshot_id`` if a new snapshot was created.
+        """
+
+
+class DownloadInfrastructure(ABC):
+    """Protocol for file download execution and URL/auth configuration (phase 5)."""
+
+    @abstractmethod
+    async def execute_downloads(self) -> None:
+        """Phase 5: Download files from source and upload to S3."""
+
+    @abstractmethod
+    def build_url_builder(self) -> UrlBuilder:
+        """Return a UrlBuilder callable for the file processor."""
+
+    @abstractmethod
+    def build_auth_header_builder(self) -> AuthHeaderBuilder:
+        """Return an AuthHeaderBuilder callable for the file processor."""
+
+
+class CleanupLifecycle(ABC):
+    """Protocol for success finalization and abort cleanup (phase 6 + abort)."""
+
+    @abstractmethod
+    async def finalize_success(self) -> None:
+        """Phase 6: Cleanup, activate snapshot, set profile ACTIVE."""
+
+    @abstractmethod
+    async def cleanup_new_snapshot(self) -> None:
+        """Delete the INACTIVE snapshot and tree items created by this task."""
+
+
+class BaseDownloadHandler(
+    ProfileLifecycle, TreeLifecycle, DownloadInfrastructure, CleanupLifecycle
+):
     """Template for the 6-phase download workflow.
 
     Phases:
@@ -41,8 +122,9 @@ class BaseDownloadHandler(ABC):
     5. execute_downloads — Download from source and upload to S3
     6. finalize_success  — Cleanup, activate snapshot, set profile ACTIVE
 
-    Subclasses must implement all abstract methods. The ``execute()`` method
-    is the template that orchestrates the phases and handles abort recovery.
+    Subclasses must implement all methods from the four protocol ABCs.
+    The ``execute()`` method is the template that orchestrates the phases
+    and handles abort recovery.
     """
 
     def __init__(self, task: Task, task_control: TaskControl):
@@ -77,61 +159,6 @@ class BaseDownloadHandler(ABC):
     @abstractmethod
     def source_name(self) -> str:
         """Human-readable source name for log messages (e.g. 'HuggingFace')."""
-
-    # ------------------------------------------------------------------
-    # Abstract phases — subclasses must implement
-    # ------------------------------------------------------------------
-
-    @abstractmethod
-    async def prepare_profile(self) -> None:
-        """Phase 1: Set profile status to UPDATING."""
-
-    @abstractmethod
-    async def resolve_commit(self) -> None:
-        """Phase 2: Resolve endpoint and commit hash, populate context fields."""
-
-    @abstractmethod
-    async def calculate_diff(self) -> list:
-        """Phase 3: Get new tree, compare against old, compute file diff.
-
-        Must populate ``self.ctx.diff`` and ``self.ctx.files_to_download``.
-
-        Returns:
-            Raw tree items from source (passed to save_tree).
-        """
-
-    @abstractmethod
-    async def save_tree(self, tree_items: list) -> None:
-        """Phase 4: Save snapshot and tree items to database.
-
-        Must set ``self._new_snapshot_id`` if a new snapshot was created.
-        """
-
-    @abstractmethod
-    async def execute_downloads(self) -> None:
-        """Phase 5: Download files from source and upload to S3."""
-
-    @abstractmethod
-    async def finalize_success(self) -> None:
-        """Phase 6: Cleanup, activate snapshot, set profile ACTIVE."""
-
-    @abstractmethod
-    async def cleanup_new_snapshot(self) -> None:
-        """Delete the INACTIVE snapshot and tree items created by this task."""
-
-    @abstractmethod
-    async def restore_profile(
-        self, *, keep_active_on_commit_mismatch: bool = False
-    ) -> None:
-        """Restore profile status after a non-successful handler exit."""
-
-    @abstractmethod
-    def build_url_builder(self) -> ...:
-        """Return a UrlBuilder callable for the file processor."""
-
-    @abstractmethod
-    def build_auth_header_builder(self) -> ...:
-        """Return an AuthHeaderBuilder callable for the file processor."""
 
     # ------------------------------------------------------------------
     # Template method
@@ -216,8 +243,8 @@ class BaseDownloadHandler(ABC):
                     db_count, db_bytes = await task_repo.get_download_stats(
                         self._task.id
                     )
-                    downloaded_file_count = downloaded_file_count or db_count
-                    downloaded_bytes = downloaded_bytes or db_bytes
+                    downloaded_file_count = db_count
+                    downloaded_bytes = db_bytes
                 await task_repo.update_download_stats(
                     task_id=self._task.id,
                     downloaded_file_count=downloaded_file_count,
