@@ -20,6 +20,9 @@ from mgmt_server.api.v1.schemas.repos import (
     RepoSnapshotResponse,
 )
 from mgmt_server.api.v1.schemas.configs import (
+    AnnouncementCreateRequest,
+    AnnouncementUpdateRequest,
+    AnnouncementResponse,
     ConfigItem,
     ConfigCreateRequest,
     ConfigUpdateRequest,
@@ -67,6 +70,9 @@ __all__ = [
     "RepoListResponse",
     "RepoProfileResponse",
     "RepoSnapshotResponse",
+    "AnnouncementCreateRequest",
+    "AnnouncementUpdateRequest",
+    "AnnouncementResponse",
     "ConfigItem",
     "ConfigCreateRequest",
     "ConfigUpdateRequest",

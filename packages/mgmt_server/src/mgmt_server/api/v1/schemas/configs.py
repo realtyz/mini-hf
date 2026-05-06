@@ -1,6 +1,7 @@
 """System configuration schemas."""
 
 from datetime import datetime
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from mgmt_server.api.v1.schemas.base import BaseResponse
@@ -192,7 +193,10 @@ class AnnouncementType(str):
 
 
 class AnnouncementConfigResponse(BaseModel):
-    """Announcement configuration response schema."""
+    """[DEPRECATED] Use AnnouncementResponse from system endpoint instead.
+
+    Announcement configuration response schema.
+    """
 
     content: str = Field(..., description="系统公告内容")
     announcement_type: str = Field(
@@ -213,3 +217,56 @@ class AnnouncementSaveRequest(BaseModel):
         default="info", description="公告类型: info/warning/urgent"
     )
     is_active: bool = Field(default=True, description="是否启用公告")
+
+
+# ------------------------------------------------------------------
+# New multi-announcement schemas (System endpoint)
+# ------------------------------------------------------------------
+
+
+class AnnouncementCreateRequest(BaseModel):
+    """Announcement create request schema."""
+
+    title: str | None = Field(None, max_length=255)
+    content: str = Field(..., min_length=1)
+    announcement_type: Literal["info", "warning", "urgent"] = Field(default="info")
+    is_pinned: bool = Field(default=False)
+    is_active: bool = Field(default=True)
+
+
+class AnnouncementUpdateRequest(BaseModel):
+    """Announcement update request schema (all fields optional)."""
+
+    title: str | None = Field(None, max_length=255)
+    content: str | None = Field(None, min_length=1)
+    announcement_type: Literal["info", "warning", "urgent"] | None = None
+    is_pinned: bool | None = None
+    is_active: bool | None = None
+
+
+class AnnouncementResponse(BaseModel):
+    """Announcement response schema."""
+
+    id: int
+    title: str | None
+    content: str
+    announcement_type: Literal["info", "warning", "urgent"]
+    is_pinned: bool
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_model(cls, announcement) -> "AnnouncementResponse":
+        return cls(
+            id=announcement.id,
+            title=announcement.title,
+            content=announcement.content,
+            announcement_type=announcement.announcement_type.value
+            if hasattr(announcement.announcement_type, "value")
+            else announcement.announcement_type,
+            is_pinned=announcement.is_pinned,
+            is_active=announcement.is_active,
+            created_at=announcement.created_at,
+            updated_at=announcement.updated_at,
+        )
