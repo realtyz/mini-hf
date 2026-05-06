@@ -3,7 +3,9 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select, desc
 
+from database.db_models.announcement import Announcement
 from mgmt_server.api.deps import DbDep
 from mgmt_server.api.v1.schemas.configs import (
     AnnouncementConfigResponse,
@@ -32,18 +34,28 @@ ConfigServiceDep = Annotated[ConfigService, Depends(get_config_service)]
 
 @router.get("/announcement", response_model=AnnouncementConfigResponseWrapper)
 async def get_public_announcement(
-    config_service: ConfigServiceDep,
+    db: DbDep,
 ) -> AnnouncementConfigResponseWrapper:
-    """Get public announcement - no auth required.
+    """[DEPRECATED] Use GET /system/announcements instead.
 
-    Returns active announcement content and type for display on landing page.
+    Returns the most recent active announcement for backward compatibility.
     """
-    config = await config_service.get_announcement_config()
+    result = await db.execute(
+        select(Announcement)
+        .where(Announcement.is_active == True)
+        .order_by(desc(Announcement.created_at))
+        .limit(1)
+    )
+    announcement = result.scalar_one_or_none()
+    if not announcement:
+        return AnnouncementConfigResponseWrapper(data=None)
     return AnnouncementConfigResponseWrapper(
         data=AnnouncementConfigResponse(
-            content=config["content"],
-            announcement_type=config["announcement_type"],
-            is_active=config["is_active"],
+            content=announcement.content,
+            announcement_type=announcement.announcement_type
+            if isinstance(announcement.announcement_type, str)
+            else announcement.announcement_type.value,
+            is_active=announcement.is_active,
         )
     )
 
