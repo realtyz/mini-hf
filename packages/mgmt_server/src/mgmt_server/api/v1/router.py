@@ -8,6 +8,7 @@ from mgmt_server.api.v1.endpoints import (
     dashboard,
     health,
     repo,
+    system,
     task,
     user,
 )
@@ -21,3 +22,4 @@ api_router.include_router(dashboard.router)
 api_router.include_router(repo.router)
 api_router.include_router(task.router)
 api_router.include_router(config.router, prefix="/config", tags=["config"])
+api_router.include_router(system.router, prefix="/system", tags=["System"])
