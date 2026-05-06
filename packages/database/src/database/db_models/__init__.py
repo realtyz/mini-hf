@@ -1,3 +1,4 @@
+from database.db_models.announcement import Announcement, AnnouncementType
 from database.db_models.base import Base
 from database.db_models.system_config import SystemConfig
 from database.db_models.user import User
@@ -7,6 +8,8 @@ from database.db_models.hf_repo_tree_item import HfRepoTreeItem, TreeItemType
 from database.db_models.task import Task, TaskStatus
 
 __all__ = [
+    "Announcement",
+    "AnnouncementType",
     "Base",
     "SystemConfig",
     "User",
