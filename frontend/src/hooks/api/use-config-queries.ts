@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
 import type {
+  AnnouncementItem,
   ApiResponse,
   ConfigItem,
   ConfigCreateRequest,
@@ -272,6 +273,19 @@ export function usePublicAnnouncement() {
       return api.get<ApiResponse<AnnouncementConfigResponse>>('/health/announcement')
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
+  })
+}
+
+/**
+ * 获取公开公告列表（新系统，无需认证）
+ */
+export function usePublicAnnouncements() {
+  return useQuery({
+    queryKey: ['public', 'announcements'],
+    queryFn: async () => {
+      return api.get<ApiResponse<AnnouncementItem[]>>('/system/announcements')
+    },
+    staleTime: 1000 * 60 * 2, // 2 minutes
   })
 }
 

@@ -14,6 +14,8 @@ import uvicorn
 from mgmt_server.api.v1.router import api_router as v1_router
 from mgmt_server.core.exceptions import BusinessError
 from mgmt_server.core.init_db import init_db
+from database.db_models.base import Base
+from database.core import engine
 
 
 @asynccontextmanager
@@ -26,6 +28,8 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
         # Continue starting the server even if init fails
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     yield
     # Shutdown
     logger.info("Shutting down MiniHF MANAGEMENT API Server...")

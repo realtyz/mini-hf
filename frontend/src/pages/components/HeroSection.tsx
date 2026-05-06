@@ -89,7 +89,7 @@ export function HeroSection() {
 
         {/* Animated headline with blinking cursor */}
         <h1 className="relative text-5xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-          <span className="text-foreground">{displayText}</span>
+          <span className="bg-linear-to-r from-primary to-indigo-500 bg-clip-text text-transparent">{displayText}</span>
           <span className="inline-block w-4 h-[1em] bg-primary ml-1 animate-blink align-middle" />
         </h1>
 
@@ -115,6 +115,19 @@ export function HeroSection() {
             <span className="text-sm font-medium text-muted-foreground">
               Modelscope
             </span>
+          </div>
+        </div>
+
+        {/* Stats row */}
+        <div className="mt-8 flex items-center justify-center gap-8 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-foreground">100+</span>
+            <span>已缓存模型</span>
+          </div>
+          <div className="w-px h-8 bg-border" />
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-foreground">50+</span>
+            <span>数据集</span>
           </div>
         </div>
 

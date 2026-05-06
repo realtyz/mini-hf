@@ -1,8 +1,10 @@
 """Health check and public endpoints."""
 
 from fastapi import APIRouter
+from sqlalchemy import select, desc
 
-from mgmt_server.api.deps import ConfigServiceDep
+from database.db_models.announcement import Announcement
+from mgmt_server.api.deps import ConfigServiceDep, DbDep
 from mgmt_server.api.v1.schemas.base import BaseResponse
 from mgmt_server.api.v1.schemas.configs import (
     AnnouncementConfigResponse,
@@ -20,20 +22,28 @@ async def health_check() -> BaseResponse:
 
 @router.get("/announcement", response_model=BaseResponse[AnnouncementConfigResponse])
 async def get_public_announcement(
-    config_service: ConfigServiceDep,
+    db: DbDep,
 ) -> BaseResponse[AnnouncementConfigResponse]:
-    """Get public announcement - no auth required.
+    """[DEPRECATED] Use GET /system/announcements instead.
 
-    Returns active announcement content and type for display on landing page.
+    Returns the most recent active announcement for backward compatibility.
     """
-    config = await config_service.get_announcement_config()
-    if not config.is_active:
+    result = await db.execute(
+        select(Announcement)
+        .where(Announcement.is_active == True)
+        .order_by(desc(Announcement.created_at))
+        .limit(1)
+    )
+    announcement = result.scalar_one_or_none()
+    if not announcement:
         return BaseResponse[AnnouncementConfigResponse](data=None)
     return BaseResponse[AnnouncementConfigResponse](
         data=AnnouncementConfigResponse(
-            content=config.content,
-            announcement_type=config.announcement_type,
-            is_active=config.is_active,
+            content=announcement.content,
+            announcement_type=announcement.announcement_type
+            if isinstance(announcement.announcement_type, str)
+            else announcement.announcement_type.value,
+            is_active=announcement.is_active,
         )
     )
 

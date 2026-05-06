@@ -451,6 +451,19 @@ export interface AnnouncementSaveRequest {
   is_active: boolean
 }
 
+// ==================== 公告（新系统） ====================
+
+export interface AnnouncementItem {
+  id: number
+  title: string | null
+  content: string
+  announcement_type: AnnouncementType
+  is_pinned: boolean
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 // ==================== 健康检查 ====================
 
 export interface HealthResponse {

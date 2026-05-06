@@ -14,7 +14,10 @@ from mgmt_server.api.v1.schemas.auth import (
 from mgmt_server.api.v1.schemas.base import BaseResponse, PaginationQueryParams
 from mgmt_server.api.v1.schemas.configs import (
     AnnouncementConfigResponse,
+    AnnouncementCreateRequest,
+    AnnouncementResponse,
     AnnouncementSaveRequest,
+    AnnouncementUpdateRequest,
     ConfigBatchUpdateRequest,
     ConfigCreateRequest,
     ConfigDeleteResponse,
@@ -91,7 +94,10 @@ __all__ = [
     "RepoTreeResponse",
     # configs
     "AnnouncementConfigResponse",
+    "AnnouncementCreateRequest",
+    "AnnouncementResponse",
     "AnnouncementSaveRequest",
+    "AnnouncementUpdateRequest",
     "ConfigBatchUpdateRequest",
     "ConfigCreateRequest",
     "ConfigDeleteResponse",
