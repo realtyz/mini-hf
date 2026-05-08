@@ -196,7 +196,7 @@ async def _process_single_file(
         async with ctx.infra.check_semaphore:
             if await ctx.infra.s3.file_exists(s3_key):
                 if ctx.progress_tracker:
-                    await ctx.progress_tracker.complete_file(src_file.path)
+                    await ctx.progress_tracker.complete_file(src_file.path, src_file.size)
                 return FileProcessResult(
                     status="exists",
                     path=src_file.path,
@@ -236,7 +236,7 @@ async def _process_empty_file(
     target_path.touch()
 
     if ctx.progress_tracker:
-        await ctx.progress_tracker.complete_file(src_file.path)
+        await ctx.progress_tracker.complete_file(src_file.path, 0)
 
     async with ctx.infra.upload_semaphore:
         if await ctx.infra.s3.file_exists(s3_key):
@@ -264,7 +264,7 @@ async def _process_empty_file(
             )
 
             if ctx.progress_tracker:
-                await ctx.progress_tracker.complete_file_upload(src_file.path)
+                await ctx.progress_tracker.complete_file_upload(src_file.path, 0)
 
             logger.debug(
                 "Uploaded empty file to S3: {} ({})", src_file.path, blob_id[:12]
@@ -342,7 +342,7 @@ async def _download_phase(
                     pause_event=ctx.infra.pause_event,
                 )
                 if ctx.progress_tracker:
-                    await ctx.progress_tracker.complete_file(src_file.path)
+                    await ctx.progress_tracker.complete_file(src_file.path, src_file.size)
                 return downloaded_path
 
             except DownloadCancelledError:
@@ -396,7 +396,7 @@ async def _upload_phase(
             )
 
             if ctx.progress_tracker:
-                await ctx.progress_tracker.complete_file_upload(src_file.path)
+                await ctx.progress_tracker.complete_file_upload(src_file.path, src_file.size)
 
             logger.debug(
                 "Uploaded to S3: {} (blob: {}, etag: {}, size: {})",

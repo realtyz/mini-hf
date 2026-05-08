@@ -1,21 +1,13 @@
-import { HeroSection } from './components/HeroSection'
-import { FeaturesSection } from './components/FeaturesSection'
-import { HowItWorksSection } from './components/HowItWorksSection'
-import { CodeExampleSection } from './components/CodeExampleSection'
-import { BenefitsSection } from './components/BenefitsSection'
-import { CTASection } from './components/CTASection'
+import { HeroSection } from "./components/HeroSection";
+import { TrendingSection } from "./components/TrendingSection";
 
 export function LandingPage() {
   return (
     <main>
       <HeroSection />
-      <FeaturesSection />
-      <HowItWorksSection />
-      <CodeExampleSection />
-      <BenefitsSection />
-      <CTASection />
+      <TrendingSection />
     </main>
-  )
+  );
 }
 
-export default LandingPage
+export default LandingPage;

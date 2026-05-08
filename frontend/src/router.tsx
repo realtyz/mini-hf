@@ -12,6 +12,7 @@ import RepositoryDetail from './pages/console/RepositoryDetail'
 import Tasks from './pages/console/Tasks'
 import Settings from './pages/console/Settings'
 import Users from './pages/console/Users'
+import CacheScan from './pages/console/CacheScan'
 import { ProtectedRoute } from './components/auth'
 
 export const routes: RouteObject[] = [
@@ -74,6 +75,10 @@ export const routes: RouteObject[] = [
       {
         path: 'tasks',
         element: <Tasks />,
+      },
+      {
+        path: 'cache-scan',
+        element: <CacheScan />,
       },
       {
         path: 'settings',

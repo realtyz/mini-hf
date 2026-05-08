@@ -124,6 +124,45 @@ export interface UserPasswordUpdateRequest {
   new_password: string
 }
 
+// ==================== Cache Scan ====================
+
+export type ScanCategory = 'cold' | 'orphan'
+
+export interface RepoScanItem {
+  category: ScanCategory
+  repo_id: string
+  repo_type: string
+  pipeline_tag: string | null
+  downloads: number
+  last_downloaded_at: string | null
+  first_cached_at: string | null
+  cache_updated_at: string | null
+  cached_commits: number
+  cached_size: number
+}
+
+export interface ScanResultData {
+  scanned_at: string
+  threshold_days: number
+  total_cold_repos: number
+  total_orphan_repos: number
+  total_wasted_bytes: number
+  repos: RepoScanItem[]
+}
+
+export type ScanResultResponse = ApiResponse<ScanResultData>
+
+// ==================== Trending Repos ====================
+
+export interface TrendingRepo {
+  repo_id: string
+  author: string
+  repo_type: 'model' | 'dataset' | 'space'
+  downloads: number
+  likes: number
+  pipeline_tag: string | null
+}
+
 // ==================== 任务 ====================
 
 export type TaskStatus =

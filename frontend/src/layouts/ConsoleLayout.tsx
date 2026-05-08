@@ -20,6 +20,7 @@ import {
   ChevronRight,
   BookOpen,
   Boxes,
+  ScanSearch,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -117,6 +118,12 @@ const menuGroups: MenuGroup[] = [
   {
     label: "系统管理",
     items: [
+      {
+        title: "缓存扫描",
+        path: "/console/cache-scan",
+        icon: ScanSearch,
+        description: "检测冷数据仓库",
+      },
       {
         title: "用户管理",
         path: "/console/users",
@@ -527,7 +534,7 @@ function ConsoleSidebar() {
     return menuGroups.map(group => ({
       ...group,
       items: group.items.filter(item =>
-        item.path === '/console' || item.path === '/console/tasks'
+        item.path === '/console' || item.path === '/console/tasks' || item.path === '/console/cache-scan'
       ),
     })).filter(group => group.items.length > 0);
   }, [user?.role]);
@@ -583,6 +590,7 @@ function BreadcrumbNav() {
     console: "控制台",
     repositories: "仓库管理",
     tasks: "任务中心",
+    "cache-scan": "缓存扫描",
     users: "用户管理",
     settings: "系统设置",
   };

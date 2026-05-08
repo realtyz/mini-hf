@@ -34,6 +34,10 @@ export const queryKeys = {
       [...queryKeys.repos.all, 'list', params] as const,
     detail: (id: string) => [...queryKeys.repos.all, 'detail', id] as const,
   },
+  cacheScan: {
+    all: ['cache-scan'] as const,
+    result: () => [...queryKeys.cacheScan.all, 'result'] as const,
+  },
   configs: {
     all: ['configs'] as const,
     list: () => [...queryKeys.configs.all, 'list'] as const,

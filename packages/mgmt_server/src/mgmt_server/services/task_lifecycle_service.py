@@ -447,11 +447,15 @@ class TaskLifecycleService:
                 "The task may not have started or has already completed."
             )
 
-        files_key_pattern = f"task_files:{task_id}:*"
-        file_keys = await self._cache_service.scan_iter(files_key_pattern)
+        files_list_key = f"task_files_list:{task_id}"
+        file_paths = await self._cache_service.get(files_list_key) or []
 
         files = []
-        if file_keys:
+        if file_paths:
+            file_keys = [
+                f"task_files:{task_id}:{p.replace(':', '_').replace(' ', '_')}"
+                for p in file_paths
+            ]
             file_data_list = await self._cache_service.mget(file_keys)
             files = build_file_progress_items(file_data_list)
 

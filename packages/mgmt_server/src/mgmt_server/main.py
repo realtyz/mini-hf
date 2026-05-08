@@ -3,6 +3,7 @@
 import click
 from contextlib import asynccontextmanager
 
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from loguru import logger
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -18,6 +19,25 @@ from database.db_models.base import Base
 from database.core import engine
 
 
+_scheduler = AsyncIOScheduler()
+
+
+async def _run_scheduled_scan() -> None:
+    """Scheduled scan job: creates its own session and cache client."""
+    from cache import cache_service
+    from database import new_session
+
+    from mgmt_server.services.cache_scan_service import CacheScanService
+
+    try:
+        async with new_session() as session:
+            svc = CacheScanService(session, cache_service)
+            await svc.scan()
+            await session.commit()
+    except Exception:
+        logger.exception("Scheduled cache scan failed")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager."""
@@ -27,12 +47,18 @@ async def lifespan(app: FastAPI):
         await init_db()
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
-        # Continue starting the server even if init fails
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+    _scheduler.add_job(_run_scheduled_scan, "cron", hour=3, minute=0)
+    _scheduler.start()
+    logger.info("Cache scan scheduler started (daily at 03:00)")
+
     yield
+
     # Shutdown
     logger.info("Shutting down MiniHF MANAGEMENT API Server...")
+    _scheduler.shutdown(wait=False)
 
 
 app = FastAPI(

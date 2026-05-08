@@ -25,7 +25,7 @@ class TaskProgressTracker:
         # Track individual files
         await tracker.start_file("model.bin", total_bytes=500000)
         await tracker.update_file_progress("model.bin", downloaded=250000, speed=10000)
-        await tracker.complete_file("model.bin")
+        await tracker.complete_file("model.bin", total_bytes=500000)
 
         # Clean up on completion
         await tracker.clear()
@@ -39,6 +39,14 @@ class TaskProgressTracker:
         self._files_key = f"task_files:{task_id}"
         self._files_list_key = f"task_files_list:{task_id}"
         self._cache = cache or cache_service
+
+    @property
+    def _completed_count_key(self) -> str:
+        return f"task_progress:{self.task_id}:completed_count"
+
+    @property
+    def _downloaded_bytes_key(self) -> str:
+        return f"task_progress:{self.task_id}:downloaded_bytes"
 
     def _file_key(self, file_path: str) -> str:
         """Generate Redis key for a specific file."""
@@ -86,6 +94,10 @@ class TaskProgressTracker:
 
         # Initialize empty file list
         await self._cache.set(self._files_list_key, [], ttl=self.DEFAULT_TTL)
+
+        # Initialize atomic counters
+        await self._cache.set(self._completed_count_key, 0, ttl=self.DEFAULT_TTL)
+        await self._cache.set(self._downloaded_bytes_key, 0, ttl=self.DEFAULT_TTL)
 
         logger.debug("Initialized progress tracking for task {}", self.task_id)
 
@@ -176,6 +188,7 @@ class TaskProgressTracker:
             status="downloading",
             download_started_at=datetime.now(timezone.utc).isoformat(),
         )
+        await self._update_task_summary(current_file=file_path)
         logger.debug("File is now downloading: {}", file_path)
 
     async def update_file_progress(
@@ -193,36 +206,36 @@ class TaskProgressTracker:
             total: Total file size (optional)
             speed: Download speed in bytes per second
         """
-        if not await self._update_file_data(
+        await self._update_file_data(
             file_path,
             downloaded_bytes=downloaded,
             total_bytes=total or 0,
             speed_bytes_per_sec=round(speed, 2),
-        ):
-            return
+        )
 
-        # Update current file in task summary
-        await self._update_task_summary(current_file=file_path)
-
-    async def complete_file(self, file_path: str) -> None:
+    async def complete_file(self, file_path: str, total_bytes: int) -> None:
         """Mark a file as completed.
 
         Args:
             file_path: Path of the completed file
+            total_bytes: Total file size in bytes
         """
         now = datetime.now(timezone.utc).isoformat()
         file_key = self._file_key(file_path)
-        existing = await self._cache.get(file_key)
-        if existing is None:
-            logger.warning("File progress not found: {}", file_path)
-            return
-        existing.update(
-            status="completed",
-            speed_bytes_per_sec=0.0,
-            completed_at=now,
-            downloaded_bytes=existing.get("total_bytes", 0),
-        )
-        await self._cache.set(file_key, existing, ttl=self.DEFAULT_TTL)
+        data = {
+            "path": file_path,
+            "status": "completed",
+            "downloaded_bytes": total_bytes,
+            "total_bytes": total_bytes,
+            "progress_percent": 100.0,
+            "speed_bytes_per_sec": 0.0,
+            "started_at": now,
+            "completed_at": now,
+            "error_message": None,
+        }
+        await self._cache.set(file_key, data, ttl=self.DEFAULT_TTL)
+        await self._cache.increment(self._completed_count_key, 1)
+        await self._cache.increment(self._downloaded_bytes_key, total_bytes)
         logger.debug("Completed file: {}", file_path)
 
     async def start_file_upload(self, file_path: str, total_bytes: int) -> None:
@@ -264,25 +277,27 @@ class TaskProgressTracker:
             speed_bytes_per_sec=round(speed, 2),
         )
 
-    async def complete_file_upload(self, file_path: str) -> None:
+    async def complete_file_upload(self, file_path: str, total_bytes: int) -> None:
         """Mark a file upload as completed.
 
         Args:
             file_path: Path of the file
+            total_bytes: Total file size in bytes
         """
         now = datetime.now(timezone.utc).isoformat()
         file_key = self._file_key(file_path)
-        existing = await self._cache.get(file_key)
-        if existing is None:
-            logger.warning("File progress not found: {}", file_path)
-            return
-        existing.update(
-            status="completed",
-            speed_bytes_per_sec=0.0,
-            upload_completed_at=now,
-            processed_bytes=existing.get("total_bytes", 0),
-        )
-        await self._cache.set(file_key, existing, ttl=self.DEFAULT_TTL)
+        data = {
+            "path": file_path,
+            "status": "completed",
+            "downloaded_bytes": total_bytes,
+            "total_bytes": total_bytes,
+            "progress_percent": 100.0,
+            "speed_bytes_per_sec": 0.0,
+            "started_at": now,
+            "completed_at": now,
+            "error_message": None,
+        }
+        await self._cache.set(file_key, data, ttl=self.DEFAULT_TTL)
         logger.debug("Completed upload for file: {}", file_path)
 
     async def fail_file_upload(self, file_path: str, error_message: str) -> None:
@@ -387,10 +402,9 @@ class TaskProgressTracker:
         Returns:
             Tuple of (completed_file_count, downloaded_bytes)
         """
-        files = await self.get_all_file_progress()
-        completed = sum(1 for f in files if f.get("status") == "completed")
-        downloaded = sum(f.get("downloaded_bytes", 0) for f in files)
-        return completed, downloaded
+        count = await self._cache.get(self._completed_count_key) or 0
+        bytes_val = await self._cache.get(self._downloaded_bytes_key) or 0
+        return int(count), int(bytes_val)
 
     async def clear(self) -> None:
         """Clear all progress data for this task from Redis.
@@ -408,6 +422,10 @@ class TaskProgressTracker:
 
         # Delete the tracking list
         await self._cache.delete(self._files_list_key)
+
+        # Delete atomic counters
+        await self._cache.delete(self._completed_count_key)
+        await self._cache.delete(self._downloaded_bytes_key)
 
         logger.debug(
             "Cleared progress tracking for task {} ({} files)",

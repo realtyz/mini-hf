@@ -1,6 +1,6 @@
 """Repository for HuggingFace repository profile operations."""
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -169,6 +169,7 @@ class HfRepoProfileRepository:
             return False
 
         profile.status = status
+        profile.cache_updated_at = datetime.now()
         await self._session.flush()
         return True
 
@@ -354,6 +355,73 @@ class HfRepoProfileRepository:
         crashed worker process.
         """
         stmt = select(HfRepoProfile).where(HfRepoProfile.status == RepoStatus.UPDATING)
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_cold_repos(
+        self,
+        threshold_days: int,
+    ) -> list[HfRepoProfile]:
+        """List active repos with no download activity within threshold_days.
+
+        Returns repos where status=ACTIVE and either:
+        - downloads == 0 (never downloaded), or
+        - last_downloaded_at is older than threshold_days ago
+
+        Args:
+            threshold_days: Number of days of inactivity to consider a repo "cold"
+
+        Returns:
+            List of cold HfRepoProfile records ordered by cache_updated_at desc
+        """
+        cutoff = datetime.now() - timedelta(days=threshold_days)
+
+        stmt = (
+            select(HfRepoProfile)
+            .where(
+                HfRepoProfile.status == RepoStatus.ACTIVE,
+                (
+                    (HfRepoProfile.downloads == 0)
+                    | (HfRepoProfile.last_downloaded_at < cutoff)
+                ),
+            )
+            .order_by(HfRepoProfile.cache_updated_at.desc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def list_orphan_repos(
+        self,
+        threshold_days: int,
+    ) -> list[HfRepoProfile]:
+        """List inactive repos with cache_updated_at older than threshold_days.
+
+        Returns repos where status=INACTIVE and:
+        - cache_updated_at is older than threshold_days ago, or
+        - cache_updated_at is NULL and first_cached_at is older than threshold_days ago
+
+        Args:
+            threshold_days: Number of days of staleness to consider a repo "orphan"
+
+        Returns:
+            List of orphan HfRepoProfile records ordered by cache_updated_at desc
+        """
+        cutoff = datetime.now() - timedelta(days=threshold_days)
+
+        stmt = (
+            select(HfRepoProfile)
+            .where(
+                HfRepoProfile.status == RepoStatus.INACTIVE,
+                (
+                    (HfRepoProfile.cache_updated_at < cutoff)
+                    | (
+                        (HfRepoProfile.cache_updated_at.is_(None))
+                        & (HfRepoProfile.first_cached_at < cutoff)
+                    )
+                ),
+            )
+            .order_by(HfRepoProfile.cache_updated_at.desc())
+        )
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 

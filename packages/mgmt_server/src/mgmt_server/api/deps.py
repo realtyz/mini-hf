@@ -22,6 +22,7 @@ from mgmt_server.core.security import (
 from mgmt_server.services.config_management_service import ConfigManagementService
 from mgmt_server.services.dashboard_service import DashboardService
 from mgmt_server.services.task_preview_service import TaskPreviewService
+from mgmt_server.services.cache_scan_service import CacheScanService
 from mgmt_server.services.repo_service import RepoService
 from mgmt_server.services.task_lifecycle_service import TaskLifecycleService
 from mgmt_server.services.token_service import TokenService
@@ -130,6 +131,14 @@ async def get_task_preview_service(
     )
 
 
+async def get_cache_scan_service(
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
+    cache: Annotated[CacheService, Depends(get_cache_service)],
+) -> CacheScanService:
+    """Get cache scan service dependency."""
+    return CacheScanService(db, cache=cache)
+
+
 async def get_verify_code_service() -> VerifyCodeService:
     """Get verify code service dependency.
 
@@ -160,6 +169,7 @@ TaskLifecycleServiceDep = Annotated[
 TaskPreviewServiceDep = Annotated[TaskPreviewService, Depends(get_task_preview_service)]
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 ConfigServiceDep = Annotated[ConfigService, Depends(get_config_service)]
+CacheScanServiceDep = Annotated[CacheScanService, Depends(get_cache_scan_service)]
 ConfigManagementServiceDep = Annotated[
     ConfigManagementService, Depends(get_config_management_service)
 ]

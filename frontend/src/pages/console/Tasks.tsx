@@ -241,20 +241,16 @@ export function Tasks() {
     >
       {/* 页面标题 */}
       <motion.div className="mb-6 flex items-center justify-between" variants={itemVariants}>
-        <div>
-          <div className="flex items-center gap-2">
-            <motion.div
-              initial={{ rotate: -10, scale: 0.9 }}
-              animate={{ rotate: 0, scale: 1 }}
-              transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <ClipboardList className="size-5 text-primary" />
-            </motion.div>
-            <h1 className="text-2xl font-semibold tracking-tight">任务列表</h1>
+        <div className="flex items-center gap-3">
+          <div className="size-10 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center">
+            <ClipboardList className="size-5 text-primary" />
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            查看和管理模型/数据集下载任务
-          </p>
+          <div>
+            <h1 className="text-xl font-semibold tracking-tight">任务列表</h1>
+            <p className="text-[13px] text-muted-foreground mt-0.5">
+              查看和管理模型/数据集下载任务
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>

@@ -163,11 +163,12 @@ class CacheService(BaseService):
             self._key(k): self._serializer.serialize(v) for k, v in mapping.items()
         }
 
-        await self.redis.mset(serialized_mapping)
-
+        pipe = self.redis.pipeline()
+        pipe.mset(serialized_mapping)
         if ttl is not None:
             for key in serialized_mapping:
-                await self.redis.expire(key, ttl)
+                pipe.expire(key, ttl)
+        await pipe.execute()
 
         return True
 
