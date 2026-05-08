@@ -5,7 +5,7 @@ from typing import cast
 from sqlalchemy import create_engine, pool
 
 from alembic import context
-from sqlalchemy.orm import DeclarativeBase
+from database.db_models import Base
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -15,19 +15,6 @@ config = context.config
 # this line sets up loggers basically.
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-
-
-# Standalone Base class - mirrors database.db_models.base.Base
-# This avoids importing the database package in env.py
-class Base(DeclarativeBase):
-    """Base class for all models."""
-
-    pass
-
-
-def get_target_metadata():
-    """Return target metadata for autogenerate."""
-    return Base.metadata
 
 
 # Get database URL from environment or construct from settings
@@ -61,10 +48,11 @@ def run_migrations_offline() -> None:
     url = cast(str, get_database_url())
     context.configure(
         url=url,
-        target_metadata=get_target_metadata(),
+        target_metadata=Base.metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        include_schemas=True,
     )
 
     with context.begin_transaction():
@@ -84,8 +72,9 @@ def run_migrations_online() -> None:
     with connectable.connect() as connection:
         context.configure(
             connection=connection,
-            target_metadata=get_target_metadata(),
+            target_metadata=Base.metadata,
             compare_type=True,
+            include_schemas=True,
         )
 
         with context.begin_transaction():
