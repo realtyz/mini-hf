@@ -205,7 +205,7 @@ async def verify_email(
     success, message = await verify_code_service.verify_code(
         email=request.email,
         code=request.code,
-        delete_on_success=True,
+        delete_on_success=False,
     )
 
     if not success:
