@@ -418,6 +418,10 @@ class HfRepoProfileRepository:
                         (HfRepoProfile.cache_updated_at.is_(None))
                         & (HfRepoProfile.first_cached_at < cutoff)
                     )
+                    | (
+                        (HfRepoProfile.cache_updated_at.is_(None))
+                        & (HfRepoProfile.first_cached_at.is_(None))
+                    )
                 ),
             )
             .order_by(HfRepoProfile.cache_updated_at.desc())

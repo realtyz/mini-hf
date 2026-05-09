@@ -912,15 +912,9 @@ export function CacheScan() {
                                   <button
                                     type="button"
                                     onClick={() => handleCopy(repo.repo_id)}
-                                    className="font-mono font-medium text-left hover:text-primary transition-colors cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex items-center gap-1.5 max-w-[280px]"
+                                    className="font-mono font-medium text-left hover:text-primary transition-colors cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex items-center gap-1.5 max-w-70"
                                   >
-                                    <span
-                                      className="truncate"
-                                      style={{
-                                        fontFamily:
-                                          "'Fira Code', ui-monospace, monospace",
-                                      }}
-                                    >
+                                    <span className="truncate">
                                       {repo.repo_id}
                                     </span>
                                     {copiedId === repo.repo_id ? (
@@ -963,33 +957,15 @@ export function CacheScan() {
                             </Badge>
                           </TableCell>
 
-                          <TableCell
-                            className="text-[13px] text-center tabular-nums py-2.5"
-                            style={{
-                              fontFamily:
-                                "'Fira Code', ui-monospace, monospace",
-                            }}
-                          >
+                          <TableCell className="text-[13px] text-center tabular-nums py-2.5">
                             {formatNumber(repo.downloads)}
                           </TableCell>
 
-                          <TableCell
-                            className="text-[13px] text-center tabular-nums py-2.5"
-                            style={{
-                              fontFamily:
-                                "'Fira Code', ui-monospace, monospace",
-                            }}
-                          >
+                          <TableCell className="text-[13px] text-center tabular-nums py-2.5">
                             {formatNumber(repo.cached_commits)}
                           </TableCell>
 
-                          <TableCell
-                            className="text-[13px] text-center tabular-nums py-2.5"
-                            style={{
-                              fontFamily:
-                                "'Fira Code', ui-monospace, monospace",
-                            }}
-                          >
+                          <TableCell className="text-[13px] text-center tabular-nums py-2.5">
                             <TooltipProvider delayDuration={200}>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -998,13 +974,7 @@ export function CacheScan() {
                                   </span>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                  <p
-                                    className="text-xs tabular-nums"
-                                    style={{
-                                      fontFamily:
-                                        "'Fira Code', ui-monospace, monospace",
-                                    }}
-                                  >
+                                  <p className="text-xs tabular-nums">
                                     {repo.cached_size.toLocaleString("zh-CN")}{" "}
                                     字节
                                   </p>

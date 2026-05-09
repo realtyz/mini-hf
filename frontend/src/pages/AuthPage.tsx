@@ -76,7 +76,7 @@ function SpotlightCard({
         className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-500"
         animate={{ opacity: isHovered ? 1 : 0 }}
         style={{
-          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, hsl(var(--primary) / 0.08), transparent 40%)`,
+          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.08), transparent 40%)`,
         }}
       />
       {/* Inner glow line */}

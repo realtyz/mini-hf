@@ -54,9 +54,9 @@ function HStreak({ top, width, duration, delay }: StreakH) {
           animationDuration: duration,
           animationDelay: delay,
           background:
-            "linear-gradient(to right, transparent, hsl(var(--primary) / 0.9), transparent)",
+            "linear-gradient(to right, transparent, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.9), transparent)",
           filter: "blur(0.5px)",
-          boxShadow: "0 0 8px 2px hsl(var(--primary) / 0.5)",
+          boxShadow: "0 0 8px 2px hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.5)",
         }}
       />
     </div>
@@ -76,9 +76,9 @@ function VStreak({ left, height, duration, delay }: StreakV) {
           animationDuration: duration,
           animationDelay: delay,
           background:
-            "linear-gradient(to bottom, transparent, hsl(var(--primary) / 0.75), transparent)",
+            "linear-gradient(to bottom, transparent, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.75), transparent)",
           filter: "blur(0.5px)",
-          boxShadow: "0 0 8px 2px hsl(var(--primary) / 0.35)",
+          boxShadow: "0 0 8px 2px hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.35)",
         }}
       />
     </div>

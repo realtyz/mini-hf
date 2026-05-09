@@ -404,6 +404,40 @@ class TaskRepository:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none() is not None
 
+    async def get_repos_with_active_tasks(
+        self, repo_ids: list[str]
+    ) -> set[str]:
+        """Return the subset of repo_ids that have at least one active task.
+
+        Active means PENDING_APPROVAL, PENDING, RUNNING, or PAUSED.
+
+        Args:
+            repo_ids: Repository IDs to check
+
+        Returns:
+            Set of repo_ids that have active tasks
+        """
+        if not repo_ids:
+            return set()
+
+        stmt = (
+            select(Task.repo_id)
+            .where(
+                Task.repo_id.in_(repo_ids),
+                Task.status.in_(
+                    [
+                        TaskStatus.PENDING_APPROVAL,
+                        TaskStatus.PENDING,
+                        TaskStatus.RUNNING,
+                        TaskStatus.PAUSED,
+                    ]
+                ),
+            )
+            .distinct()
+        )
+        result = await self.session.execute(stmt)
+        return {row[0] for row in result.all()}
+
     async def get_active_download_task(self, repo_id: str, source: str) -> Task | None:
         """Get active download task for a specific repo_id and source.
 

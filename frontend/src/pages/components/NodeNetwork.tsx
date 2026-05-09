@@ -42,7 +42,9 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
         .getPropertyValue("--primary")
         .trim();
       const match = raw.match(/^hsl\(([^)]+)\)$/);
-      return (match ? match[1] : raw) || "262.1 83.3% 57.8%";
+      const inner = (match ? match[1] : raw) || "262.1 83.3% 57.8%";
+      const parts = inner.trim().split(/\s+/);
+      return parts.join(", ");
     };
 
     const initNodes = () => {
@@ -114,7 +116,7 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
           if (dist < EDGE_DIST) {
             const a = (1 - dist / EDGE_DIST) * 0.12;
             ctx.beginPath();
-            ctx.strokeStyle = `hsl(${hsl} / ${a.toFixed(3)})`;
+            ctx.strokeStyle = `hsla(${hsl}, ${a.toFixed(3)})`;
             ctx.moveTo(nodes[i].x, nodes[i].y);
             ctx.lineTo(nodes[j].x, nodes[j].y);
             ctx.stroke();
@@ -126,7 +128,7 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
       for (const n of nodes) {
         ctx.beginPath();
         ctx.arc(n.x, n.y, 1.5, 0, Math.PI * 2);
-        ctx.fillStyle = `hsl(${hsl} / 0.18)`;
+        ctx.fillStyle = `hsla(${hsl}, 0.18)`;
         ctx.fill();
       }
 
@@ -158,12 +160,12 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
         // Glow
         ctx.beginPath();
         ctx.arc(px, py, 4.5, 0, Math.PI * 2);
-        ctx.fillStyle = `hsl(${hsl} / 0.1)`;
+        ctx.fillStyle = `hsla(${hsl}, 0.1)`;
         ctx.fill();
         // Core
         ctx.beginPath();
         ctx.arc(px, py, 2, 0, Math.PI * 2);
-        ctx.fillStyle = `hsl(${hsl} / 0.55)`;
+        ctx.fillStyle = `hsla(${hsl}, 0.55)`;
         ctx.fill();
       }
 

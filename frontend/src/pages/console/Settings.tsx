@@ -152,7 +152,7 @@ function SpotlightCard({
       )}
       style={{
         background: isHovered
-          ? `radial-gradient(600px circle at ${position.x}px ${position.y}px, hsl(var(--primary) / 0.06), transparent 40%)`
+          ? `radial-gradient(600px circle at ${position.x}px ${position.y}px, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.06), transparent 40%)`
           : undefined,
       }}
     >

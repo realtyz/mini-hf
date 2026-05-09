@@ -18,11 +18,11 @@ class RepoListQueryParams(PaginationQueryParams):
 
 
 class RepoFileItem(BaseModel):
-    """Repository item (file or folder) with download filter status."""
+    """Repository item (file or directory) with download filter status."""
 
     path: str
     size: int
-    type: Literal["file", "folder"]
+    type: Literal["file", "directory"]
     required: bool
 
 

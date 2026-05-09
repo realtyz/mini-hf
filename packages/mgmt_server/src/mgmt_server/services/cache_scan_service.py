@@ -6,8 +6,12 @@ import time
 from datetime import datetime
 
 from cache.services.cache import CacheService
-from database.db_models import HfRepoProfile
-from database.db_repositories import HfRepoProfileRepository, HfRepoSnapshotRepository
+from database.db_models import HfRepoProfile, RepoStatus
+from database.db_repositories import (
+    HfRepoProfileRepository,
+    HfRepoSnapshotRepository,
+    TaskRepository,
+)
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,6 +33,7 @@ class CacheScanService:
         self._cache = cache
         self._profile_repo = HfRepoProfileRepository(session)
         self._snapshot_repo = HfRepoSnapshotRepository(session)
+        self._task_repo = TaskRepository(session)
 
     async def scan(self, threshold_days: int = 90) -> ScanResultData:
         """Scan for cold repositories and cache the result in Redis.
@@ -43,8 +48,35 @@ class CacheScanService:
         cold_profiles = await self._profile_repo.list_cold_repos(threshold_days)
         orphan_profiles = await self._profile_repo.list_orphan_repos(threshold_days)
 
+        # Exclude repos that have been cleaned (removed)
+        excluded_statuses = {RepoStatus.CLEANED, RepoStatus.CLEANING}
+        cold_profiles = [p for p in cold_profiles if p.status not in excluded_statuses]
+        orphan_profiles = [p for p in orphan_profiles if p.status not in excluded_statuses]
+
         cold_ids = {p.repo_id for p in cold_profiles}
         orphan_profiles = [p for p in orphan_profiles if p.repo_id not in cold_ids]
+
+        # Filter NULL-NULL orphans: repos with neither cache_updated_at nor
+        # first_cached_at have likely never been downloaded. Keep them only
+        # if no active task exists in the queue.
+        null_null_profiles = [
+            p
+            for p in orphan_profiles
+            if p.cache_updated_at is None and p.first_cached_at is None
+        ]
+        if null_null_profiles:
+            active_repo_ids = await self._task_repo.get_repos_with_active_tasks(
+                [p.repo_id for p in null_null_profiles]
+            )
+            orphan_profiles = [
+                p
+                for p in orphan_profiles
+                if not (
+                    p.cache_updated_at is None
+                    and p.first_cached_at is None
+                    and p.repo_id in active_repo_ids
+                )
+            ]
 
         repos: list[RepoScanItem] = []
         total_wasted = 0
