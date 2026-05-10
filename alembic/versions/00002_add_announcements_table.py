@@ -48,4 +48,3 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.drop_table("announcements", schema="mini_hf")
-    sa.Enum(name="announcement_type").drop(op.get_bind(), checkfirst=True)

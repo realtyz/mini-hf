@@ -29,3 +29,23 @@ class TreeItemType(str, PyEnum):
 
     FILE = "file"
     DIRECTORY = "directory"
+
+
+class TaskStatus(str, PyEnum):
+    """Task status enum."""
+
+    PENDING_APPROVAL = "pending_approval"  # 等待管理员审批
+    PENDING = "pending"  # 排队下载
+    RUNNING = "running"  # 执行中
+    CANCELING = "canceling"  # 取消中
+    CANCELLED = "cancelled"  # 已取消
+    PAUSING = "pausing"  # 暂停中
+    PAUSED = "paused"  # 已暂停
+    COMPLETED = "completed"  # 已完成
+    FAILED = "failed"  # 失败
+
+
+class AnnouncementType(str, PyEnum):
+    INFO = "info"
+    WARNING = "warning"
+    URGENT = "urgent"

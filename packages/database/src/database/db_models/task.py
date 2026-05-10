@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import Enum as PyEnum
 from typing import Optional
 
 from sqlalchemy import BigInteger, DateTime, Enum, Index, Integer, String, Text
@@ -7,20 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.db_models.base import Base
-
-
-class TaskStatus(str, PyEnum):
-    """Task status enum."""
-
-    PENDING_APPROVAL = "pending_approval"  # 等待管理员审批
-    PENDING = "pending"  # 排队下载
-    RUNNING = "running"  # 执行中
-    CANCELING = "canceling"  # 取消中
-    CANCELLED = "cancelled"  # 已取消
-    PAUSING = "pausing"  # 暂停中
-    PAUSED = "paused"  # 已暂停
-    COMPLETED = "completed"  # 已完成
-    FAILED = "failed"  # 失败
+from database.db_models.enums import TaskStatus
 
 
 class Task(Base):

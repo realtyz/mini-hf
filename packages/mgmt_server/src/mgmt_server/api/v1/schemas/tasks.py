@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from database.db_models.task import TaskStatus
+from database.db_models import TaskStatus
 from mgmt_server.api.v1.schemas.base import BaseResponse, PaginationQueryParams, RepoId
 from mgmt_server.api.v1.schemas.repos import RepoFileItem
 

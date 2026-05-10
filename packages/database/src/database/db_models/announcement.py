@@ -1,16 +1,10 @@
 """Announcement model for system-wide notifications."""
 
-import enum
 from datetime import datetime
 from sqlalchemy import String, Text, Boolean, Enum, DateTime
 from sqlalchemy.orm import Mapped, mapped_column
 from database.db_models.base import Base
-
-
-class AnnouncementType(str, enum.Enum):
-    INFO = "info"
-    WARNING = "warning"
-    URGENT = "urgent"
+from database.db_models.enums import AnnouncementType
 
 
 class Announcement(Base):
@@ -21,7 +15,7 @@ class Announcement(Base):
     title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False, default="")
     announcement_type: Mapped[AnnouncementType] = mapped_column(
-        Enum(AnnouncementType, name="announcement_type", create_type=True),
+        Enum(AnnouncementType, native_enum=False),
         nullable=False,
         default=AnnouncementType.INFO,
     )

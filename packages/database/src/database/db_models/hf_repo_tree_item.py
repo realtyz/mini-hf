@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Boolean, Index, String, UniqueConstraint
+from sqlalchemy import BigInteger, Boolean, Enum, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.db_models.base import Base
@@ -48,7 +48,9 @@ class HfRepoTreeItem(Base):
     commit_hash: Mapped[str] = mapped_column(String(255), nullable=False)
 
     # Item type: file or directory
-    type: Mapped[TreeItemType] = mapped_column(String(16), nullable=False)
+    type: Mapped[TreeItemType] = mapped_column(
+        Enum(TreeItemType, native_enum=False), nullable=False
+    )
 
     # Path (relative to repo root)
     path: Mapped[str] = mapped_column(String(2048), nullable=False)
