@@ -21,19 +21,25 @@ class DownloaderError(Exception):
 class DownloadCancelledError(DownloaderError):
     """Download was cancelled by user request."""
 
-    pass
+    def __init__(self, message: str = "", successful_paths: list[str] | None = None):
+        super().__init__(message)
+        self.successful_paths = successful_paths or []
 
 
 class DownloadPausedError(DownloaderError):
     """Download was paused by user request."""
 
-    pass
+    def __init__(self, message: str = "", successful_paths: list[str] | None = None):
+        super().__init__(message)
+        self.successful_paths = successful_paths or []
 
 
 class DownloadError(DownloaderError):
     """Download failed (network error, checksum mismatch, etc.)."""
 
-    pass
+    def __init__(self, message: str = "", successful_paths: list[str] | None = None):
+        super().__init__(message)
+        self.successful_paths = successful_paths or []
 
 
 class RetryAction(Enum):

@@ -329,6 +329,36 @@ class HfDownloadHandler(BaseDownloadHandler):
                 e,
             )
 
+    async def _mark_successful_items_cached(self) -> None:
+        """Mark successfully downloaded tree items as cached after a failure.
+
+        Called instead of cleanup_new_snapshot on task failure so the
+        partial snapshot and its S3 blobs can be reused on retry.
+        """
+        if not self._successful_paths:
+            return
+        try:
+            async with new_session() as session:
+                tree_repo = HfRepoTreeRepository(session)
+                for path in self._successful_paths:
+                    await tree_repo.set_item_cached(
+                        commit_hash=self.ctx.new_commit_hash,
+                        path=path,
+                    )
+                await session.commit()
+            logger.info(
+                "  -> Marked {} items as cached for commit {} ({})",
+                len(self._successful_paths),
+                self.ctx.new_commit_hash[:8],
+                self.ctx.repo_id,
+            )
+        except Exception as e:
+            logger.warning(
+                "  -> Failed to mark items as cached for commit {}: {}",
+                self.ctx.new_commit_hash[:8],
+                e,
+            )
+
     async def restore_profile(
         self, *, keep_active_on_commit_mismatch: bool = False
     ) -> None:

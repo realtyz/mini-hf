@@ -135,6 +135,7 @@ async def download_and_upload_files(
             logger.debug("File {} paused before starting", src_file.path)
         elif isinstance(result, DownloadCancelledError):
             logger.info("Download cancelled for {}: {}", src_file.path, result)
+            result.successful_paths = [r.path for r in successful_results]
             raise result
         elif isinstance(result, Exception):
             failures.append((src_file.path, result))
@@ -157,17 +158,21 @@ async def download_and_upload_files(
     )
 
     # Step 3: Handle failures or pause
+    successful_paths = [r.path for r in successful_results]
+
     if failures:
         failed_paths = [f[0] for f in failures]
         raise DownloadError(
             f"Failed to process {len(failures)} files: {', '.join(failed_paths[:3])}"
-            f"{'...' if len(failures) > 3 else ''}"
+            f"{'...' if len(failures) > 3 else ''}",
+            successful_paths=successful_paths,
         )
 
     if paused_count > 0:
         raise DownloadPausedError(
             f"Paused after processing {len(successful_results)} files, "
-            f"{paused_count} files remaining"
+            f"{paused_count} files remaining",
+            successful_paths=successful_paths,
         )
 
     return successful_results

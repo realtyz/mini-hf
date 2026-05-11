@@ -23,7 +23,11 @@ from database import new_session
 from database.db_models import Task
 from database.db_repositories import TaskRepository
 from cache.exceptions import CacheException
-from worker.handlers.downloader import DownloadCancelledError, DownloadPausedError
+from worker.handlers.downloader import (
+    DownloadCancelledError,
+    DownloadError,
+    DownloadPausedError,
+)
 from worker.handlers.contracts import TaskControl, ExecutionResult
 from worker.handlers.diff_calculator import FileDiff
 from worker.handlers.download_context import DownloadContext
@@ -108,6 +112,14 @@ class CleanupLifecycle(ABC):
     async def cleanup_new_snapshot(self) -> None:
         """Delete the INACTIVE snapshot and tree items created by this task."""
 
+    @abstractmethod
+    async def _mark_successful_items_cached(self) -> None:
+        """Mark successfully downloaded tree items as cached after a failure.
+
+        Called instead of cleanup_new_snapshot when the task fails,
+        so that partially-downloaded snapshots can be reused on retry.
+        """
+
 
 class BaseDownloadHandler(
     ProfileLifecycle, TreeLifecycle, DownloadInfrastructure, CleanupLifecycle
@@ -132,6 +144,7 @@ class BaseDownloadHandler(
         self._task_control = task_control
         self._progress_tracker = TaskProgressTracker(task.id)
         self._new_snapshot_id: int | None = None
+        self._successful_paths: set[str] = set()
 
         required_file_paths = {
             item["path"]
@@ -215,10 +228,15 @@ class BaseDownloadHandler(
     # ------------------------------------------------------------------
 
     async def _handle_abort(self, reason: str, error_msg: str) -> None:
-        """Unified error recovery for cancelled/paused/failed tasks."""
+        """Unified error recovery for cancelled/paused/failed tasks.
+
+        On any non-successful exit: keep the snapshot and tree items,
+        mark successfully downloaded items as cached so they can be
+        reused on retry/resume.
+        """
         await self._save_download_stats()
         await self._fail_progress(error_msg)
-        await self.cleanup_new_snapshot()
+        await self._mark_successful_items_cached()
         await self.restore_profile(
             keep_active_on_commit_mismatch=(reason == "failed"),
         )
@@ -311,10 +329,14 @@ class BaseDownloadHandler(
             ),
             skip_s3_check_paths=download_paths,
         )
-        return await download_and_upload_files(
-            ctx=process_ctx,
-            files=files_to_download,
-        )
+        try:
+            return await download_and_upload_files(
+                ctx=process_ctx,
+                files=files_to_download,
+            )
+        except (DownloadCancelledError, DownloadError, DownloadPausedError) as e:
+            self._successful_paths = set(getattr(e, "successful_paths", []))
+            raise
 
     async def _cleanup_temp_dir(self) -> None:
         """Remove the temp directory for a repo download."""

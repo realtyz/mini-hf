@@ -49,7 +49,12 @@ class HfRepoTreeItem(Base):
 
     # Item type: file or directory
     type: Mapped[TreeItemType] = mapped_column(
-        Enum(TreeItemType, native_enum=False), nullable=False
+        Enum(
+            TreeItemType,
+            native_enum=False,
+            values_callable=lambda t: [e.value for e in t],
+        ),
+        nullable=False,
     )
 
     # Path (relative to repo root)
