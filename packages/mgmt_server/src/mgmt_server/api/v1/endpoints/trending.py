@@ -16,7 +16,6 @@ HF_TRENDING_URL = "https://hf-mirror.com/api/trending"
 HF_TRENDING_PARAMS = {"type": "all", "limit": 20}
 ALLOWED_REPO_TYPES = {"model", "dataset"}
 MAX_RESULTS = 12
-_CACHE_TTL = 1800  # 5 minutes
 
 
 @router.get("/", response_model=TrendingListResponse)
@@ -56,5 +55,5 @@ async def get_trending(cache: CacheServiceDep) -> TrendingListResponse:
     ][:MAX_RESULTS]
 
     result = TrendingListResponse(data=repos)
-    await cache.set(CacheKeys.trending.key("data"), result.model_dump(), ttl=_CACHE_TTL)
+    await cache.set(CacheKeys.trending.key("data"), result.model_dump(), ttl=CacheKeys.trending.ttl)
     return result

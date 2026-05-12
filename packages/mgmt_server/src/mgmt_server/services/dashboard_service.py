@@ -19,7 +19,6 @@ from storage.client import s3_client
 from mgmt_server.api.v1.schemas.repos import DashboardStats
 
 _CACHE_PHYSICAL_TTL: Final[int] = 1800  # 30 minutes
-_CACHE_LOGICAL_TTL: Final[int] = 60  # 1 minute
 _REBUILD_LOCK_TIMEOUT: Final[int] = 60
 
 # Busy-wait retry settings (exponential backoff)
@@ -75,7 +74,7 @@ async def _rebuild_cache_in_background(cache: CacheService) -> None:
             CacheKeys.stats.key("dashboard"),
             {
                 "data": stats.model_dump(),
-                "_expires_at": time.time() + _CACHE_LOGICAL_TTL,
+                "_expires_at": time.time() + CacheKeys.stats.ttl,
             },
             ttl=_CACHE_PHYSICAL_TTL,
         )
@@ -131,7 +130,7 @@ class DashboardService:
                     CacheKeys.stats.key("dashboard"),
                     {
                         "data": stats.model_dump(),
-                        "_expires_at": now + _CACHE_LOGICAL_TTL,
+                        "_expires_at": now + CacheKeys.stats.ttl,
                     },
                     ttl=_CACHE_PHYSICAL_TTL,
                 )

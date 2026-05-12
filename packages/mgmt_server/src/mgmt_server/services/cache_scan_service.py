@@ -22,9 +22,6 @@ from mgmt_server.api.v1.schemas.cache_scan import (
     ScanResultData,
 )
 
-_CACHE_TTL = 90000  # 25 hours in seconds
-
-
 class CacheScanService:
     """Service for scanning and identifying cold (unused) repositories."""
 
@@ -132,7 +129,7 @@ class CacheScanService:
                 "data": result.model_dump(mode="json"),
                 "_cached_at": time.time(),
             },
-            ttl=_CACHE_TTL,
+            ttl=CacheKeys.cache_scan.ttl,
         )
 
         logger.info(

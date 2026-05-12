@@ -48,6 +48,18 @@ class CacheKeys:
 
     _PREFIX = "mini_hf"
 
+    # Infrastructure
+    rate_limit: CacheNamespace
+    refresh_family: CacheNamespace
+    access_revoke: CacheNamespace
+    # Business
+    stats: CacheNamespace
+    trending: CacheNamespace
+    cache_scan: CacheNamespace
+    preview_result: CacheNamespace
+    preview_task: CacheNamespace
+    email_verify: CacheNamespace
+
     _NAMESPACES: dict[str, CacheNamespace] = {
         # Infrastructure
         "rate_limit": CacheNamespace(
@@ -98,10 +110,10 @@ class CacheKeys:
         ),
     }
 
-    # Auto-generate class attributes from _NAMESPACES
-    for _attr, _ns in _NAMESPACES.items():
-        locals()[_attr] = _ns
-
     @classmethod
     def all(cls) -> dict[str, CacheNamespace]:
         return dict(cls._NAMESPACES)
+
+
+for _attr, _ns in CacheKeys._NAMESPACES.items():
+    setattr(CacheKeys, _attr, _ns)
