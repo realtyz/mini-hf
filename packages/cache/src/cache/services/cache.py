@@ -7,9 +7,6 @@ from cache.serializers import JSONSerializer, Serializer
 from cache.services.base import BaseService
 
 
-_DEFAULT_PREFIX = "mini_hf:"
-
-
 class CacheService(BaseService):
     """Service for general key-value caching operations.
 
@@ -20,7 +17,6 @@ class CacheService(BaseService):
         self,
         client: RedisClient | None = None,
         serializer: Serializer | None = None,
-        prefix: str = _DEFAULT_PREFIX,
         default_ttl: int | None = None,
     ):
         """Initialize cache service.
@@ -28,17 +24,14 @@ class CacheService(BaseService):
         Args:
             client: Redis client instance.
             serializer: Value serializer. Defaults to JSONSerializer.
-            prefix: Key prefix for all cache entries.
             default_ttl: Default TTL in seconds. None means no expiration.
         """
         super().__init__(client)
         self._serializer = serializer or JSONSerializer()
-        self._prefix = prefix
         self._default_ttl = default_ttl
 
     def _key(self, key: str) -> str:
-        """Build full key with prefix."""
-        return f"{self._prefix}{key}"
+        return key
 
     async def get(self, key: str) -> Any | None:
         """Get value from cache.
@@ -239,15 +232,13 @@ class CacheService(BaseService):
         """Find keys matching a pattern.
 
         Args:
-            pattern: Redis key pattern (e.g., "user:*").
+            pattern: Redis key pattern (e.g., "mini_hf:stats:*").
 
         Returns:
-            List of matching keys (without prefix).
+            List of matching keys.
         """
-        full_pattern = self._key(pattern)
-        matching = await self.redis.keys(full_pattern)
-        prefix_len = len(self._prefix)
-        return [k[prefix_len:] if k.startswith(self._prefix) else k for k in matching]
+        matching = await self.redis.keys(pattern)
+        return list(matching)
 
     async def scan_iter(self, pattern: str, count: int = 100) -> list[str]:
         """Iterate keys matching a pattern using SCAN (non-blocking).
@@ -256,17 +247,15 @@ class CacheService(BaseService):
         and safe for production use with large datasets.
 
         Args:
-            pattern: Redis key pattern (e.g., "user:*").
+            pattern: Redis key pattern (e.g., "mini_hf:stats:*").
             count: Hint for number of keys per SCAN iteration.
 
         Returns:
-            List of matching keys (without prefix).
+            List of matching keys.
         """
-        full_pattern = self._key(pattern)
-        prefix_len = len(self._prefix)
         result: list[str] = []
-        async for key in self.redis.scan_iter(match=full_pattern, count=count):
-            result.append(key[prefix_len:] if key.startswith(self._prefix) else key)
+        async for key in self.redis.scan_iter(match=pattern, count=count):
+            result.append(key)
         return result
 
     async def clear_pattern(self, pattern: str) -> int:
@@ -284,7 +273,7 @@ class CacheService(BaseService):
         return 0
 
     async def clear_all(self) -> int:
-        """Clear all keys with this service's prefix.
+        """Clear all keys in the cache.
 
         Returns:
             Number of keys deleted.

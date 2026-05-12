@@ -5,18 +5,23 @@ class CacheNamespace:
     """A logical grouping of related cache keys under a common prefix.
 
     Usage:
-        stats = CacheNamespace("stats")
-        stats.key("dashboard")      # → "stats:dashboard"
-        stats.key("rebuild_lock")   # → "stats:rebuild_lock"
-        stats.prefix()              # → "stats:"
+        stats = CacheNamespace("mini_hf:stats", ttl=60, description="Dashboard stats")
+        stats.key("dashboard")      # → "mini_hf:stats:dashboard"
+        stats.key("rebuild_lock")   # → "mini_hf:stats:rebuild_lock"
+        stats.prefix()              # → "mini_hf:stats:"
+        stats.ttl                   # → 60
     """
 
-    __slots__ = ("name",)
+    __slots__ = ("name", "ttl", "description")
 
-    def __init__(self, name: str) -> None:
+    def __init__(self, name: str, *, ttl: int | None = None, description: str = "") -> None:
         self.name = name
+        self.ttl = ttl
+        self.description = description
 
     def key(self, *parts: str) -> str:
+        if not parts:
+            raise ValueError("CacheNamespace.key() requires at least one sub-key part")
         return ":".join((self.name, *parts))
 
     def prefix(self) -> str:
@@ -32,27 +37,71 @@ class CacheKeys:
     Usage:
         from cache.keys import CacheKeys
 
-        await cache.get(CacheKeys.stats.key("dashboard"))
-        await cache.set(CacheKeys.preview_result.key(cache_key), data, ttl=3600)
+        ns = CacheKeys.stats
+        await cache.get(ns.key("dashboard"))
+        await cache.set(ns.key("dashboard"), data, ttl=ns.ttl)
+
+        # Enumerate all namespaces
+        for name, ns in CacheKeys.all().items():
+            print(f"{name}: {ns.description}")
     """
 
-    # Infrastructure
-    rate_limit = CacheNamespace("ratelimit")
-    refresh_family = CacheNamespace("refresh_family")
-    access_revoke = CacheNamespace("access_revoke")
+    _PREFIX = "mini_hf"
 
-    # Business: statistics
-    stats = CacheNamespace("stats")
+    _NAMESPACES: dict[str, CacheNamespace] = {
+        # Infrastructure
+        "rate_limit": CacheNamespace(
+            f"{_PREFIX}:ratelimit",
+            ttl=None,
+            description="Rate limiting counters",
+        ),
+        "refresh_family": CacheNamespace(
+            f"{_PREFIX}:refresh_family",
+            ttl=604800,
+            description="Refresh token family (7d)",
+        ),
+        "access_revoke": CacheNamespace(
+            f"{_PREFIX}:access_revoke",
+            ttl=None,
+            description="Revoked access token JTI set",
+        ),
+        # Business
+        "stats": CacheNamespace(
+            f"{_PREFIX}:stats",
+            ttl=60,
+            description="Dashboard statistics cache",
+        ),
+        "trending": CacheNamespace(
+            f"{_PREFIX}:trending",
+            ttl=1800,
+            description="HF trending repos (30min)",
+        ),
+        "cache_scan": CacheNamespace(
+            f"{_PREFIX}:cache_scan",
+            ttl=90000,
+            description="Cold cache scan results (25h)",
+        ),
+        "preview_result": CacheNamespace(
+            f"{_PREFIX}:preview_result",
+            ttl=7200,
+            description="Task preview result cache (2h)",
+        ),
+        "preview_task": CacheNamespace(
+            f"{_PREFIX}:preview_task",
+            ttl=7200,
+            description="Async preview task state (2h)",
+        ),
+        "email_verify": CacheNamespace(
+            f"{_PREFIX}:email_verify",
+            ttl=300,
+            description="Email verification codes",
+        ),
+    }
 
-    # Business: trending
-    trending = CacheNamespace("trending")
+    # Auto-generate class attributes from _NAMESPACES
+    for _attr, _ns in _NAMESPACES.items():
+        locals()[_attr] = _ns
 
-    # Business: cache scan
-    cache_scan = CacheNamespace("cache_scan")
-
-    # Business: task preview
-    preview_result = CacheNamespace("preview_result")
-    preview_task = CacheNamespace("preview_task")
-
-    # Business: email
-    email_verify = CacheNamespace("email_verify")
+    @classmethod
+    def all(cls) -> dict[str, CacheNamespace]:
+        return dict(cls._NAMESPACES)
