@@ -95,13 +95,13 @@ class CacheKeys:
         ),
         "preview_result": CacheNamespace(
             f"{_PREFIX}:preview_result",
-            ttl=7200,
-            description="Task preview result cache (2h)",
+            ttl=300,
+            description="Task preview result cache (5min)",
         ),
         "preview_task": CacheNamespace(
             f"{_PREFIX}:preview_task",
-            ttl=7200,
-            description="Async preview task state (2h)",
+            ttl=600,
+            description="Async preview task state (10min)",
         ),
         "email_verify": CacheNamespace(
             f"{_PREFIX}:email_verify",

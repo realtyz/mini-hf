@@ -24,7 +24,6 @@ from mgmt_server.api.v1.schemas import (
     TaskDetailResponse,
     TaskPreviewData,
 )
-from mgmt_server.core.constants import PREVIEW_TASK_TTL
 from mgmt_server.core.exceptions import (
     ConflictError,
     ResourceGoneError,
@@ -69,7 +68,7 @@ class TaskPreviewService:
         await self._cache.set(
             CacheKeys.preview_task.key(task_id),
             data,
-            ttl=PREVIEW_TASK_TTL,
+            ttl=CacheKeys.preview_task.ttl,
         )
 
     async def _get_preview_state(self, task_id: str) -> dict[str, Any] | None:

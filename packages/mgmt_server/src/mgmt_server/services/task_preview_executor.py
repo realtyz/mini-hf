@@ -18,7 +18,6 @@ from services.huggingface import HuggingfaceService, RepoFile, RepoFolder
 from services.task import TaskService
 from sqlalchemy.exc import DatabaseError
 
-from mgmt_server.core.constants import PREVIEW_CACHE_TTL, PREVIEW_TASK_TTL
 from mgmt_server.core.exceptions import ValidationError
 from mgmt_server.utils.token_utils import encode_access_token
 from mgmt_server.services.repo_service import RepoService
@@ -264,7 +263,7 @@ async def _finalize_result(
         "all_required_cached": result.all_required_cached,
         "cached_commit_hash": result.cached_commit_hash,
     }
-    await cache.set(CacheKeys.preview_result.key(cache_key), cache_data, ttl=PREVIEW_CACHE_TTL)
+    await cache.set(CacheKeys.preview_result.key(cache_key), cache_data, ttl=CacheKeys.preview_result.ttl)
 
     task_result = {
         "repo_id": result.repo_id,
@@ -331,7 +330,7 @@ async def execute_preview_task(
         await cache.set(
             CacheKeys.preview_task.key(config.task_id),
             state,
-            ttl=PREVIEW_TASK_TTL,
+            ttl=CacheKeys.preview_task.ttl,
         )
 
     try:

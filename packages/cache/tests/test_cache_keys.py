@@ -72,12 +72,12 @@ class TestCacheKeys:
 
     def test_preview_result_namespace(self):
         assert CacheKeys.preview_result.name == "mini_hf:preview_result"
-        assert CacheKeys.preview_result.ttl == 7200
+        assert CacheKeys.preview_result.ttl == 300
         assert CacheKeys.preview_result.key("abc123") == "mini_hf:preview_result:abc123"
 
     def test_preview_task_namespace(self):
         assert CacheKeys.preview_task.name == "mini_hf:preview_task"
-        assert CacheKeys.preview_task.ttl == 7200
+        assert CacheKeys.preview_task.ttl == 600
         assert CacheKeys.preview_task.key("task_1") == "mini_hf:preview_task:task_1"
 
     def test_email_verify_namespace(self):
