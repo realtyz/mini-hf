@@ -15,6 +15,7 @@ Example:
 """
 
 from cache.client import RedisClient
+from cache.keys import CacheKeys, CacheNamespace
 from cache.services import CacheService
 
 # Global instances for convenient access
@@ -22,8 +23,10 @@ redis_client = RedisClient()
 cache_service = CacheService(client=redis_client)
 
 __all__ = [
-    "RedisClient",
+    "CacheKeys",
+    "CacheNamespace",
     "CacheService",
-    "redis_client",
+    "RedisClient",
     "cache_service",
+    "redis_client",
 ]
