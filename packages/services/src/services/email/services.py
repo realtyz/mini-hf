@@ -40,14 +40,15 @@ class VerifyCodeService:
         success, message = await verify_code_service.verify_code("user@example.com", "123456")
     """
 
-    KEY_PREFIX = "email_verify:"
     CODE_LENGTH = 6
     CODE_TTL = 300  # 5 minutes
     RESEND_INTERVAL = 60  # seconds
 
     def _get_key(self, email: str) -> str:
         """Build Redis key for email."""
-        return f"{self.KEY_PREFIX}{email.lower()}"
+        from cache.keys import CacheKeys
+
+        return CacheKeys.email_verify.key(email.lower())
 
     def _generate_code(self) -> str:
         """Generate random verification code."""

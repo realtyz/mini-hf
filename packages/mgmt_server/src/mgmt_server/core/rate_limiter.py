@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from loguru import logger
 
+from cache.keys import CacheKeys
 from cache.services.cache import CacheService
 
 
@@ -53,8 +54,6 @@ class RateLimiter:
     where *bucket* = ``timestamp // window * window``.
     """
 
-    _KEY_PREFIX = "ratelimit:"
-
     def __init__(self, cache: CacheService):
         self._cache = cache
 
@@ -65,7 +64,7 @@ class RateLimiter:
         """
         now = time.time()
         bucket = int(now // rule.window * rule.window)
-        full_key = f"{self._KEY_PREFIX}{key}:{bucket}"
+        full_key = CacheKeys.rate_limit.key(key, str(bucket))
 
         try:
             count = await self._cache.increment(full_key)
