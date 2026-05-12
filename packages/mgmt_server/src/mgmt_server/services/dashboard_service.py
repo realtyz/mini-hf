@@ -7,6 +7,7 @@ import time
 import uuid
 from typing import Final
 
+from cache.keys import CacheKeys
 from cache.services.cache import CacheService
 from database.db_models import HfRepoProfile, RepoStatus
 from database.db_repositories import HfRepoProfileRepository
@@ -17,10 +18,8 @@ from storage.client import s3_client
 
 from mgmt_server.api.v1.schemas.repos import DashboardStats
 
-_CACHE_KEY = "stats"
 _CACHE_PHYSICAL_TTL: Final[int] = 1800  # 30 minutes
 _CACHE_LOGICAL_TTL: Final[int] = 60  # 1 minute
-_REBUILD_LOCK_KEY = "stats:rebuild_lock"
 _REBUILD_LOCK_TIMEOUT: Final[int] = 60
 
 # Busy-wait retry settings (exponential backoff)
@@ -73,7 +72,7 @@ async def _rebuild_cache_in_background(cache: CacheService) -> None:
             await session.commit()
 
         await cache.set(
-            _CACHE_KEY,
+            CacheKeys.stats.key("dashboard"),
             {
                 "data": stats.model_dump(),
                 "_expires_at": time.time() + _CACHE_LOGICAL_TTL,
@@ -81,7 +80,7 @@ async def _rebuild_cache_in_background(cache: CacheService) -> None:
             ttl=_CACHE_PHYSICAL_TTL,
         )
     finally:
-        await cache.delete(_REBUILD_LOCK_KEY)
+        await cache.delete(CacheKeys.stats.key("rebuild_lock"))
 
 
 class DashboardService:
@@ -108,7 +107,7 @@ class DashboardService:
         now = time.time()
 
         # 1. Try reading from cache
-        cached = await self._cache.get(_CACHE_KEY)
+        cached = await self._cache.get(CacheKeys.stats.key("dashboard"))
         if cached:
             expires_at = cached.get("_expires_at", 0)
             if now < expires_at:
@@ -129,7 +128,7 @@ class DashboardService:
             try:
                 stats = await self._fetch_stats()
                 await self._cache.set(
-                    _CACHE_KEY,
+                    CacheKeys.stats.key("dashboard"),
                     {
                         "data": stats.model_dump(),
                         "_expires_at": now + _CACHE_LOGICAL_TTL,
@@ -138,14 +137,14 @@ class DashboardService:
                 )
                 return stats
             finally:
-                await self._cache.delete(_REBUILD_LOCK_KEY)
+                await self._cache.delete(CacheKeys.stats.key("rebuild_lock"))
 
         # 3. Another request is rebuilding the cache. Wait with exponential
         #    backoff and retry.
         delay = _RETRY_BASE_DELAY
         for _ in range(_RETRY_ATTEMPTS):
             await asyncio.sleep(delay)
-            cached = await self._cache.get(_CACHE_KEY)
+            cached = await self._cache.get(CacheKeys.stats.key("dashboard"))
             if cached:
                 return DashboardStats(**cached["data"])
             delay = min(delay * 2, _MAX_RETRY_DELAY)
@@ -157,7 +156,7 @@ class DashboardService:
     async def _acquire_rebuild_lock(self) -> bool:
         """Try to acquire the distributed rebuild lock. Returns True if acquired."""
         return await self._cache.set_nx(
-            _REBUILD_LOCK_KEY, str(uuid.uuid4()), _REBUILD_LOCK_TIMEOUT
+            CacheKeys.stats.key("rebuild_lock"), str(uuid.uuid4()), _REBUILD_LOCK_TIMEOUT
         )
 
     async def _trigger_background_rebuild(self) -> None:
