@@ -6,6 +6,7 @@ import secrets
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from cache.keys import CacheKeys
 from cache.services.cache import CacheService
 from database.db_models import User
 from loguru import logger
@@ -32,7 +33,6 @@ from mgmt_server.core.exceptions import (
 from mgmt_server.utils.token_utils import decode_access_token
 from mgmt_server.services.task_lifecycle_service import TaskLifecycleService
 from mgmt_server.services.task_preview_executor import (
-    PREVIEW_TASK_PREFIX,
     PreviewTaskConfig,
     execute_preview_task,
 )
@@ -67,13 +67,13 @@ class TaskPreviewService:
 
     async def _save_preview_state(self, task_id: str, data: dict[str, Any]) -> None:
         await self._cache.set(
-            f"{PREVIEW_TASK_PREFIX}{task_id}",
+            CacheKeys.preview_task.key(task_id),
             data,
             ttl=PREVIEW_TASK_TTL,
         )
 
     async def _get_preview_state(self, task_id: str) -> dict[str, Any] | None:
-        return await self._cache.get(f"{PREVIEW_TASK_PREFIX}{task_id}")
+        return await self._cache.get(CacheKeys.preview_task.key(task_id))
 
     # ------------------------------------------------------------------
     # Preview task orchestration (called by routes)
@@ -248,7 +248,7 @@ class TaskPreviewService:
         """
         logger.debug("Creating task from cache key: {}", cache_key)
         cache_data: dict[str, Any] | None = await self._cache.get(
-            f"preview:{cache_key}"
+            CacheKeys.preview_result.key(cache_key)
         )
         if not cache_data:
             raise ResourceGoneError(
