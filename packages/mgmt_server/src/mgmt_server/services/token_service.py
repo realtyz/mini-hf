@@ -6,12 +6,11 @@ import json
 
 from loguru import logger
 
+from cache.keys import CacheKeys
 from cache.services.cache import CacheService
 from core.settings import settings
 
-_FAMILY_PREFIX = "refresh_family:"
 _FAMILY_TTL = 7 * 24 * 3600  # 7 days, same as refresh token expiry
-_ACCESS_REVOKE_PREFIX = "access_revoke:"
 
 
 class TokenReplayError(Exception):
@@ -25,10 +24,10 @@ class TokenService:
         self._cache = cache
 
     def _family_key(self, family_id: str) -> str:
-        return f"{_FAMILY_PREFIX}{family_id}"
+        return CacheKeys.refresh_family.key(family_id)
 
     def _access_revoke_key(self, jti: str) -> str:
-        return f"{_ACCESS_REVOKE_PREFIX}{jti}"
+        return CacheKeys.access_revoke.key(jti)
 
     async def create_family(self, user_id: int, jti: str, family_id: str) -> None:
         """Create a new token family on login.
