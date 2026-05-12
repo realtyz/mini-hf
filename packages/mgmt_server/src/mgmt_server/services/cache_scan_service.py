@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from datetime import datetime
 
+from cache.keys import CacheKeys
 from cache.services.cache import CacheService
 from database.db_models import HfRepoProfile, RepoStatus
 from database.db_repositories import (
@@ -21,7 +22,6 @@ from mgmt_server.api.v1.schemas.cache_scan import (
     ScanResultData,
 )
 
-_CACHE_KEY = "cache_scan:result"
 _CACHE_TTL = 90000  # 25 hours in seconds
 
 
@@ -127,7 +127,7 @@ class CacheScanService:
         )
 
         await self._cache.set(
-            _CACHE_KEY,
+            CacheKeys.cache_scan.key("result"),
             {
                 "data": result.model_dump(mode="json"),
                 "_cached_at": time.time(),
@@ -145,13 +145,13 @@ class CacheScanService:
 
     async def get_result(self) -> ScanResultData | None:
         """Get the most recent scan result from Redis cache."""
-        cached = await self._cache.get(_CACHE_KEY)
+        cached = await self._cache.get(CacheKeys.cache_scan.key("result"))
         if cached is None:
             return None
         try:
             return ScanResultData(**cached["data"])
         except Exception:
-            await self._cache.delete(_CACHE_KEY)
+            await self._cache.delete(CacheKeys.cache_scan.key("result"))
             return None
 
     async def _compute_cached_size(self, profile: HfRepoProfile) -> int:
