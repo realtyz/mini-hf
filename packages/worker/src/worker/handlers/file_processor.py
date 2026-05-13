@@ -4,6 +4,7 @@ import asyncio
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
+from urllib.parse import quote
 
 import httpx
 from loguru import logger
@@ -266,7 +267,7 @@ async def _process_empty_file(
                     "repo_id": ctx.repo_id,
                     "blob_id": blob_id,
                     "size": "0",
-                    "source_path": src_file.path,
+                    "source_path": quote(src_file.path, safe="/"),
                 },
             )
 
@@ -400,7 +401,7 @@ async def _upload_phase(
                     "repo_id": ctx.repo_id,
                     "blob_id": blob_id,
                     "size": str(src_file.size),
-                    "source_path": src_file.path,
+                    "source_path": quote(src_file.path, safe="/"),
                 },
             )
 
