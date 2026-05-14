@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Loader2, Check, AlertCircle, ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -21,13 +21,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
-import { TagInput } from "@/components/ui/tag-input";
 import { useAsyncPreviewTask, useTaskActions } from "@/hooks/useTaskActions";
 import { usePublicHFEndpoints } from "@/hooks/api/use-config-queries";
 import { formatBytes } from "@/lib/utils";
 import type { RepoSource, RepoType } from "@/lib/api-types";
-import { PreviewFileTree } from "./PreviewFileTree";
+import { SelectableFileTree } from "./SelectableFileTree";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface CreateTaskDialogProps {
@@ -44,9 +42,6 @@ interface FormData {
   repo_id: string;
   revision: string;
   access_token: string;
-  full_download: boolean;
-  allow_patterns: string[];
-  ignore_patterns: string[];
 }
 
 // Animation variants
@@ -65,47 +60,16 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
     repo_id: "",
     revision: "main",
     access_token: "",
-    full_download: true,
-    allow_patterns: [],
-    ignore_patterns: [],
   });
 
   const { createTask } = useTaskActions();
   const { data: hfEndpointConfig } = usePublicHFEndpoints();
   const previewTask = useAsyncPreviewTask({ pollInterval: 1000, maxPolls: 300 });
-  const [validationError, setValidationError] = useState<string | null>(null);
-
-  // Pattern validation function for glob patterns
-  const validatePattern = (pattern: string) => {
-    if (!pattern.trim()) {
-      return { valid: false, message: "Pattern 不能为空" };
-    }
-    if (pattern.includes("***") || /\*{3,}/.test(pattern)) {
-      return { valid: false, message: "Pattern 包含无效的通配符序列" };
-    }
-    if (pattern.startsWith("/") || pattern.endsWith("/")) {
-      return { valid: false, message: "Pattern 不应以 / 开头或结尾" };
-    }
-    if (pattern.includes("..")) {
-      return { valid: false, message: "Pattern 不能包含目录遍历符 .." };
-    }
-    return { valid: true };
-  };
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
   const handlePreview = () => {
     if (!formData.repo_id.trim()) return;
 
-    // Validation: if not full download, must provide at least one pattern
-    if (!formData.full_download) {
-      const hasAllowPatterns = formData.allow_patterns.length > 0;
-      const hasIgnorePatterns = formData.ignore_patterns.length > 0;
-      if (!hasAllowPatterns && !hasIgnorePatterns) {
-        setValidationError("非全量下载时，必须提供 allow_patterns 或 ignore_patterns 至少一个");
-        return;
-      }
-    }
-
-    setValidationError(null);
     setStep("previewing");
 
     previewTask.startPreview({
@@ -115,9 +79,7 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
       revision: formData.revision || "main",
       hf_endpoint: formData.hf_endpoint || undefined,
       access_token: formData.access_token || undefined,
-      full_download: formData.full_download,
-      allow_patterns: formData.allow_patterns.length > 0 ? formData.allow_patterns : undefined,
-      ignore_patterns: formData.ignore_patterns.length > 0 ? formData.ignore_patterns : undefined,
+      full_download: true,
     });
   };
 
@@ -125,20 +87,26 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
     if (!previewTask.data?.cache_key) return;
 
     setStep("creating");
-    createTask.mutate(previewTask.data.cache_key, {
-      onSuccess: () => {
-        toast.success("任务创建成功", {
-          description: `仓库 ${formData.repo_id} 的下载任务已提交`,
-        });
-        handleClose();
+    createTask.mutate(
+      {
+        cacheKey: previewTask.data.cache_key,
+        selectedFiles: [...selectedFiles],
       },
-      onError: (error) => {
-        toast.error("任务创建失败", {
-          description: error instanceof Error ? error.message : "请稍后重试",
-        });
-        setStep("preview");
-      },
-    });
+      {
+        onSuccess: () => {
+          toast.success("任务创建成功", {
+            description: `仓库 ${formData.repo_id} 的下载任务已提交`,
+          });
+          handleClose();
+        },
+        onError: (error) => {
+          toast.error("任务创建失败", {
+            description: error instanceof Error ? error.message : "请稍后重试",
+          });
+          setStep("preview");
+        },
+      }
+    );
   };
 
   const handleClose = () => {
@@ -150,17 +118,26 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
       repo_id: "",
       revision: "main",
       access_token: "",
-      full_download: true,
-      allow_patterns: [],
-      ignore_patterns: [],
     });
-    setValidationError(null);
+    setSelectedFiles(new Set());
     previewTask.reset();
     createTask.reset();
     onOpenChange(false);
   };
 
   const previewData = previewTask.data;
+
+  const selectedStats = useMemo(() => {
+    let count = 0,
+      size = 0;
+    for (const item of previewData?.items ?? []) {
+      if (item.type === "file" && selectedFiles.has(item.path)) {
+        count++;
+        size += item.size;
+      }
+    }
+    return { count, size };
+  }, [selectedFiles, previewData]);
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -346,74 +323,6 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
                       />
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="full_download"
-                        checked={formData.full_download}
-                        onCheckedChange={(checked) => {
-                          setValidationError(null);
-                          setFormData({ ...formData, full_download: checked as boolean });
-                        }}
-                      />
-                      <Label htmlFor="full_download" className="font-normal cursor-pointer">
-                        全量下载（下载所有文件）
-                      </Label>
-                    </div>
-
-                    <AnimatePresence>
-                      {!formData.full_download && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: "auto" }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="space-y-4 rounded-lg border border-dashed p-4 bg-muted/30 overflow-hidden"
-                        >
-                          <p className="text-sm font-medium text-muted-foreground">
-                            文件过滤规则（至少填写一项）
-                          </p>
-                          <TagInput
-                            id="allow_patterns"
-                            label="允许下载的文件模式（allow_patterns）"
-                            value={formData.allow_patterns}
-                            onChange={(value) => {
-                              setValidationError(null);
-                              setFormData({ ...formData, allow_patterns: value });
-                            }}
-                            validate={validatePattern}
-                            placeholder="输入 pattern 后按回车添加，如: *.bin"
-                            description="只下载匹配的文件。支持通配符如 *.bin, models/**"
-                          />
-                          <TagInput
-                            id="ignore_patterns"
-                            label="忽略的文件模式（ignore_patterns）"
-                            value={formData.ignore_patterns}
-                            onChange={(value) => {
-                              setValidationError(null);
-                              setFormData({ ...formData, ignore_patterns: value });
-                            }}
-                            validate={validatePattern}
-                            placeholder="输入 pattern 后按回车添加，如: *.safetensors"
-                            description="忽略匹配的文件。优先级低于 allow_patterns"
-                          />
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
-                    <AnimatePresence>
-                      {validationError && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                        >
-                          <Alert variant="destructive">
-                            <AlertDescription>{validationError}</AlertDescription>
-                          </Alert>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-
                     <AnimatePresence>
                       {previewTask.isError && (
                         <motion.div
@@ -458,7 +367,7 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
                         </motion.div>
                         <h3 className="text-lg font-semibold text-foreground mb-2">所有文件已缓存</h3>
                         <p className="text-sm text-muted-foreground text-center max-w-md mb-4">
-                          仓库 <span className="font-medium text-foreground">{previewData.repo_id}</span> 的所有 {previewData.required_file_count} 个请求文件已在本地缓存中，无需重复下载。
+                          仓库 <span className="font-medium text-foreground">{previewData.repo_id}</span> 的所有 {previewData.total_file_count} 个文件已在本地缓存中，无需重复下载。
                         </p>
                         {previewData.cached_commit_hash && (
                           <code className="font-mono text-xs bg-muted/60 px-3 py-1.5 rounded text-muted-foreground">
@@ -491,12 +400,12 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
                                   </h3>
                                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-emerald-700 dark:text-emerald-300">
                                     <span className="flex items-center gap-1.5">
-                                      <span className="font-medium">{previewData.required_file_count}</span>
-                                      <span className="text-emerald-600/70 dark:text-emerald-400/70">个文件待下载</span>
+                                      <span className="font-medium">{selectedStats.count}</span>
+                                      <span className="text-emerald-600/70 dark:text-emerald-400/70">个文件已选</span>
                                     </span>
                                     <span className="text-emerald-400 dark:text-emerald-500">·</span>
                                     <span className="flex items-center gap-1.5">
-                                      <span className="font-medium">{formatBytes(previewData.required_storage)}</span>
+                                      <span className="font-medium">{formatBytes(selectedStats.size)}</span>
                                       <span className="text-emerald-600/70 dark:text-emerald-400/70">所需空间</span>
                                     </span>
                                   </div>
@@ -528,14 +437,14 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
                               <div className="group relative p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                                 <div className="text-xs text-muted-foreground mb-1">文件数</div>
                                 <p className="text-sm">
-                                  <span className="font-medium text-primary">{previewData.required_file_count}</span>
+                                  <span className="font-medium text-primary">{selectedStats.count}</span>
                                   <span className="text-muted-foreground"> / {previewData.total_file_count}</span>
                                 </p>
                               </div>
                               <div className="group relative p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                                 <div className="text-xs text-muted-foreground mb-1">大小</div>
                                 <p className="text-sm">
-                                  <span className="font-medium text-primary">{formatBytes(previewData.required_storage)}</span>
+                                  <span className="font-medium text-primary">{formatBytes(selectedStats.size)}</span>
                                   <span className="text-muted-foreground"> / {formatBytes(previewData.total_storage)}</span>
                                 </p>
                               </div>
@@ -565,9 +474,11 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
                           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
                             文件列表
                           </div>
-                          <PreviewFileTree
+                          <SelectableFileTree
                             items={previewData.items}
                             repoId={previewData.repo_id}
+                            selectedPaths={selectedFiles}
+                            onSelectionChange={setSelectedFiles}
                           />
                         </div>
                       </ScrollArea>
@@ -676,7 +587,7 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
               </Button>
               <Button
                 onClick={handleCreate}
-                disabled={createTask.isPending || step === "creating" || previewData?.all_required_cached}
+                disabled={createTask.isPending || step === "creating" || previewData?.all_required_cached || selectedFiles.size === 0}
                 className="gap-1"
               >
                 {createTask.isPending || step === "creating" ? (

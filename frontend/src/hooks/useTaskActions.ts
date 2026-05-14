@@ -38,6 +38,7 @@ export interface TaskPreviewItem {
 
 interface CreateTaskRequest {
   cache_key: string
+  selected_files?: string[]
 }
 
 interface CreateTaskResponse extends ApiResponse<TaskResponse> {}
@@ -70,9 +71,16 @@ export function useTaskActions() {
    * 使用预览接口返回的 cache_key 创建任务
    */
   const createTask = useMutation({
-    mutationFn: async (cacheKey: string): Promise<TaskResponse> => {
+    mutationFn: async ({
+      cacheKey,
+      selectedFiles,
+    }: {
+      cacheKey: string
+      selectedFiles: string[]
+    }): Promise<TaskResponse> => {
       const response = await api.post<CreateTaskResponse>('/task', {
         cache_key: cacheKey,
+        selected_files: selectedFiles,
       } as CreateTaskRequest)
       return response.data
     },

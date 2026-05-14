@@ -122,6 +122,7 @@ async def create_repo_download_task(
     return await service.create_task_from_cache(
         cache_key=request.cache_key,
         user=current_user,
+        selected_files=request.selected_files,
     )
 
 

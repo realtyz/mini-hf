@@ -267,9 +267,21 @@ class TaskPreviewService:
         self,
         cache_key: str,
         user: User,
+        selected_files: list[str] | None = None,
     ) -> TaskDetailResponse:
         """Create a download task from cached preview data."""
         task_data = await self._validate_and_decode_preview_data(cache_key)
+
+        if selected_files is not None:
+            selected_set = set(selected_files)
+            for item in task_data.items:
+                item.required = item.path in selected_set
+            task_data.required_file_count = sum(
+                1 for item in task_data.items if item.required
+            )
+            task_data.required_storage = sum(
+                item.size for item in task_data.items if item.required
+            )
 
         task = await self._task_service.add_new_task(
             source=task_data.source,

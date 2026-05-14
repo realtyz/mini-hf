@@ -63,6 +63,7 @@ class CreateTaskFromCacheRequest(BaseModel):
     """
 
     cache_key: str
+    selected_files: list[str] | None = None
 
 
 class RepoSnapshotResponse(BaseModel):
