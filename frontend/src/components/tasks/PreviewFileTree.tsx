@@ -90,7 +90,7 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
             sortedChildren.map((item, index) => (
               <div
                 key={item.path}
-                className="flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/30 transition-colors group min-w-0 overflow-hidden"
+                className={`flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/30 transition-colors group min-w-0 overflow-hidden ${item.is_cached === true ? "opacity-75" : ""}`}
                 style={{
                   animationDelay: `${index * 20}ms`
                 }}
@@ -132,7 +132,15 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
                       </span>
                     </>
                   )}
-                  {item.type === "file" && item.required && (
+                  {item.type === "file" && item.is_cached === true && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] h-5 px-1.5 shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                    >
+                      Cached
+                    </Badge>
+                  )}
+                  {item.type === "file" && item.required && item.is_cached !== true && (
                     <Badge
                       variant="outline"
                       className="text-[10px] h-5 px-1.5 shrink-0 bg-primary/5 border-primary/30 text-primary hover:bg-primary/10 transition-colors"

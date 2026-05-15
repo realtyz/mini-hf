@@ -24,6 +24,7 @@ class RepoFileItem(BaseModel):
     size: int
     type: Literal["file", "directory"]
     required: bool
+    is_cached: bool | None = None
 
 
 # Backward-compatible alias

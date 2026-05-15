@@ -266,7 +266,7 @@ class HuggingfaceService:
         repo_id: str,
         repo_type: str = "model",
         revision: str = "main",
-    ) -> tuple[bool, str, bool]:
+    ) -> tuple[bool, str, bool, str | None]:
         """Validate repository access and check if token is required.
 
         This method checks if a repository is gated or private, and validates
@@ -278,14 +278,15 @@ class HuggingfaceService:
             revision: Git revision (branch, tag, or commit hash).
 
         Returns:
-            Tuple of (is_valid, error_message, requires_token):
+            Tuple of (is_valid, error_message, requires_token, commit_hash):
             - is_valid: True if access is valid, False otherwise
             - error_message: Error message if access is invalid, None otherwise
             - requires_token: True if repository requires token (gated/private)
+            - commit_hash: The upstream commit SHA if successful, None otherwise
 
         Example:
             >>> service = HuggingfaceService(token="hf_xxx")
-            >>> is_valid, error, needs_token = await service.validate_repo_access(
+            >>> is_valid, error, needs_token, sha = await service.validate_repo_access(
             ...     "meta-llama/Llama-2-7b-hf", "model", "main"
             ... )
             >>> if not is_valid:
@@ -315,6 +316,7 @@ class HuggingfaceService:
                     f"Repository '{repo_id}' is {'private' if is_private else 'gated'}. "
                     "Please provide a valid access_token.",
                     requires_token,
+                    None,
                 )
 
             # If token is provided, verify it by fetching file metadata
@@ -358,21 +360,23 @@ class HuggingfaceService:
                                 f"Access token does not have permission to access '{repo_id}'. "
                                 "Please ensure your token has the required permissions.",
                                 requires_token,
+                                None,
                             )
                         logger.warning(f"Token verification warning for {repo_id}: {e}")
                         # Non-auth errors (like file not found) shouldn't block access
                         pass
 
-            return True, "", requires_token
+            return True, "", requires_token, repo_info.sha
 
         except GatedRepoError:
             return (
                 False,
                 f"Repository '{repo_id}' is gated. Please provide a valid access_token.",
                 True,
+                None,
             )
         except RepositoryNotFoundError:
-            return False, f"Repository '{repo_id}' not found.", False
+            return False, f"Repository '{repo_id}' not found.", False, None
         except Exception as e:
             error_msg = str(e)
             if "401" in error_msg or "403" in error_msg:
@@ -381,6 +385,7 @@ class HuggingfaceService:
                     f"Access denied to repository '{repo_id}'. "
                     "Please check your access_token has the required permissions.",
                     True,
+                    None,
                 )
             # Re-raise other exceptions
             raise

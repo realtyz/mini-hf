@@ -9,9 +9,11 @@ from typing import Any
 from cache.keys import CacheKeys
 from cache.services.cache import CacheService
 from database.db_models import User
+from database.db_repositories import HfRepoSnapshotRepository, HfRepoTreeRepository
 from loguru import logger
 from services.config import ConfigService
 from services.huggingface import HuggingfaceService
+from services.huggingface.utils import filter_repo_objects
 from services.task import TaskService
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -29,10 +31,13 @@ from mgmt_server.core.exceptions import (
     ResourceGoneError,
     ValidationError,
 )
-from mgmt_server.utils.token_utils import decode_access_token
+from mgmt_server.utils.token_utils import decode_access_token, encode_access_token
 from mgmt_server.services.task_lifecycle_service import TaskLifecycleService
 from mgmt_server.services.task_preview_executor import (
+    PreviewResult,
     PreviewTaskConfig,
+    _annotate_cached_status,
+    _build_result_payloads,
     execute_preview_task,
 )
 from mgmt_server.services.task_response_builder import build_task_detail_response
@@ -89,11 +94,12 @@ class TaskPreviewService:
         allow_patterns: list[str] | None,
         ignore_patterns: list[str] | None,
         hf_endpoint: str | None,
-    ) -> tuple[AsyncPreviewTaskResponse, TaskPreviewService.BackgroundCallback]:
+    ) -> tuple[AsyncPreviewTaskResponse, TaskPreviewService.BackgroundCallback | None]:
         """Validate and prepare an async preview task.
 
         Returns (response, background_callable). The caller is responsible
         for scheduling the background callable (e.g. via FastAPI BackgroundTasks).
+        background_callable may be None if the result was served from local cache.
         """
         if source != "huggingface":
             raise ValidationError(
@@ -129,13 +135,153 @@ class TaskPreviewService:
         actual_endpoint = await self._get_hf_endpoint(hf_endpoint)
 
         operator = HuggingfaceService(token=access_token, endpoint=actual_endpoint)
-        is_valid, error_message, _requires_token = await operator.validate_repo_access(
-            repo_id=repo_id,
-            repo_type=repo_type,
-            revision=revision,
-        )
+        is_valid, error_message, _requires_token, upstream_sha = \
+            await operator.validate_repo_access(
+                repo_id=repo_id,
+                repo_type=repo_type,
+                revision=revision,
+            )
         if not is_valid:
             raise ValidationError(error_message)
+
+        # Try local snapshot fast path
+        if upstream_sha:
+            snapshot_repo = HfRepoSnapshotRepository(self._session)
+            local_active = await snapshot_repo.get_active_snapshot(
+                repo_id=repo_id, repo_type=repo_type, revision=revision
+            )
+
+            if local_active and local_active.commit_hash == upstream_sha:
+                tree_repo = HfRepoTreeRepository(self._session)
+                tree_items = await tree_repo.get_file_tree(local_active.commit_hash)
+
+                # Guard: fall back to HF API if tree is empty
+                if not tree_items:
+                    logger.debug(
+                        "[PreviewTask] Local snapshot {} has empty tree_items, "
+                        "falling back to HF API",
+                        local_active.commit_hash,
+                    )
+                else:
+                    # Build preview items from local DB
+                    preview_items: list[dict[str, Any]] = []
+                    required_file_paths: set[str] = set()
+
+                    for item in tree_items:
+                        entry = {
+                            "path": item.path,
+                            "size": item.size,
+                            "type": item.type.value,
+                            "required": item.type.value == "file",
+                        }
+                        preview_items.append(entry)
+                        if item.type.value == "file":
+                            required_file_paths.add(item.path)
+
+                    # If not full_download, re-filter required
+                    if not full_download:
+                        file_items = [
+                            item for item in tree_items
+                            if item.type.value == "file"
+                        ]
+                        filtered = list(filter_repo_objects(
+                            file_items,
+                            allow_patterns=allow_patterns,
+                            ignore_patterns=ignore_patterns,
+                            key=lambda f: f.path,
+                        ))
+                        required_paths = {f.path for f in filtered}
+                        for entry in preview_items:
+                            if entry["type"] == "file":
+                                entry["required"] = entry["path"] in required_paths
+                    else:
+                        required_paths = required_file_paths
+
+                    # Annotate cache status
+                    cached_paths = {
+                        item.path for item in tree_items
+                        if item.type.value == "file" and item.is_cached is True
+                    }
+                    _annotate_cached_status(preview_items, cached_paths)
+
+                    # Compute stats
+                    file_items_all = [
+                        item for item in tree_items
+                        if item.type.value == "file"
+                    ]
+                    total_storage = sum(item.size for item in file_items_all)
+                    total_file_count = len(file_items_all)
+                    required_storage = sum(
+                        item.size for item in file_items_all
+                        if item.path in required_paths
+                    )
+                    required_file_count = len(required_paths)
+
+                    # Check all cached
+                    all_required_cached = all(
+                        item.is_cached is True for item in file_items_all
+                        if item.path in required_paths
+                    )
+
+                    # Build result via shared helpers
+                    cache_key = secrets.token_urlsafe(16)
+                    encoded_token = encode_access_token(access_token)
+
+                    result = PreviewResult(
+                        source=source,
+                        repo_id=repo_id,
+                        repo_type=repo_type,
+                        revision=revision,
+                        commit_hash=upstream_sha,
+                        hf_endpoint=hf_endpoint,
+                        access_token=access_token,
+                        preview_items=preview_items,
+                        all_required_cached=all_required_cached,
+                        cached_commit_hash=local_active.commit_hash
+                        if all_required_cached else None,
+                        total_storage=total_storage,
+                        total_file_count=total_file_count,
+                        required_storage=required_storage,
+                        required_file_count=required_file_count,
+                    )
+
+                    cache_data, task_result = _build_result_payloads(
+                        result, cache_key, encoded_token
+                    )
+
+                    await self._cache.set(
+                        CacheKeys.preview_result.key(cache_key), cache_data,
+                        ttl=CacheKeys.preview_result.ttl,
+                    )
+
+                    task_id = secrets.token_urlsafe(16)
+
+                    await self._save_preview_state(task_id, {
+                        "status": "completed",
+                        "repo_id": repo_id,
+                        "repo_type": repo_type,
+                        "revision": revision,
+                        "progress_message": "Preview completed (from local snapshot)",
+                        "progress_percent": 100.0,
+                        "result": task_result,
+                    })
+
+                    logger.info(
+                        "[PreviewTask {}] Completed from local snapshot (commit={}), "
+                        "{} files, {} required",
+                        task_id, upstream_sha[:12],
+                        total_file_count, required_file_count,
+                    )
+
+                    return AsyncPreviewTaskResponse(
+                        code=200,
+                        message="Preview completed (from local snapshot)",
+                        data=AsyncPreviewTaskData(
+                            task_id=task_id,
+                            status="completed",
+                            message="Preview completed from local snapshot",
+                        ),
+                    ), None  # Fast path — no background task
 
         task_id = secrets.token_urlsafe(16)
         logger.info(
@@ -174,6 +320,7 @@ class TaskPreviewService:
                 ignore_patterns=ignore_patterns,
                 actual_endpoint=actual_endpoint,
                 hf_endpoint=hf_endpoint,
+                upstream_sha=upstream_sha,
             )
             await execute_preview_task(config, cache=cache)
 

@@ -6,6 +6,7 @@ export interface TreeNode {
   type: "file" | "directory";
   size: number;
   required: boolean;
+  is_cached: boolean | null;
   children?: Map<string, TreeNode>;
 }
 
@@ -28,6 +29,7 @@ export function buildTree(items: PreviewItem[]): Map<string, TreeNode> {
           type: item.type,
           size: item.size,
           required: item.required,
+          is_cached: item.is_cached,
         });
       } else {
         if (!current.has(name)) {
@@ -37,6 +39,7 @@ export function buildTree(items: PreviewItem[]): Map<string, TreeNode> {
             type: "directory",
             size: 0,
             required: false,
+            is_cached: null,
             children: new Map<string, TreeNode>(),
           });
         }

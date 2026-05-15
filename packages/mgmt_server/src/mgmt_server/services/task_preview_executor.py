@@ -37,6 +37,7 @@ class PreviewTaskConfig:
     ignore_patterns: list[str] | None
     actual_endpoint: str
     hf_endpoint: str | None
+    upstream_sha: str | None = None
 
 
 @dataclass
@@ -139,13 +140,25 @@ def build_preview_items(
     return preview_items
 
 
+def _annotate_cached_status(
+    preview_items: list[dict[str, Any]],
+    cached_paths: set[str],
+) -> None:
+    """Set is_cached on file-type items in-place."""
+    for item in preview_items:
+        if item["type"] == "file":
+            item["is_cached"] = item["path"] in cached_paths
+        else:
+            item["is_cached"] = None
+
+
 async def check_cache_status_with_fresh_session(
     repo_id: str,
     repo_type: str,
     revision: str,
     required_file_paths: set[str],
     task_logger: Any,
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, set[str]]:
     """Check cache status using a fresh session (for background tasks).
 
     Standalone function — does not depend on any request-scoped objects.
@@ -155,17 +168,17 @@ async def check_cache_status_with_fresh_session(
     try:
         async with new_session() as session:
             repo_service = RepoService(session, task_service=TaskService(session))
-            all_cached, commit_hash = await repo_service.check_cached_status(
+            all_cached, commit_hash, cached_paths = await repo_service.check_cached_status(
                 repo_id=repo_id,
                 repo_type=repo_type,
                 revision=revision,
                 required_file_paths=required_file_paths,
             )
             await session.commit()
-            return all_cached, commit_hash
+            return all_cached, commit_hash, cached_paths
     except (ConnectionError, OSError, TimeoutError, DatabaseError) as e:
         task_logger.warning("Failed to check cache status: {}", e)
-        return False, None
+        return False, None, set()
 
 
 ProgressCallback = Callable[..., Any]
@@ -178,14 +191,27 @@ async def _fetch_repo_tree(
     revision: str,
     update_state: ProgressCallback,
     task_logger: Any,
+    upstream_sha: str | None = None,
 ) -> tuple[list[RepoFile], list[RepoFolder], str]:
-    """Fetch repo info and file tree from HuggingFace."""
+    """Fetch repo info and file tree from HuggingFace.
+
+    If upstream_sha is provided (from validate_repo_access), the get_repo_info
+    call is skipped.
+    """
     await update_state("fetching", "Connecting to HuggingFace Hub...", 5.0)
     await update_state("fetching", "Fetching repository file tree...", 10.0)
 
-    repo_info = await hf_service.get_repo_info(
-        repo_id=repo_id, repo_type=repo_type, revision=revision
-    )
+    if upstream_sha is not None:
+        commit_hash = upstream_sha
+        task_logger.debug("Using upstream_sha from validate_repo_access, skipping get_repo_info")
+    else:
+        repo_info = await hf_service.get_repo_info(
+            repo_id=repo_id, repo_type=repo_type, revision=revision
+        )
+        if repo_info.sha is None:
+            raise ValidationError("Repository info missing commit hash")
+        commit_hash = repo_info.sha
+
     items = await hf_service.get_tree(
         repo_id=repo_id,
         repo_type=repo_type,
@@ -195,9 +221,7 @@ async def _fetch_repo_tree(
 
     files = [item for item in items if isinstance(item, RepoFile)]
     directories = [item for item in items if isinstance(item, RepoFolder)]
-    if repo_info.sha is None:
-        raise ValidationError("Repository info missing commit hash")
-    return files, directories, repo_info.sha
+    return files, directories, commit_hash
 
 
 async def _process_files(
@@ -237,16 +261,15 @@ async def _process_files(
     )
 
 
-async def _finalize_result(
-    cache: CacheService,
+def _build_result_payloads(
     result: PreviewResult,
-    update_state: ProgressCallback,
-    task_logger: Any,
-) -> None:
-    """Store preview result in cache and update task state."""
-    cache_key = secrets.token_urlsafe(16)
-    encoded_token = encode_access_token(result.access_token)
+    cache_key: str,
+    encoded_token: str,
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Build (cache_data, task_result) dicts from PreviewResult.
 
+    Pure function — no side effects.
+    """
     cache_data = {
         "source": result.source,
         "repo_id": result.repo_id,
@@ -259,11 +282,10 @@ async def _finalize_result(
         "total_file_count": result.total_file_count,
         "required_storage": result.required_storage,
         "required_file_count": result.required_file_count,
-        "items": result.preview_items,
+        "items": list(result.preview_items),
         "all_required_cached": result.all_required_cached,
         "cached_commit_hash": result.cached_commit_hash,
     }
-    await cache.set(CacheKeys.preview_result.key(cache_key), cache_data, ttl=CacheKeys.preview_result.ttl)
 
     task_result = {
         "repo_id": result.repo_id,
@@ -275,11 +297,28 @@ async def _finalize_result(
         "total_file_count": result.total_file_count,
         "required_storage": result.required_storage,
         "required_file_count": result.required_file_count,
-        "items": result.preview_items,
+        "items": list(result.preview_items),
         "cache_key": cache_key,
         "all_required_cached": result.all_required_cached,
         "cached_commit_hash": result.cached_commit_hash,
     }
+
+    return cache_data, task_result
+
+
+async def _finalize_result(
+    cache: CacheService,
+    result: PreviewResult,
+    update_state: ProgressCallback,
+    task_logger: Any,
+) -> None:
+    """Store preview result in cache and update task state."""
+    cache_key = secrets.token_urlsafe(16)
+    encoded_token = encode_access_token(result.access_token)
+
+    cache_data, task_result = _build_result_payloads(result, cache_key, encoded_token)
+
+    await cache.set(CacheKeys.preview_result.key(cache_key), cache_data, ttl=CacheKeys.preview_result.ttl)
 
     await update_state(
         "completed", "Preview completed successfully", 100.0, result=task_result
@@ -345,6 +384,7 @@ async def execute_preview_task(
             config.revision,
             _update_state,
             task_logger,
+            upstream_sha=config.upstream_sha,
         )
 
         processed = await _process_files(
@@ -361,6 +401,7 @@ async def execute_preview_task(
         (
             all_required_cached,
             cached_commit_hash,
+            cached_paths,
         ) = await check_cache_status_with_fresh_session(
             config.repo_id,
             config.repo_type,
@@ -368,6 +409,8 @@ async def execute_preview_task(
             processed.required_file_paths,
             task_logger,
         )
+
+        _annotate_cached_status(processed.preview_items, cached_paths)
 
         if all_required_cached:
             task_logger.info(

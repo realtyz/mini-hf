@@ -98,7 +98,8 @@ async def preview_task(
         ignore_patterns=request.ignore_patterns,
         hf_endpoint=request.hf_endpoint,
     )
-    background_tasks.add_task(bg_callable)
+    if bg_callable is not None:
+        background_tasks.add_task(bg_callable)
     return response
 
 

@@ -572,6 +572,7 @@ export interface PreviewItem {
   size: number
   type: 'file' | 'directory'
   required: boolean
+  is_cached: boolean | null
 }
 
 export interface TaskPreviewData {

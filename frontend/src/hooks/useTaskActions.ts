@@ -29,13 +29,6 @@ export interface TaskPreviewRequest {
   ignore_patterns?: string[]
 }
 
-export interface TaskPreviewItem {
-  path: string
-  size: number
-  type: 'file' | 'directory'
-  required: boolean
-}
-
 interface CreateTaskRequest {
   cache_key: string
   selected_files?: string[]
