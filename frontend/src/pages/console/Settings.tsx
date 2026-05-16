@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   Bell,
   Shield,
@@ -34,7 +34,6 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -67,42 +66,37 @@ import { motion, AnimatePresence } from 'framer-motion'
 
 const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const springConfig = { type: 'spring' as const, stiffness: 300, damping: 30 }
-const smoothTransition = { duration: prefersReducedMotion ? 0 : 0.35, ease: [0.16, 1, 0.3, 1] as const }
+const smoothTransition = { duration: prefersReducedMotion ? 0 : 0.2, ease: [0.16, 1, 0.3, 1] as const }
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: prefersReducedMotion ? 0 : 0.06,
-      delayChildren: prefersReducedMotion ? 0 : 0.08,
+      staggerChildren: prefersReducedMotion ? 0 : 0.04,
+      delayChildren: prefersReducedMotion ? 0 : 0.04,
     },
   },
 }
 
 const itemVariants = {
-  hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 16 },
+  hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 8 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: 'spring' as const, stiffness: 120, damping: 22 },
+    transition: { duration: prefersReducedMotion ? 0 : 0.25, ease: [0.16, 1, 0.3, 1] as const },
   },
 }
 
 const panelVariants = {
-  hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 12, scale: prefersReducedMotion ? 1 : 0.995 },
+  hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: prefersReducedMotion ? 0 : 0.35, ease: [0.16, 1, 0.3, 1] as const },
+    transition: { duration: prefersReducedMotion ? 0 : 0.12 },
   },
   exit: {
     opacity: 0,
-    y: prefersReducedMotion ? 0 : -8,
-    scale: prefersReducedMotion ? 1 : 0.995,
-    transition: { duration: prefersReducedMotion ? 0 : 0.2 },
+    transition: { duration: prefersReducedMotion ? 0 : 0.08 },
   },
 }
 
@@ -128,33 +122,12 @@ function SpotlightCard({
   children: React.ReactNode
   className?: string
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [position, setPosition] = useState({ x: 0, y: 0 })
-  const [isHovered, setIsHovered] = useState(false)
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current) return
-    const rect = ref.current.getBoundingClientRect()
-    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top })
-  }
-
   return (
     <div
-      ref={ref}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        'relative overflow-hidden rounded-2xl border border-border/60 bg-card/80 shadow-sm',
-        'transition-shadow duration-300',
-        isHovered && 'shadow-md',
+        'rounded-2xl border border-border/60 bg-card shadow-sm',
         className
       )}
-      style={{
-        background: isHovered
-          ? `radial-gradient(600px circle at ${position.x}px ${position.y}px, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.06), transparent 40%)`
-          : undefined,
-      }}
     >
       {children}
     </div>
@@ -205,16 +178,14 @@ function FormField({
       </Label>
       <div className="relative">
         {icon && (
-          <motion.div
+          <div
             className={cn(
-              'absolute left-3 top-1/2 -translate-y-1/2 transition-colors pointer-events-none',
+              'absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-150 pointer-events-none',
               isFocused ? 'text-primary' : 'text-muted-foreground'
             )}
-            animate={{ scale: isFocused ? 1.08 : 1 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           >
             {icon}
-          </motion.div>
+          </div>
         )}
         <Input
           id={id}
@@ -288,16 +259,12 @@ function SettingsSection({
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...smoothTransition, delay }}
     >
-      <SpotlightCard className={cn('backdrop-blur-sm', className)}>
+      <SpotlightCard className={className}>
         <CardHeader className="pt-6 pb-4 bg-linear-to-b from-muted/40 to-transparent">
           <div className="flex items-start gap-4">
-            <motion.div
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary shadow-sm"
-              whileHover={{ scale: 1.05, rotate: 3 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-            >
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               {icon}
-            </motion.div>
+            </div>
             <div className="flex-1 space-y-1">
               <CardTitle className="text-lg tracking-tight">{title}</CardTitle>
               <CardDescription className="text-sm">{description}</CardDescription>
@@ -350,28 +317,23 @@ function ToggleItem({
   icon,
 }: ToggleItemProps) {
   return (
-    <motion.div
+    <div
       className={cn(
-        'flex items-start justify-between gap-4 rounded-xl border p-4 transition-all duration-200',
-        'hover:border-primary/30 hover:shadow-sm',
+        'flex items-start justify-between gap-4 rounded-xl border p-4 transition-colors duration-150',
+        'hover:border-primary/30',
         checked && 'border-primary/20 bg-primary/3'
       )}
-      whileHover={{ scale: prefersReducedMotion ? 1 : 1.003 }}
-      whileTap={{ scale: prefersReducedMotion ? 1 : 0.997 }}
-      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
     >
       <div className="flex items-start gap-3">
         {icon && (
-          <motion.div
+          <div
             className={cn(
-              'mt-0.5 transition-colors duration-200',
+              'mt-0.5 transition-colors duration-150',
               checked ? 'text-primary' : 'text-muted-foreground'
             )}
-            animate={{ scale: checked ? 1.1 : 1 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
           >
             {icon}
-          </motion.div>
+          </div>
         )}
         <div className="space-y-0.5">
           <Label htmlFor={id} className="text-sm font-medium cursor-pointer">
@@ -381,7 +343,7 @@ function ToggleItem({
         </div>
       </div>
       <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} />
-    </motion.div>
+    </div>
   )
 }
 
@@ -958,81 +920,59 @@ export function Settings() {
             <p className="text-[13px] text-muted-foreground mt-0.5">管理系统配置和偏好设置</p>
           </div>
         </div>
-        {isSmtpConfigured && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 300, damping: 20 }}
-          >
-            <Badge variant="success" className="shadow-sm">
-              <CheckCircle2 className="mr-1 size-3" />
-              SMTP 已配置
-            </Badge>
-          </motion.div>
-        )}
       </motion.div>
 
       {/* 两栏布局：左侧导航 + 右侧内容 */}
       <motion.div variants={itemVariants} className="grid gap-6 lg:grid-cols-[260px_1fr] lg:items-start">
         {/* 左侧导航 - 桌面端显示 */}
-        <nav className="hidden flex-col gap-1.5 lg:flex relative">
-          {tabs.map((tab, index) => {
+        <nav className="hidden flex-col gap-1.5 lg:flex relative" role="tablist" aria-label="设置分类">
+          {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
             return (
-              <motion.button
+              <button
                 key={tab.id}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   'relative flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition-colors',
                   isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
                 )}
-                initial={{ opacity: 0, x: -12 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05, duration: 0.3 }}
               >
                 {isActive && (
-                  <motion.div
-                    layoutId="activeTabBg"
-                    className="absolute inset-0 rounded-xl bg-primary/10 border border-primary/20 shadow-sm"
-                    initial={false}
-                    transition={springConfig}
-                  />
+                  <div className="absolute inset-0 rounded-xl bg-primary/10 border border-primary/20" />
                 )}
                 <Icon className="size-4 relative z-10" />
                 <span className="relative z-10">{tab.label}</span>
-              </motion.button>
+              </button>
             )
           })}
         </nav>
 
         {/* 移动端 Tab 导航 */}
-        <div className="relative flex gap-1 overflow-x-auto pb-2 lg:hidden -mx-2 px-2 scrollbar-hide">
+        <div className="relative flex gap-1 overflow-x-auto pb-2 lg:hidden -mx-2 px-2 scrollbar-hide" role="tablist" aria-label="设置分类">
           <div className="flex gap-1 p-1 bg-muted/60 rounded-xl w-full">
             {tabs.map((tab) => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
               return (
-                <motion.button
+                <button
                   key={tab.id}
+                  role="tab"
+                  aria-selected={isActive}
                   onClick={() => setActiveTab(tab.id)}
                   className={cn(
                     'relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition-colors whitespace-nowrap',
                     isActive ? 'text-primary-foreground' : 'text-muted-foreground'
                   )}
-                  whileTap={{ scale: 0.97 }}
                 >
                   {isActive && (
-                    <motion.div
-                      layoutId="activeMobileTab"
-                      className="absolute inset-0 bg-primary rounded-lg shadow-sm"
-                      initial={false}
-                      transition={springConfig}
-                    />
+                    <div className="absolute inset-0 bg-primary rounded-lg" />
                   )}
                   <Icon className="size-3.5 relative z-10" />
                   <span className="relative z-10">{tab.label}</span>
-                </motion.button>
+                </button>
               )
             })}
           </div>
@@ -1171,8 +1111,9 @@ export function Settings() {
                             />
                             <button
                               type="button"
-                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-muted/50"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-muted/50"
                               onClick={() => setShowPassword(!showPassword)}
+                              aria-label={showPassword ? '隐藏密码' : '显示密码'}
                             >
                               {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                             </button>
@@ -1472,9 +1413,12 @@ export function Settings() {
                           variant={announcementType === 'info' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setAnnouncementType('info')}
-                          className="flex-1"
+                          className={cn(
+                            'flex-1 gap-2',
+                            announcementType === 'info' && 'bg-sky-600 hover:bg-sky-700'
+                          )}
                         >
-                          <Info className="size-4 mr-2" />
+                          <Info className="size-4" />
                           普通
                         </Button>
                         <Button
@@ -1482,9 +1426,12 @@ export function Settings() {
                           variant={announcementType === 'warning' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setAnnouncementType('warning')}
-                          className="flex-1"
+                          className={cn(
+                            'flex-1 gap-2',
+                            announcementType === 'warning' && 'bg-amber-600 hover:bg-amber-700'
+                          )}
                         >
-                          <AlertTriangle className="size-4 mr-2" />
+                          <AlertTriangle className="size-4" />
                           重要
                         </Button>
                         <Button
@@ -1492,9 +1439,12 @@ export function Settings() {
                           variant={announcementType === 'urgent' ? 'default' : 'outline'}
                           size="sm"
                           onClick={() => setAnnouncementType('urgent')}
-                          className="flex-1"
+                          className={cn(
+                            'flex-1 gap-2',
+                            announcementType === 'urgent' && 'bg-red-600 hover:bg-red-700'
+                          )}
                         >
-                          <AlertCircle className="size-4 mr-2" />
+                          <AlertCircle className="size-4" />
                           紧急
                         </Button>
                       </div>
