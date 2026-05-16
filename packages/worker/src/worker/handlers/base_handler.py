@@ -193,11 +193,12 @@ class BaseDownloadHandler(
         )
         if self.ctx.access_token:
             logger.info("  -> Using provided access token")
-        logger.info(
-            "  -> Files to download: {}/{}",
-            len(self.ctx.required_file_paths),
-            len(self._task.repo_items or []),
-        )
+        required_count = len(self.ctx.required_file_paths)
+        total_count = len(self._task.repo_items or [])
+        if required_count == total_count:
+            logger.info("  -> Files to download: {}", required_count)
+        else:
+            logger.info("  -> Files to download: {}/{}", required_count, total_count)
 
         try:
             await self.prepare_profile()

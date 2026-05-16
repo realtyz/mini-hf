@@ -443,7 +443,11 @@ class TaskPreviewService:
             required_file_count=task_data.required_file_count,
             total_storage=task_data.total_storage,
             required_storage=task_data.required_storage,
-            repo_items=[item.model_dump() for item in task_data.items],
+            repo_items=[
+                item.model_dump()
+                for item in task_data.items
+                if item.type == "file" and item.required
+            ],
         )
 
         task = await self._lifecycle_service.auto_approve_and_notify(task, user)

@@ -353,7 +353,11 @@ class TaskLifecycleService:
                 required_file_count=original_task.required_file_count,
                 total_storage=original_task.total_storage,
                 required_storage=original_task.required_storage,
-                repo_items=original_task.repo_items,
+                repo_items=[
+                    item
+                    for item in (original_task.repo_items or [])
+                    if item.get("type") == "file" and item.get("required", True)
+                ],
             )
 
             approved_task = await self._task_service.review_task(

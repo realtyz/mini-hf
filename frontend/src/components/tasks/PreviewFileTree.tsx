@@ -16,6 +16,8 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
   // 从 repoId 中提取 repo_name（最后一个 / 后的部分）
   const repoName = repoId.split('/').pop() || repoId;
 
+  const allRequired = items.every(i => i.type !== "file" || i.required);
+
   const tree = useMemo(() => buildTree(items), [items]);
 
   const currentChildren = useMemo(() => {
@@ -140,7 +142,7 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
                       Cached
                     </Badge>
                   )}
-                  {item.type === "file" && item.required && item.is_cached !== true && (
+                  {item.type === "file" && item.required && !allRequired && item.is_cached !== true && (
                     <Badge
                       variant="outline"
                       className="text-[10px] h-5 px-1.5 shrink-0 bg-primary/5 border-primary/30 text-primary hover:bg-primary/10 transition-colors"
