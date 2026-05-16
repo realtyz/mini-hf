@@ -6,6 +6,8 @@ dist
 
 .VSCodeCounter
 
+docs/**
+
 # Git worktrees
 .worktrees/
 .code_review/results/**

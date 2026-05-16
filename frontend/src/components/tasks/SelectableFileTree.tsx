@@ -32,6 +32,29 @@ export function SelectableFileTree({
 
   const tree = useMemo(() => buildTree(items), [items]);
 
+  // 已缓存文件路径集合 — 这些文件始终视为选中且不可变更
+  const cachedPaths = useMemo(
+    () =>
+      new Set(
+        items
+          .filter((i) => i.type === "file" && i.is_cached === true)
+          .map((i) => i.path)
+      ),
+    [items]
+  );
+
+  // 非缓存文件数量（全局）
+  const nonCachedFileCount = useMemo(
+    () => items.filter((i) => i.type === "file" && i.is_cached !== true).length,
+    [items]
+  );
+
+  // 有效选中 = 用户选择 + 已缓存文件（始终选中）
+  const effectiveSelected = useMemo(
+    () => new Set([...selectedPaths, ...cachedPaths]),
+    [selectedPaths, cachedPaths]
+  );
+
   const currentChildren = useMemo(() => {
     const children = getChildrenAtPath(tree, currentPath);
     return children ? Array.from(children.values()) : [];
@@ -64,8 +87,9 @@ export function SelectableFileTree({
     });
   }, [currentChildren]);
 
-  // Toggle a single file
+  // Toggle a single file — 已缓存文件不可操作
   const toggleFile = (filePath: string) => {
+    if (cachedPaths.has(filePath)) return;
     const next = new Set(selectedPaths);
     if (next.has(filePath)) {
       next.delete(filePath);
@@ -75,25 +99,27 @@ export function SelectableFileTree({
     onSelectionChange(next);
   };
 
-  // Toggle a directory (select/deselect all files under it)
+  // Toggle a directory — 仅切换非缓存文件
   const toggleDirectory = (dirPath: string) => {
-    const files = getFilesInDirectory(dirPath, items);
-    const state = getDirectorySelectionState(dirPath, selectedPaths, items);
+    const allFiles = getFilesInDirectory(dirPath, items);
+    const nonCachedFiles = allFiles.filter((f) => !cachedPaths.has(f));
+    const state = getDirectorySelectionState(dirPath, effectiveSelected, items);
     const next = new Set(selectedPaths);
 
     if (state === "all") {
-      for (const f of files) next.delete(f);
+      for (const f of nonCachedFiles) next.delete(f);
     } else {
-      for (const f of files) next.add(f);
+      for (const f of nonCachedFiles) next.add(f);
     }
     onSelectionChange(next);
   };
 
+  // 全选 / 取消全选 — 仅影响非缓存文件
   const selectAll = () => {
-    const allFiles = new Set(
-      items.filter((i) => i.type === "file").map((i) => i.path)
-    );
-    onSelectionChange(allFiles);
+    const nonCachedFiles = items
+      .filter((i) => i.type === "file" && i.is_cached !== true)
+      .map((i) => i.path);
+    onSelectionChange(new Set(nonCachedFiles));
   };
 
   const deselectAll = () => {
@@ -118,7 +144,7 @@ export function SelectableFileTree({
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>
             {selectedPaths.size} /{" "}
-            {items.filter((i) => i.type === "file").length} 个文件已选
+            {nonCachedFileCount} 个文件已选
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -179,7 +205,7 @@ export function SelectableFileTree({
               if (item.type === "directory") {
                 const dirState = getDirectorySelectionState(
                   item.path,
-                  selectedPaths,
+                  effectiveSelected,
                   items
                 );
                 const isIndeterminate = dirState === "some";
@@ -220,35 +246,45 @@ export function SelectableFileTree({
               // File row
               const isSelected = selectedPaths.has(item.path);
               const isCached = item.is_cached === true;
+              const isEffectivelySelected = isCached || isSelected;
               return (
                 <div
                   key={item.path}
-                  className={`flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/30 transition-colors group min-w-0 overflow-hidden ${isCached ? "opacity-75" : ""}`}
+                  className={`flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/30 transition-colors group min-w-0 overflow-hidden ${isCached ? "opacity-60" : ""}`}
                   style={{ animationDelay: `${index * 20}ms` }}
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
                     <Checkbox
-                      checked={isSelected}
+                      checked={isEffectivelySelected}
+                      disabled={isCached}
                       onCheckedChange={() => toggleFile(item.path)}
                     />
                     <div
                       className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${
                         isSelected
                           ? "bg-primary/10 dark:bg-primary/20 group-hover:bg-primary/20 dark:group-hover:bg-primary/30"
-                          : "bg-muted/50 group-hover:bg-muted/80"
+                          : isCached
+                            ? "bg-emerald-500/10 dark:bg-emerald-500/20"
+                            : "bg-muted/50 group-hover:bg-muted/80"
                       }`}
                     >
                       <File
                         className={`h-3.5 w-3.5 transition-colors ${
                           isSelected
                             ? "text-primary"
-                            : "text-muted-foreground/40"
+                            : isCached
+                              ? "text-emerald-500/60"
+                              : "text-muted-foreground/40"
                         }`}
                       />
                     </div>
                     <span
                       className={`truncate font-mono text-xs transition-colors w-full min-w-0 ${
-                        !isSelected ? "text-muted-foreground/50" : ""
+                        isCached
+                          ? "text-muted-foreground/50"
+                          : !isSelected
+                            ? "text-muted-foreground/50"
+                            : ""
                       }`}
                       title={item.name}
                     >
@@ -257,7 +293,7 @@ export function SelectableFileTree({
                     {isCached && (
                       <Badge
                         variant="outline"
-                        className="text-[10px] h-5 px-1.5 shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors"
+                        className="text-[10px] h-5 px-1.5 shrink-0 bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
                       >
                         已缓存
                       </Badge>
@@ -265,7 +301,7 @@ export function SelectableFileTree({
                     {isSelected && !isCached && (
                       <Badge
                         variant="outline"
-                        className="text-[10px] h-5 px-1.5 shrink-0 bg-primary/5 border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                        className="text-[10px] h-5 px-1.5 shrink-0 bg-primary/5 border-primary/30 text-primary"
                       >
                         Selected
                       </Badge>
