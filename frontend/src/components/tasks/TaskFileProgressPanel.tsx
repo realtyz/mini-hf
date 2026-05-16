@@ -223,7 +223,6 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
               taskId={task.id}
               files={files}
               isRunning={isRunning}
-              currentFile={progressInfo?.current_file}
             />
           )}
         </div>

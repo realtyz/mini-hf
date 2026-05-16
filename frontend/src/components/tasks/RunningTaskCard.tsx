@@ -129,7 +129,6 @@ export function RunningTaskCard({ task }: RunningTaskCardProps) {
               taskId={task.id}
               files={progressData?.files ?? []}
               isRunning={task.status === "running"}
-              currentFile={progressData?.current_file}
             />
           </CardContent>
         </CollapsibleContent>

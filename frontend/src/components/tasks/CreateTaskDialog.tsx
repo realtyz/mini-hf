@@ -86,17 +86,11 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
   const handleCreate = () => {
     if (!previewTask.data?.cache_key) return;
 
-    // 已缓存文件路径 — 始终包含在提交中
-    const cachedPaths =
-      previewTask.data?.items
-        ?.filter((i) => i.type === "file" && i.is_cached === true)
-        .map((i) => i.path) ?? [];
-
     setStep("creating");
     createTask.mutate(
       {
         cacheKey: previewTask.data.cache_key,
-        selectedFiles: [...selectedFiles, ...cachedPaths],
+        selectedFiles: [...selectedFiles],
       },
       {
         onSuccess: () => {

@@ -627,7 +627,6 @@ export function TaskDetailDrawer({
                       taskId={task.id}
                       files={progress.files}
                       isRunning={true}
-                      currentFile={progress.current_file}
                     />
                   </div>
                 </div>
