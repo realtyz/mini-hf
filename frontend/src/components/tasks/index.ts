@@ -9,4 +9,3 @@ export { TaskFileProgressTable } from "./TaskFileProgressTable";
 export { TaskDetailDrawer } from "./TaskDetailDrawer";
 export { CreateTaskDialog } from "./CreateTaskDialog";
 export { TaskRow, type TaskRowProps } from "./TaskRow";
-export { PaginationPages, type PaginationPagesProps } from "./PaginationPages";
