@@ -23,7 +23,7 @@ interface RepoTreeViewerProps {
   commitHash: string;
 }
 
-import { TreeNode, buildTree, getChildrenAtPath } from "@/lib/fileTreeUtils";
+import { type TreeNode, buildTree, getChildrenAtPath } from "@/lib/fileTreeUtils";
 
 async function fetchRepoTree(
   repoId: string,

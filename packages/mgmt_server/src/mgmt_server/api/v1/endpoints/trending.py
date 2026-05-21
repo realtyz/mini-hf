@@ -18,7 +18,7 @@ ALLOWED_REPO_TYPES = {"model", "dataset"}
 MAX_RESULTS = 12
 
 
-@router.get("/", response_model=TrendingListResponse)
+@router.get("", response_model=TrendingListResponse)
 async def get_trending(cache: CacheServiceDep) -> TrendingListResponse:
     """Get trending repositories from HuggingFace.
 

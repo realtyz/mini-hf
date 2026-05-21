@@ -1,32 +1,30 @@
 /**
  * 配置管理相关 API Hooks（需要 admin 权限）
+ *
+ * Admin config tabs should use `useConfigForm` from `@/pages/console/settings/use-config-form`
+ * which encapsulates the full fetch → edit → save → reset lifecycle.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
 import type {
-  AnnouncementItem,
   ApiResponse,
   ConfigItem,
   ConfigCreateRequest,
   ConfigUpdateRequest,
   ConfigBatchUpdateRequest,
   ConfigListResponse,
-  SMTPConfigResponse,
   SMTPTestRequest,
   SMTPTestResponse,
-  SMTPSaveRequest,
   HFEndpointConfigResponse,
-  HFEndpointSaveRequest,
-  NotificationConfigResponse,
-  NotificationSaveRequest,
   AnnouncementConfigResponse,
-  AnnouncementSaveRequest,
+  AnnouncementItem,
 } from '@/lib/api-types'
 
-/**
- * 获取配置列表（管理员）
- */
+// ═══════════════════════════════════════════════════════════════════════════════
+// Generic config CRUD (low-level building blocks)
+// ═══════════════════════════════════════════════════════════════════════════════
+
 export function useConfigs(category?: string) {
   return useQuery({
     queryKey: [...queryKeys.configs.list(), category],
@@ -37,9 +35,6 @@ export function useConfigs(category?: string) {
   })
 }
 
-/**
- * 获取单个配置（管理员）
- */
 export function useConfig(key: string) {
   return useQuery({
     queryKey: queryKeys.configs.detail(key),
@@ -50,24 +45,8 @@ export function useConfig(key: string) {
   })
 }
 
-/**
- * 获取 SMTP 配置（管理员）
- */
-export function useSMTPConfig() {
-  return useQuery({
-    queryKey: [...queryKeys.configs.all, 'smtp'],
-    queryFn: async () => {
-      return api.get<ApiResponse<SMTPConfigResponse>>('/config/category/smtp')
-    },
-  })
-}
-
-/**
- * 创建配置（管理员）
- */
 export function useCreateConfig() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (data: ConfigCreateRequest) => {
       return api.post<ApiResponse<ConfigItem>>('/config', data)
@@ -78,24 +57,11 @@ export function useCreateConfig() {
   })
 }
 
-/**
- * 更新配置（管理员）
- */
 export function useUpdateConfig() {
   const queryClient = useQueryClient()
-
   return useMutation({
-    mutationFn: async ({
-      key,
-      data,
-    }: {
-      key: string
-      data: ConfigUpdateRequest
-    }) => {
-      return api.put<ApiResponse<ConfigItem>>(
-        `/config/${encodeURIComponent(key)}`,
-        data
-      )
+    mutationFn: async ({ key, data }: { key: string; data: ConfigUpdateRequest }) => {
+      return api.put<ApiResponse<ConfigItem>>(`/config/${encodeURIComponent(key)}`, data)
     },
     onSuccess: (_, { key }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
@@ -104,12 +70,8 @@ export function useUpdateConfig() {
   })
 }
 
-/**
- * 批量更新配置（管理员）
- */
 export function useBatchUpdateConfigs() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (data: ConfigBatchUpdateRequest) => {
       return api.put<ConfigListResponse>('/config/batch', data)
@@ -120,12 +82,8 @@ export function useBatchUpdateConfigs() {
   })
 }
 
-/**
- * 删除配置（管理员）
- */
 export function useDeleteConfig() {
   const queryClient = useQueryClient()
-
   return useMutation({
     mutationFn: async (key: string) => {
       return api.delete<ApiResponse<void>>(`/config/${encodeURIComponent(key)}`)
@@ -136,25 +94,10 @@ export function useDeleteConfig() {
   })
 }
 
-/**
- * 初始化默认配置（管理员）
- */
-export function useInitializeDefaultConfigs() {
-  const queryClient = useQueryClient()
+// ═══════════════════════════════════════════════════════════════════════════════
+// SMTP-specific
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  return useMutation({
-    mutationFn: async () => {
-      return api.post<ConfigListResponse>('/config/init')
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
-    },
-  })
-}
-
-/**
- * 测试 SMTP 连接（管理员）
- */
 export function useTestSMTPConnection() {
   return useMutation({
     mutationFn: async (data: SMTPTestRequest) => {
@@ -163,141 +106,36 @@ export function useTestSMTPConnection() {
   })
 }
 
-/**
- * 保存 SMTP 配置（管理员）
- */
-export function useSaveSMTPConfig() {
-  const queryClient = useQueryClient()
+// ═══════════════════════════════════════════════════════════════════════════════
+// Public endpoints (no auth required)
+// ═══════════════════════════════════════════════════════════════════════════════
 
-  return useMutation({
-    mutationFn: async (data: SMTPSaveRequest) => {
-      return api.put<ApiResponse<SMTPConfigResponse>>('/config/category/smtp', data)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
-    },
-  })
-}
-
-/**
- * 获取 HuggingFace Endpoint 配置（管理员）
- */
-export function useHFEndpointConfig() {
-  return useQuery({
-    queryKey: [...queryKeys.configs.all, 'hf'],
-    queryFn: async () => {
-      return api.get<ApiResponse<HFEndpointConfigResponse>>('/config/category/huggingface')
-    },
-  })
-}
-
-/**
- * 保存 HuggingFace Endpoint 配置（管理员）
- */
-export function useSaveHFEndpointConfig() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (data: HFEndpointSaveRequest) => {
-      return api.put<ApiResponse<HFEndpointConfigResponse>>('/config/category/huggingface', data)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
-    },
-  })
-}
-
-/**
- * 获取通知配置（管理员）
- */
-export function useNotificationConfig() {
-  return useQuery({
-    queryKey: [...queryKeys.configs.all, 'notification'],
-    queryFn: async () => {
-      return api.get<ApiResponse<NotificationConfigResponse>>('/config/category/notification')
-    },
-  })
-}
-
-/**
- * 保存通知配置（管理员）
- */
-export function useSaveNotificationConfig() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (data: NotificationSaveRequest) => {
-      return api.put<ApiResponse<NotificationConfigResponse>>('/config/category/notification', data)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
-    },
-  })
-}
-
-/**
- * 获取公告配置（管理员）
- */
-export function useAnnouncementConfig() {
-  return useQuery({
-    queryKey: [...queryKeys.configs.all, 'announcement'],
-    queryFn: async () => {
-      return api.get<ApiResponse<AnnouncementConfigResponse>>('/config/category/announcement')
-    },
-  })
-}
-
-/**
- * 保存公告配置（管理员）
- */
-export function useSaveAnnouncementConfig() {
-  const queryClient = useQueryClient()
-
-  return useMutation({
-    mutationFn: async (data: AnnouncementSaveRequest) => {
-      return api.put<ApiResponse<AnnouncementConfigResponse>>('/config/category/announcement', data)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
-    },
-  })
-}
-
-/**
- * 获取公开公告（无需认证）
- */
 export function usePublicAnnouncement() {
   return useQuery({
     queryKey: ['public', 'announcement'],
     queryFn: async () => {
       return api.get<ApiResponse<AnnouncementConfigResponse>>('/health/announcement')
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   })
 }
 
-/**
- * 获取公开公告列表（新系统，无需认证）
- */
 export function usePublicAnnouncements() {
   return useQuery({
     queryKey: ['public', 'announcements'],
     queryFn: async () => {
       return api.get<ApiResponse<AnnouncementItem[]>>('/system/announcements')
     },
-    staleTime: 1000 * 60 * 2, // 2 minutes
+    staleTime: 1000 * 60 * 2,
   })
 }
 
-/**
- * 获取公开的 HuggingFace Endpoint 配置（无需认证）
- */
 export function usePublicHFEndpoints() {
   return useQuery({
     queryKey: ['public', 'hf-endpoints'],
     queryFn: async () => {
       return api.get<ApiResponse<HFEndpointConfigResponse>>('/health/hf-endpoints')
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
   })
 }

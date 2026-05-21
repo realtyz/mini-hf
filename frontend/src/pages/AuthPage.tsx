@@ -928,9 +928,9 @@ function RegisterForm({ onFlip }: FormProps) {
               className={cn(
                 "h-11 border-input/50 bg-muted/30 pr-10 transition-colors focus:border-primary focus:bg-background",
                 passwordsMatch &&
-                  "border-green-500/50 focus:border-green-500 focus:ring-green-500/20",
+                "border-green-500/50 focus:border-green-500 focus:ring-green-500/20",
                 passwordsMismatch &&
-                  "border-red-500/50 focus:border-red-500 focus:ring-red-500/20",
+                "border-red-500/50 focus:border-red-500 focus:ring-red-500/20",
               )}
             />
             <motion.button

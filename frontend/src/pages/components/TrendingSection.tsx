@@ -26,7 +26,7 @@ import { Link } from "react-router";
 
 async function fetchTrending(): Promise<TrendingRepo[]> {
   const response = await api.get<{ code: number; data: TrendingRepo[] }>(
-    "/trending/",
+    "/trending",
   );
   return response.data;
 }
