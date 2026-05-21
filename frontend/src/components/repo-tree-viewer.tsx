@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/api";
 import { config } from "@/lib/runtime-config";
 import type { RepoTreeResponse, RepoTreeItem } from "@/lib/api-types";
-import { cn } from "@/lib/utils";
+import { cn, formatBytes } from "@/lib/utils";
 
 interface RepoTreeViewerProps {
   repoId: string;
@@ -95,14 +95,6 @@ function getChildrenAtPath(
   return current;
 }
 
-function formatSize(bytes: number): string {
-  if (bytes === 0) return "-";
-  if (bytes >= 1024 * 1024 * 1024)
-    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + " GB";
-  if (bytes >= 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + " MB";
-  if (bytes >= 1024) return (bytes / 1024).toFixed(1) + " KB";
-  return bytes + " B";
-}
 
 async function fetchRepoTree(
   repoId: string,
@@ -394,7 +386,7 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
                           : "text-muted-foreground/40",
                       )}
                     >
-                      {formatSize(item.size)}
+                      {item.size === 0 ? "-" : formatBytes(item.size)}
                     </span>
                   )}
                   {item.type === "file" &&
