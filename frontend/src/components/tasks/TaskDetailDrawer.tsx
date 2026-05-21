@@ -41,7 +41,7 @@ import { PreviewFileTree } from "./PreviewFileTree";
 import { FileProgressList } from "./FileProgressList";
 import { useTaskDetail } from "@/hooks/useTaskDetail";
 import type { PreviewItem, TaskStatus, TaskResponse } from "@/lib/api-types";
-import { useTaskProgress } from "@/hooks/useTaskProgress";
+import { useTaskProgress } from "@/hooks/api/use-task-progress";
 import { useTaskActions } from "@/hooks/useTaskActions";
 import { useAuthStore } from "@/stores/auth-store";
 import { formatBytes } from "@/lib/utils";
@@ -356,10 +356,7 @@ export function TaskDetailDrawer({
   onOpenChange,
 }: TaskDetailDrawerProps) {
   const { data: task, isLoading, refetch: refetchTask } = useTaskDetail(taskId);
-  const { data: progress } = useTaskProgress(
-    taskId,
-    task?.status === "running" || task?.status === "pausing",
-  );
+  const { data: progress } = useTaskProgress(taskId, task?.status);
   const { reviewTask, cancelTask, pauseTask, resumeTask, retryTask } = useTaskActions();
   const [rejectNotes, setRejectNotes] = useState("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
