@@ -5,12 +5,20 @@ export interface TreeNode {
   path: string;
   type: "file" | "directory";
   size: number;
-  required: boolean;
+  required?: boolean;
   is_cached: boolean | null;
   children?: Map<string, TreeNode>;
 }
 
-export function buildTree(items: PreviewItem[]): Map<string, TreeNode> {
+export function buildTree(
+  items: Array<{
+    path: string;
+    type: "file" | "directory";
+    size: number;
+    is_cached: boolean | null;
+    required?: boolean;
+  }>
+): Map<string, TreeNode> {
   const root = new Map<string, TreeNode>();
 
   for (const item of items) {
@@ -28,7 +36,7 @@ export function buildTree(items: PreviewItem[]): Map<string, TreeNode> {
           path: item.path,
           type: item.type,
           size: item.size,
-          required: item.required,
+          ...(item.required !== undefined ? { required: item.required } : {}),
           is_cached: item.is_cached,
         });
       } else {
@@ -38,7 +46,6 @@ export function buildTree(items: PreviewItem[]): Map<string, TreeNode> {
             path: currentPath,
             type: "directory",
             size: 0,
-            required: false,
             is_cached: null,
             children: new Map<string, TreeNode>(),
           });

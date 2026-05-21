@@ -23,78 +23,7 @@ interface RepoTreeViewerProps {
   commitHash: string;
 }
 
-interface TreeNode {
-  name: string;
-  path: string;
-  type: "file" | "directory";
-  size: number;
-  is_cached: boolean | null;
-  children?: Map<string, TreeNode>;
-}
-
-function buildTree(items: RepoTreeItem[]): Map<string, TreeNode> {
-  const root = new Map<string, TreeNode>();
-
-  for (const item of items) {
-    const parts = item.path.split("/");
-    let current = root;
-    let currentPath = "";
-
-    for (let i = 0; i < parts.length; i++) {
-      const name = parts[i];
-      currentPath = currentPath ? `${currentPath}/${name}` : name;
-
-      if (i === parts.length - 1) {
-        current.set(name, {
-          name,
-          path: item.path,
-          type: item.type,
-          size: item.size,
-          is_cached: item.is_cached,
-        });
-      } else {
-        if (!current.has(name)) {
-          current.set(name, {
-            name,
-            path: currentPath,
-            type: "directory",
-            size: 0,
-            is_cached: null,
-            children: new Map<string, TreeNode>(),
-          });
-        }
-        const node = current.get(name)!;
-        if (!node.children) {
-          node.children = new Map<string, TreeNode>();
-        }
-        current = node.children;
-      }
-    }
-  }
-
-  return root;
-}
-
-function getChildrenAtPath(
-  root: Map<string, TreeNode>,
-  path: string,
-): Map<string, TreeNode> | null {
-  if (!path) return root;
-
-  const parts = path.split("/");
-  let current = root;
-
-  for (const part of parts) {
-    const node = current.get(part);
-    if (!node || node.type !== "directory" || !node.children) {
-      return null;
-    }
-    current = node.children;
-  }
-
-  return current;
-}
-
+import { TreeNode, buildTree, getChildrenAtPath } from "@/lib/fileTreeUtils";
 
 async function fetchRepoTree(
   repoId: string,
