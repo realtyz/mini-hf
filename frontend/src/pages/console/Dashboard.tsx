@@ -7,28 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuthStore } from "@/stores/auth-store";
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.5,
-      ease: [0.16, 1, 0.3, 1] as const,
-    },
-  },
-};
+import { containerVariants, itemVariants } from "./settings/motion-config";
 
 export function Dashboard() {
   const queryClient = useQueryClient();
