@@ -21,7 +21,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { useAsyncPreviewTask, useTaskActions } from "@/hooks/useTaskActions";
+import { useTaskActions } from "@/hooks/useTaskActions";
+import { useAsyncPreviewTask } from "@/hooks/useAsyncPreviewTask";
 import { usePublicHFEndpoints } from "@/hooks/api/use-config-queries";
 import { formatBytes } from "@/lib/utils";
 import type { RepoSource, RepoType } from "@/lib/api-types";
