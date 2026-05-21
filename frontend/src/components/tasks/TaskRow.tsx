@@ -21,16 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { ConfirmDialog } from "@/components/tasks/ConfirmDialog";
 import { formatBytes } from "@/lib/utils";
 import type { TaskResponse } from "@/lib/api-types";
 import { cn } from "@/lib/utils";
@@ -351,118 +342,94 @@ export function TaskRow({
         </DropdownMenu>
 
         {/* 取消确认对话框 */}
-        <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>确认取消任务</AlertDialogTitle>
-              <AlertDialogDescription className="pt-2">
-                确定要取消任务 <strong className="text-foreground">#{task.id}</strong> 吗？
-                <p className="mt-2 text-sm">
-                  仓库：<span className="font-medium">{task.repo_id}</span>
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {task.status === "pending_approval"
-                    ? "取消后任务将被标记为已取消，需要重新创建任务。"
-                    : "任务正在排队中，取消后需要重新创建任务。"}
-                </p>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2">
-              <AlertDialogCancel disabled={isCanceling}>返回</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleCancelConfirm}
-                disabled={isCanceling}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                确认取消
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmDialog
+          open={cancelDialogOpen}
+          onOpenChange={setCancelDialogOpen}
+          title="确认取消任务"
+          description={
+            <>
+              确定要取消任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+              <p className="mt-2 text-sm">
+                仓库：<span className="font-medium">{task.repo_id}</span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {task.status === "pending_approval"
+                  ? "取消后任务将被标记为已取消，需要重新创建任务。"
+                  : "任务正在排队中，取消后需要重新创建任务。"}
+              </p>
+            </>
+          }
+          confirmLabel="确认取消"
+          confirmVariant="destructive"
+          onConfirm={handleCancelConfirm}
+          disabled={isCanceling}
+        />
 
         {/* 重试确认对话框 */}
-        <AlertDialog open={retryDialogOpen} onOpenChange={setRetryDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>确认重试任务</AlertDialogTitle>
-              <AlertDialogDescription className="pt-2">
-                确定要重试任务 <strong className="text-foreground">#{task.id}</strong> 吗？
-                <p className="mt-2 text-sm">
-                  仓库：<span className="font-medium">{task.repo_id}</span>
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {task.status === "failed"
-                    ? "原任务执行失败，新任务将自动审批通过，无需管理员审核。"
-                    : "原任务已被取消，新任务将自动审批通过，无需管理员审核。"}
-                </p>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2">
-              <AlertDialogCancel disabled={isRetrying}>取消</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleRetryConfirm}
-                disabled={isRetrying}
-              >
-                确认重试
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmDialog
+          open={retryDialogOpen}
+          onOpenChange={setRetryDialogOpen}
+          title="确认重试任务"
+          description={
+            <>
+              确定要重试任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+              <p className="mt-2 text-sm">
+                仓库：<span className="font-medium">{task.repo_id}</span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {task.status === "failed"
+                  ? "原任务执行失败，新任务将自动审批通过，无需管理员审核。"
+                  : "原任务已被取消，新任务将自动审批通过，无需管理员审核。"}
+              </p>
+            </>
+          }
+          confirmLabel="确认重试"
+          onConfirm={handleRetryConfirm}
+          disabled={isRetrying}
+        />
 
         {/* 批准确认对话框 */}
-        <AlertDialog open={approveDialogOpen} onOpenChange={setApproveDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>确认批准任务</AlertDialogTitle>
-              <AlertDialogDescription className="pt-2">
-                确认要批准任务 <strong className="text-foreground">#{task.id}</strong> 吗？
-                <p className="mt-2 text-sm">
-                  仓库：<span className="font-medium">{task.repo_id}</span>
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  批准后任务将进入下载队列开始执行。
-                </p>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2">
-              <AlertDialogCancel disabled={isApproving}>返回</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleApproveConfirm}
-                disabled={isApproving}
-              >
-                确认批准
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmDialog
+          open={approveDialogOpen}
+          onOpenChange={setApproveDialogOpen}
+          title="确认批准任务"
+          description={
+            <>
+              确认要批准任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+              <p className="mt-2 text-sm">
+                仓库：<span className="font-medium">{task.repo_id}</span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                批准后任务将进入下载队列开始执行。
+              </p>
+            </>
+          }
+          confirmLabel="确认批准"
+          onConfirm={handleApproveConfirm}
+          disabled={isApproving}
+        />
 
         {/* 拒绝确认对话框 */}
-        <AlertDialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>确认拒绝任务</AlertDialogTitle>
-              <AlertDialogDescription className="pt-2">
-                确认要拒绝任务 <strong className="text-foreground">#{task.id}</strong> 吗？
-                <p className="mt-2 text-sm">
-                  仓库：<span className="font-medium">{task.repo_id}</span>
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  拒绝后任务将被标记为失败，需要重新创建任务。
-                </p>
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="gap-2">
-              <AlertDialogCancel disabled={isRejecting}>返回</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleRejectConfirm}
-                disabled={isRejecting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                确认拒绝
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        <ConfirmDialog
+          open={rejectDialogOpen}
+          onOpenChange={setRejectDialogOpen}
+          title="确认拒绝任务"
+          description={
+            <>
+              确认要拒绝任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+              <p className="mt-2 text-sm">
+                仓库：<span className="font-medium">{task.repo_id}</span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                拒绝后任务将被标记为失败，需要重新创建任务。
+              </p>
+            </>
+          }
+          confirmLabel="确认拒绝"
+          confirmVariant="destructive"
+          onConfirm={handleRejectConfirm}
+          disabled={isRejecting}
+        />
       </TableCell>
     </motion.tr>
   );
