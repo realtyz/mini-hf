@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import type { RouteObject } from 'react-router'
 import LandingLayout from './layouts/LandingLayout'
 import LandingPage from './pages'
@@ -6,14 +7,27 @@ import DocsPage from './pages/docs'
 import Repositories from './pages/Repositories'
 import TasksPublic from './pages/TasksPublic'
 import ConsoleLayout from './layouts/ConsoleLayout'
-import Dashboard from './pages/console/Dashboard'
-import RepositoriesConsole from './pages/console/Repositories'
-import RepositoryDetail from './pages/console/RepositoryDetail'
-import Tasks from './pages/console/Tasks'
-import Settings from './pages/console/Settings'
-import Users from './pages/console/Users'
-import CacheScan from './pages/console/CacheScan'
 import { ProtectedRoute } from './components/auth'
+
+const Dashboard = lazy(() => import('./pages/console/Dashboard'))
+const RepositoriesConsole = lazy(() => import('./pages/console/Repositories'))
+const RepositoryDetail = lazy(() => import('./pages/console/RepositoryDetail'))
+const Tasks = lazy(() => import('./pages/console/Tasks'))
+const Settings = lazy(() => import('./pages/console/Settings'))
+const Users = lazy(() => import('./pages/console/Users'))
+const CacheScan = lazy(() => import('./pages/console/CacheScan'))
+
+function LazyLoad({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    }>
+      {children}
+    </Suspense>
+  )
+}
 
 export const routes: RouteObject[] = [
   {
@@ -63,32 +77,32 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <Dashboard />,
+        element: <LazyLoad><Dashboard /></LazyLoad>,
       },
       {
         path: 'repositories',
         children: [
-          { index: true, element: <RepositoriesConsole /> },
-          { path: 'detail', element: <RepositoryDetail /> },
+          { index: true, element: <LazyLoad><RepositoriesConsole /></LazyLoad> },
+          { path: 'detail', element: <LazyLoad><RepositoryDetail /></LazyLoad> },
         ],
       },
       {
         path: 'tasks',
-        element: <Tasks />,
+        element: <LazyLoad><Tasks /></LazyLoad>,
       },
       {
         path: 'cache-scan',
-        element: <CacheScan />,
+        element: <LazyLoad><CacheScan /></LazyLoad>,
       },
       {
         path: 'settings',
-        element: <Settings />,
+        element: <LazyLoad><Settings /></LazyLoad>,
       },
       {
         path: 'users',
         element: (
           <ProtectedRoute requiredRole="admin">
-            <Users />
+            <LazyLoad><Users /></LazyLoad>
           </ProtectedRoute>
         ),
       },

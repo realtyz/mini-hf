@@ -62,9 +62,9 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
                   'block border-l-2 py-1 pr-2 text-left transition-colors hover:text-foreground',
                   activeId === item.id
                     ? 'border-primary font-medium text-foreground'
-                    : 'border-transparent text-muted-foreground'
+                    : 'border-transparent text-muted-foreground',
+                  item.level === 3 ? 'pl-3' : 'pl-4'
                 )}
-                style={{ paddingLeft: item.level === 3 ? '0.75rem' : '1rem' }}
               >
                 {item.text}
               </button>

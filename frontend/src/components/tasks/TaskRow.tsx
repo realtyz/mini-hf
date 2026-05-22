@@ -1,3 +1,4 @@
+import { memo, useState, useCallback } from 'react'
 import {
   Box,
   Database,
@@ -9,56 +10,147 @@ import {
   X,
   Ban,
   RotateCcw,
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
-import { TableCell } from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
+} from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge'
+import { TableCell } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { ConfirmDialog } from "@/components/tasks/ConfirmDialog";
-import { formatBytes } from "@/lib/utils";
-import type { TaskResponse } from "@/lib/api-types";
-import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { useAuthStore } from "@/stores/auth-store";
-import { useState } from "react";
+} from '@/components/ui/dropdown-menu'
+import { ConfirmDialog } from '@/components/tasks/ConfirmDialog'
+import { formatBytes } from '@/lib/utils'
+import type { TaskResponse } from '@/lib/api-types'
+import { cn } from '@/lib/utils'
+import { motion } from 'framer-motion'
+import { useAuthStore } from '@/stores/auth-store'
+import type { ReactNode } from 'react'
 
 export interface TaskRowProps {
-  task: TaskResponse;
-  onViewDetail: (task: TaskResponse) => void;
-  onPin?: (task: TaskResponse) => void;
-  onUnpin?: (task: TaskResponse) => void;
-  onApprove?: (task: TaskResponse) => void;
-  onReject?: (task: TaskResponse) => void;
-  onCancel?: (task: TaskResponse) => void;
-  onRetry?: (task: TaskResponse) => void;
-  isPinning?: boolean;
-  isUnpinning?: boolean;
-  isApproving?: boolean;
-  isRejecting?: boolean;
-  isCanceling?: boolean;
-  isRetrying?: boolean;
-  index?: number;
+  task: TaskResponse
+  onViewDetail: (task: TaskResponse) => void
+  onPin?: (task: TaskResponse) => void
+  onUnpin?: (task: TaskResponse) => void
+  onApprove?: (task: TaskResponse) => void
+  onReject?: (task: TaskResponse) => void
+  onCancel?: (task: TaskResponse) => void
+  onRetry?: (task: TaskResponse) => void
+  isPinning?: boolean
+  isUnpinning?: boolean
+  isApproving?: boolean
+  isRejecting?: boolean
+  isCanceling?: boolean
+  isRetrying?: boolean
+  index?: number
 }
 
-const FINAL_STATUSES = ["completed", "failed", "cancelled"];
+const FINAL_STATUSES = ['completed', 'failed', 'cancelled']
 
-// 检查任务是否在7天内完成
 function isWithin7Days(completedAt: string | null): boolean {
-  if (!completedAt) return false;
-  const completedDate = new Date(completedAt);
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  return completedDate >= sevenDaysAgo;
+  if (!completedAt) return false
+  const completedDate = new Date(completedAt)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  return completedDate >= sevenDaysAgo
 }
 
-export function TaskRow({
+type DialogType = 'cancel' | 'retry' | 'approve' | 'reject'
+
+interface DialogConfig {
+  title: string
+  confirmLabel: string
+  confirmVariant?: 'default' | 'destructive'
+  getDescription: (task: TaskResponse) => ReactNode
+}
+
+const DIALOG_CONFIGS: Record<DialogType, DialogConfig> = {
+  cancel: {
+    title: '确认取消任务',
+    confirmLabel: '确认取消',
+    confirmVariant: 'destructive',
+    getDescription: (task) => (
+      <>
+        确定要取消任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+        <p className="mt-2 text-sm">
+          仓库：<span className="font-medium">{task.repo_id}</span>
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {task.status === 'pending_approval'
+            ? '取消后任务将被标记为已取消，需要重新创建任务。'
+            : '任务正在排队中，取消后需要重新创建任务。'}
+        </p>
+      </>
+    ),
+  },
+  retry: {
+    title: '确认重试任务',
+    confirmLabel: '确认重试',
+    getDescription: (task) => (
+      <>
+        确定要重试任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+        <p className="mt-2 text-sm">
+          仓库：<span className="font-medium">{task.repo_id}</span>
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {task.status === 'failed'
+            ? '原任务执行失败，新任务将自动审批通过，无需管理员审核。'
+            : '原任务已被取消，新任务将自动审批通过，无需管理员审核。'}
+        </p>
+      </>
+    ),
+  },
+  approve: {
+    title: '确认批准任务',
+    confirmLabel: '确认批准',
+    getDescription: (task) => (
+      <>
+        确认要批准任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+        <p className="mt-2 text-sm">
+          仓库：<span className="font-medium">{task.repo_id}</span>
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          批准后任务将进入下载队列开始执行。
+        </p>
+      </>
+    ),
+  },
+  reject: {
+    title: '确认拒绝任务',
+    confirmLabel: '确认拒绝',
+    confirmVariant: 'destructive',
+    getDescription: (task) => (
+      <>
+        确认要拒绝任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+        <p className="mt-2 text-sm">
+          仓库：<span className="font-medium">{task.repo_id}</span>
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          拒绝后任务将被标记为失败，需要重新创建任务。
+        </p>
+      </>
+    ),
+  },
+}
+
+const DIALOG_DISABLED: Record<DialogType, keyof Pick<TaskRowProps, 'isCanceling' | 'isRetrying' | 'isApproving' | 'isRejecting'>> = {
+  cancel: 'isCanceling',
+  retry: 'isRetrying',
+  approve: 'isApproving',
+  reject: 'isRejecting',
+}
+
+const DIALOG_HANDLER: Record<DialogType, keyof Pick<TaskRowProps, 'onCancel' | 'onRetry' | 'onApprove' | 'onReject'>> = {
+  cancel: 'onCancel',
+  retry: 'onRetry',
+  approve: 'onApprove',
+  reject: 'onReject',
+}
+
+export const TaskRow = memo(function TaskRow({
   task,
   onViewDetail,
   onPin,
@@ -75,64 +167,44 @@ export function TaskRow({
   isRetrying,
   index = 0,
 }: TaskRowProps) {
-  const { user } = useAuthStore();
-  const isAdmin = user?.role === "admin";
-  const isFinalStatus = FINAL_STATUSES.includes(task.status);
-  const isPinned = !!task.pinned_at && !isFinalStatus;
-  const isRunning = task.status === "running";
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
+  const isFinalStatus = FINAL_STATUSES.includes(task.status)
+  const isPinned = !!task.pinned_at && !isFinalStatus
+  const isRunning = task.status === 'running'
 
-  // 取消确认对话框状态
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
-  // 重试确认对话框状态
-  const [retryDialogOpen, setRetryDialogOpen] = useState(false);
-  // 批准确认对话框状态
-  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
-  // 拒绝确认对话框状态
-  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [dialogType, setDialogType] = useState<DialogType | null>(null)
 
-  // 是否可以取消（待审批或排队中的任务）
   const canCancel =
-    (task.status === "pending_approval" || task.status === "pending") &&
-    (isAdmin || task.creator_user_id === user?.id);
+    (task.status === 'pending_approval' || task.status === 'pending') &&
+    (isAdmin || task.creator_user_id === user?.id)
 
-  // 是否可以重试（失败或已取消状态且7天内完成/取消）
   const canRetry =
-    (task.status === "failed" || task.status === "cancelled") &&
+    (task.status === 'failed' || task.status === 'cancelled') &&
     isWithin7Days(task.completed_at) &&
-    (isAdmin || task.creator_user_id === user?.id);
+    (isAdmin || task.creator_user_id === user?.id)
 
-  // 管理员操作权限
-  const canApproveOrReject = isAdmin && task.status === "pending_approval";
-  const canPin = isAdmin && task.status === "pending" && !isPinned;
-  const canUnpin = isAdmin && task.status === "pending" && isPinned;
+  const canApproveOrReject = isAdmin && task.status === 'pending_approval'
+  const canPin = isAdmin && task.status === 'pending' && !isPinned
+  const canUnpin = isAdmin && task.status === 'pending' && isPinned
 
-  const handleActionClick = (
-    e: React.MouseEvent,
-    action: () => void
-  ) => {
-    e.stopPropagation();
-    action();
-  };
+  const handleDialogConfirm = useCallback(() => {
+    if (!dialogType) return
+    const handlerKey = DIALOG_HANDLER[dialogType]
+    const handlers = { onCancel, onRetry, onApprove, onReject }
+    const handler = handlers[handlerKey]
+    setDialogType(null)
+    handler?.(task)
+  }, [dialogType, task, onCancel, onRetry, onApprove, onReject])
 
-  const handleCancelConfirm = () => {
-    setCancelDialogOpen(false);
-    onCancel?.(task);
-  };
-
-  const handleRetryConfirm = () => {
-    setRetryDialogOpen(false);
-    onRetry?.(task);
-  };
-
-  const handleApproveConfirm = () => {
-    setApproveDialogOpen(false);
-    onApprove?.(task);
-  };
-
-  const handleRejectConfirm = () => {
-    setRejectDialogOpen(false);
-    onReject?.(task);
-  };
+  const dialogConfig = dialogType ? DIALOG_CONFIGS[dialogType] : null
+  const disabledKey = dialogType ? DIALOG_DISABLED[dialogType] : null
+  const isDialogDisabled = disabledKey
+    ? (() => {
+        const props = { isCanceling, isRetrying, isApproving, isRejecting }
+        return !!props[disabledKey]
+      })()
+    : false
 
   return (
     <motion.tr
@@ -243,22 +315,23 @@ export function TaskRow({
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
-            {/* 查看详情 - 所有用户、所有状态都可用 */}
             <DropdownMenuItem
-              onClick={(e) => handleActionClick(e, () => onViewDetail(task))}
+              onClick={(e) => {
+                e.stopPropagation()
+                onViewDetail(task)
+              }}
             >
               <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
               查看详情
             </DropdownMenuItem>
 
-            {/* 待审批状态的操作 */}
             {canApproveOrReject && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={(e) => {
-                    e.stopPropagation();
-                    setApproveDialogOpen(true);
+                    e.stopPropagation()
+                    setDialogType('approve')
                   }}
                   disabled={isApproving}
                 >
@@ -267,8 +340,8 @@ export function TaskRow({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
-                    e.stopPropagation();
-                    setRejectDialogOpen(true);
+                    e.stopPropagation()
+                    setDialogType('reject')
                   }}
                   disabled={isRejecting}
                   className="text-destructive focus:text-destructive"
@@ -279,13 +352,15 @@ export function TaskRow({
               </>
             )}
 
-            {/* 排队中状态的管理员操作 */}
             {(canPin || canUnpin) && (
               <>
                 <DropdownMenuSeparator />
                 {canPin && (
                   <DropdownMenuItem
-                    onClick={(e) => handleActionClick(e, () => onPin?.(task))}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onPin?.(task)
+                    }}
                     disabled={isPinning}
                   >
                     <Pin className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -294,7 +369,10 @@ export function TaskRow({
                 )}
                 {canUnpin && (
                   <DropdownMenuItem
-                    onClick={(e) => handleActionClick(e, () => onUnpin?.(task))}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onUnpin?.(task)
+                    }}
                     disabled={isUnpinning}
                   >
                     <PinOff className="mr-2 h-4 w-4 text-muted-foreground" />
@@ -304,14 +382,13 @@ export function TaskRow({
               </>
             )}
 
-            {/* 取消操作 */}
             {canCancel && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={(e) => {
-                    e.stopPropagation();
-                    setCancelDialogOpen(true);
+                    e.stopPropagation()
+                    setDialogType('cancel')
                   }}
                   disabled={isCanceling}
                   className="text-destructive focus:text-destructive"
@@ -322,14 +399,13 @@ export function TaskRow({
               </>
             )}
 
-            {/* 重试操作 */}
             {canRetry && (
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={(e) => {
-                    e.stopPropagation();
-                    setRetryDialogOpen(true);
+                    e.stopPropagation()
+                    setDialogType('retry')
                   }}
                   disabled={isRetrying}
                 >
@@ -341,96 +417,17 @@ export function TaskRow({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {/* 取消确认对话框 */}
         <ConfirmDialog
-          open={cancelDialogOpen}
-          onOpenChange={setCancelDialogOpen}
-          title="确认取消任务"
-          description={
-            <>
-              确定要取消任务 <strong className="text-foreground">#{task.id}</strong> 吗？
-              <p className="mt-2 text-sm">
-                仓库：<span className="font-medium">{task.repo_id}</span>
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {task.status === "pending_approval"
-                  ? "取消后任务将被标记为已取消，需要重新创建任务。"
-                  : "任务正在排队中，取消后需要重新创建任务。"}
-              </p>
-            </>
-          }
-          confirmLabel="确认取消"
-          confirmVariant="destructive"
-          onConfirm={handleCancelConfirm}
-          disabled={isCanceling}
-        />
-
-        {/* 重试确认对话框 */}
-        <ConfirmDialog
-          open={retryDialogOpen}
-          onOpenChange={setRetryDialogOpen}
-          title="确认重试任务"
-          description={
-            <>
-              确定要重试任务 <strong className="text-foreground">#{task.id}</strong> 吗？
-              <p className="mt-2 text-sm">
-                仓库：<span className="font-medium">{task.repo_id}</span>
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {task.status === "failed"
-                  ? "原任务执行失败，新任务将自动审批通过，无需管理员审核。"
-                  : "原任务已被取消，新任务将自动审批通过，无需管理员审核。"}
-              </p>
-            </>
-          }
-          confirmLabel="确认重试"
-          onConfirm={handleRetryConfirm}
-          disabled={isRetrying}
-        />
-
-        {/* 批准确认对话框 */}
-        <ConfirmDialog
-          open={approveDialogOpen}
-          onOpenChange={setApproveDialogOpen}
-          title="确认批准任务"
-          description={
-            <>
-              确认要批准任务 <strong className="text-foreground">#{task.id}</strong> 吗？
-              <p className="mt-2 text-sm">
-                仓库：<span className="font-medium">{task.repo_id}</span>
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                批准后任务将进入下载队列开始执行。
-              </p>
-            </>
-          }
-          confirmLabel="确认批准"
-          onConfirm={handleApproveConfirm}
-          disabled={isApproving}
-        />
-
-        {/* 拒绝确认对话框 */}
-        <ConfirmDialog
-          open={rejectDialogOpen}
-          onOpenChange={setRejectDialogOpen}
-          title="确认拒绝任务"
-          description={
-            <>
-              确认要拒绝任务 <strong className="text-foreground">#{task.id}</strong> 吗？
-              <p className="mt-2 text-sm">
-                仓库：<span className="font-medium">{task.repo_id}</span>
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                拒绝后任务将被标记为失败，需要重新创建任务。
-              </p>
-            </>
-          }
-          confirmLabel="确认拒绝"
-          confirmVariant="destructive"
-          onConfirm={handleRejectConfirm}
-          disabled={isRejecting}
+          open={dialogType !== null}
+          onOpenChange={(open) => { if (!open) setDialogType(null) }}
+          title={dialogConfig?.title ?? ''}
+          description={dialogConfig ? dialogConfig.getDescription(task) : null}
+          confirmLabel={dialogConfig?.confirmLabel ?? ''}
+          confirmVariant={dialogConfig?.confirmVariant}
+          onConfirm={handleDialogConfirm}
+          disabled={isDialogDisabled}
         />
       </TableCell>
     </motion.tr>
-  );
-}
+  )
+})

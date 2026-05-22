@@ -32,3 +32,9 @@ export function formatDuration(seconds: number): string {
 export function formatDistanceToNow(date: Date): string {
   return formatDistanceToNowBase(date, { addSuffix: true, locale: zhCN })
 }
+
+export function formatCompactNumber(num: number): string {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+  return num.toString()
+}

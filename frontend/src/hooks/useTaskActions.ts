@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import api from '@/lib/api'
+import endpoints from '@/lib/api-endpoints'
 import { queryKeys } from '@/lib/query-keys'
 import type {
   TaskResponse,
@@ -17,35 +18,66 @@ interface CreateTaskRequest {
   selected_files?: string[]
 }
 
-interface CreateTaskResponse extends ApiResponse<TaskResponse> {}
+type CreateTaskResponse = ApiResponse<TaskResponse>
 
 interface ReviewTaskRequest {
   approved: boolean
   notes?: string
 }
 
-interface ReviewTaskResponse extends ApiResponse<TaskResponse> {}
+type TaskActionResponse = ApiResponse<TaskResponse>
+
+// ==================== 工厂函数 ====================
+
+interface CreateTaskMutationOptions<TVars> {
+  /** toast 中显示的操作名称，如 "取消任务" */
+  actionName: string
+  /** 是否同时刷新任务详情缓存，默认 true */
+  invalidateDetail?: boolean
+  /** 自定义 onError，覆盖默认 toast */
+  onError?: (error: ApiError, variables: TVars) => void
+}
+
+/**
+ * 任务操作 mutation 工厂
+ * 统一处理 onSuccess（刷新列表 + 可选详情）和 onError（toast 提示）
+ */
+function useCreateTaskMutation<TVars>(
+  mutationFn: (variables: TVars) => Promise<TaskResponse>,
+  getTaskId: (variables: TVars) => number,
+  options: CreateTaskMutationOptions<TVars>,
+  queryClient: ReturnType<typeof useQueryClient>
+) {
+  const { actionName, invalidateDetail = true, onError } = options
+
+  return useMutation({
+    mutationFn,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+      if (invalidateDetail) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.tasks.detail(getTaskId(variables)),
+        })
+      }
+    },
+    onError: onError ?? ((error: ApiError) => {
+      toast.error(`${actionName}失败`, { description: error.message })
+    }),
+  })
+}
 
 // ==================== Hooks ====================
 
 export function useTaskActions() {
   const queryClient = useQueryClient()
 
-  /**
-   * 创建异步预览任务
-   * 启动后台任务获取仓库文件列表，返回 task_id 用于轮询
-   */
   const startPreviewTask = useMutation({
     mutationFn: async (data: TaskPreviewRequest): Promise<string> => {
-      const response = await api.post<AsyncPreviewTaskResponse>('/task/preview', data)
+      const response = await api.post<AsyncPreviewTaskResponse>(endpoints.task.preview, data)
       return response.data.task_id
     },
   })
 
-  /**
-   * 创建任务
-   * 使用预览接口返回的 cache_key 创建任务
-   */
   const createTask = useMutation({
     mutationFn: async ({
       cacheKey,
@@ -54,22 +86,17 @@ export function useTaskActions() {
       cacheKey: string
       selectedFiles: string[]
     }): Promise<TaskResponse> => {
-      const response = await api.post<CreateTaskResponse>('/task', {
+      const response = await api.post<CreateTaskResponse>(endpoints.task.create, {
         cache_key: cacheKey,
         selected_files: selectedFiles,
       } as CreateTaskRequest)
       return response.data
     },
     onSuccess: () => {
-      // 创建成功后刷新任务列表
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
     },
   })
 
-  /**
-   * 审批任务
-   * 管理员批准或拒绝待审批任务
-   */
   const reviewTask = useMutation({
     mutationFn: async ({
       taskId,
@@ -80,14 +107,13 @@ export function useTaskActions() {
       approved: boolean
       notes?: string
     }): Promise<TaskResponse> => {
-      const response = await api.post<ReviewTaskResponse>(
-        `/task/${taskId}/review`,
+      const response = await api.post<TaskActionResponse>(
+        endpoints.task.review(taskId),
         { approved, notes } as ReviewTaskRequest
       )
       return response.data
     },
     onSuccess: (_, variables) => {
-      // 审批成功后刷新任务列表和详情
       queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
       queryClient.invalidateQueries({
         queryKey: queryKeys.tasks.detail(variables.taskId),
@@ -95,130 +121,69 @@ export function useTaskActions() {
     },
     onError: (error: ApiError, variables) => {
       const action = variables.approved ? '批准' : '拒绝'
-      toast.error(`${action}任务失败`, {
-        description: error.message,
-      })
+      toast.error(`${action}任务失败`, { description: error.message })
     },
   })
 
-  /**
-   * 取消任务
-   * 任务创建者或管理员可取消 running / pending 状态的任务
-   */
-  const cancelTask = useMutation({
-    mutationFn: async (taskId: number): Promise<TaskResponse> => {
-      const response = await api.post<ReviewTaskResponse>(`/task/${taskId}/cancel`)
+  const cancelTask = useCreateTaskMutation(
+    async (taskId: number) => {
+      const response = await api.post<TaskActionResponse>(endpoints.task.cancel(taskId))
       return response.data
     },
-    onSuccess: (_, taskId) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
-    },
-    onError: (error: ApiError) => {
-      toast.error('取消任务失败', {
-        description: error.message,
-      })
-    },
-  })
+    (taskId) => taskId,
+    { actionName: '取消任务' },
+    queryClient
+  )
 
-  /**
-   * 暂停任务
-   * 任务创建者或管理员可暂停 running / pending 状态的任务
-   */
-  const pauseTask = useMutation({
-    mutationFn: async (taskId: number): Promise<TaskResponse> => {
-      const response = await api.post<ReviewTaskResponse>(`/task/${taskId}/pause`)
+  const pauseTask = useCreateTaskMutation(
+    async (taskId: number) => {
+      const response = await api.post<TaskActionResponse>(endpoints.task.pause(taskId))
       return response.data
     },
-    onSuccess: (_, taskId) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
-    },
-    onError: (error: ApiError) => {
-      toast.error('暂停任务失败', {
-        description: error.message,
-      })
-    },
-  })
+    (taskId) => taskId,
+    { actionName: '暂停任务' },
+    queryClient
+  )
 
-  /**
-   * 恢复任务
-   * 任务创建者或管理员可恢复 paused 状态的任务
-   */
-  const resumeTask = useMutation({
-    mutationFn: async (taskId: number): Promise<TaskResponse> => {
-      const response = await api.post<ReviewTaskResponse>(`/task/${taskId}/resume`)
+  const resumeTask = useCreateTaskMutation(
+    async (taskId: number) => {
+      const response = await api.post<TaskActionResponse>(endpoints.task.resume(taskId))
       return response.data
     },
-    onSuccess: (_, taskId) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
-    },
-    onError: (error: ApiError) => {
-      toast.error('恢复任务失败', {
-        description: error.message,
-      })
-    },
-  })
+    (taskId) => taskId,
+    { actionName: '恢复任务' },
+    queryClient
+  )
 
-  /**
-   * 置顶任务
-   * 管理员可将 pending 状态的任务置顶，提高执行优先级
-   */
-  const pinTask = useMutation({
-    mutationFn: async (taskId: number): Promise<TaskResponse> => {
-      const response = await api.post<ReviewTaskResponse>(`/task/${taskId}/pin`)
+  const pinTask = useCreateTaskMutation(
+    async (taskId: number) => {
+      const response = await api.post<TaskActionResponse>(endpoints.task.pin(taskId))
       return response.data
     },
-    onSuccess: (_, taskId) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
-    },
-    onError: (error: ApiError) => {
-      toast.error('置顶任务失败', {
-        description: error.message,
-      })
-    },
-  })
+    (taskId) => taskId,
+    { actionName: '置顶任务' },
+    queryClient
+  )
 
-  /**
-   * 取消置顶任务
-   * 管理员可取消已置顶任务的优先级
-   */
-  const unpinTask = useMutation({
-    mutationFn: async (taskId: number): Promise<TaskResponse> => {
-      const response = await api.post<ReviewTaskResponse>(`/task/${taskId}/unpin`)
+  const unpinTask = useCreateTaskMutation(
+    async (taskId: number) => {
+      const response = await api.post<TaskActionResponse>(endpoints.task.unpin(taskId))
       return response.data
     },
-    onSuccess: (_, taskId) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.detail(taskId) })
-    },
-    onError: (error: ApiError) => {
-      toast.error('取消置顶失败', {
-        description: error.message,
-      })
-    },
-  })
+    (taskId) => taskId,
+    { actionName: '取消置顶' },
+    queryClient
+  )
 
-  /**
-   * 重试任务
-   * 重试失败或已取消的任务（7天以内结束的），新任务自动审批
-   */
-  const retryTask = useMutation({
-    mutationFn: async (taskId: number): Promise<TaskResponse> => {
-      const response = await api.post<ReviewTaskResponse>(`/task/${taskId}/retry`)
+  const retryTask = useCreateTaskMutation(
+    async (taskId: number) => {
+      const response = await api.post<TaskActionResponse>(endpoints.task.retry(taskId))
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
-    },
-    onError: (error: ApiError) => {
-      toast.error('重试任务失败', {
-        description: error.message,
-      })
-    },
-  })
+    (taskId) => taskId,
+    { actionName: '重试任务', invalidateDetail: false },
+    queryClient
+  )
 
   return {
     startPreviewTask,

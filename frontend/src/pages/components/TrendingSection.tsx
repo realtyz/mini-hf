@@ -9,6 +9,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import api from "@/lib/api";
+import { formatCompactNumber } from "@/lib/utils";
+import { STALE_TIMES } from "@/lib/query-client";
 import type { TrendingRepo } from "@/lib/api-types";
 import { motion } from "framer-motion";
 import {
@@ -29,12 +31,6 @@ async function fetchTrending(): Promise<TrendingRepo[]> {
     "/trending",
   );
   return response.data;
-}
-
-function formatNumber(num: number): string {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + "M";
-  if (num >= 1000) return (num / 1000).toFixed(1) + "K";
-  return num.toString();
 }
 
 function RepoTypeBadge({ type }: { type: string }) {
@@ -100,11 +96,11 @@ function TrendingCard({ repo, index }: { repo: TrendingRepo; index: number }) {
           <div className="flex items-center gap-4 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Download className="h-3.5 w-3.5" />
-              {formatNumber(repo.downloads)}
+              {formatCompactNumber(repo.downloads)}
             </span>
             <span className="inline-flex items-center gap-1">
               <Heart className="h-3.5 w-3.5" />
-              {formatNumber(repo.likes)}
+              {formatCompactNumber(repo.likes)}
             </span>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
@@ -125,7 +121,7 @@ export function TrendingSection() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["trending"],
     queryFn: fetchTrending,
-    staleTime: 5 * 60 * 1000,
+    staleTime: STALE_TIMES.static,
   });
 
   return (

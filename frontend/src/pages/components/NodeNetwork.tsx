@@ -184,8 +184,7 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
   return (
     <canvas
       ref={canvasRef}
-      className={className}
-      style={{ display: "block", width: "100%", height: "100%" }}
+      className={`block w-full h-full ${className ?? ''}`}
     />
   );
 }

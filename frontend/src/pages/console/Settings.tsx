@@ -2,7 +2,8 @@ import { useState, type FC } from 'react'
 import { Bell, Mail, Globe, SettingsIcon, Megaphone } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { containerVariants, itemVariants, panelVariants } from './settings/motion-config'
+import { containerVariants, itemVariants, panelVariants } from '@/lib/animations/motion-config'
+import { PageHeader } from '@/components/shared/PageHeader'
 import { SmtpTab } from './settings/SmtpTab'
 import { HfEndpointTab } from './settings/HfEndpointTab'
 import { NotificationTab } from './settings/NotificationTab'
@@ -70,16 +71,12 @@ export function Settings() {
       animate="visible"
     >
       {/* Page header */}
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center">
-            <SettingsIcon className="size-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">系统设置</h1>
-            <p className="text-[13px] text-muted-foreground mt-0.5">管理系统配置和偏好设置</p>
-          </div>
-        </div>
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          icon={SettingsIcon}
+          title="系统设置"
+          subtitle="管理系统配置和偏好设置"
+        />
       </motion.div>
 
       {/* Two-column: nav + content */}

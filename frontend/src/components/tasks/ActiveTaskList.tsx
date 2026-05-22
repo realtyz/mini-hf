@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Smile, Globe, Loader2, Clock, Pin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { TaskResponse, TaskStatus } from "@/lib/api-types";
+import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
 
 interface ActiveTaskListProps {
   tasks: TaskResponse[];
@@ -10,46 +11,13 @@ interface ActiveTaskListProps {
   onSelectTask: (taskId: number) => void;
 }
 
-function getStatusLabel(status: TaskStatus): string {
-  const labels: Record<TaskStatus, string> = {
-    pending_approval: "待审批",
-    pending: "排队中",
-    running: "执行中",
-    completed: "已完成",
-    failed: "失败",
-    canceling: "取消中",
-    cancelled: "已取消",
-    pausing: "暂停中",
-    paused: "已暂停",
-  };
-  return labels[status] || status;
+const ACTIVE_STATUS_COLORS: Partial<Record<TaskStatus, string>> = {
+  running: "text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800",
+  pending_approval: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800",
+  pending: "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700",
 }
 
-function getStatusColor(status: TaskStatus): string {
-  switch (status) {
-    case "running":
-      return "text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800";
-    case "pending_approval":
-      return "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800";
-    case "pending":
-      return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700";
-    default:
-      return "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700";
-  }
-}
-
-function getStatusDotColor(status: TaskStatus): string {
-  switch (status) {
-    case "running":
-      return "bg-blue-500";
-    case "pending_approval":
-      return "bg-amber-500";
-    case "pending":
-      return "bg-slate-400";
-    default:
-      return "bg-slate-400";
-  }
-}
+const DEFAULT_STATUS_COLOR = "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700"
 
 function calcDuration(startedAt: string | null): string {
   if (!startedAt) return "-";
@@ -129,9 +97,7 @@ function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
             </div>
           ) : (
             <div
-              className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold ${getStatusColor(
-                task.status
-              )}`}
+              className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] font-semibold ${ACTIVE_STATUS_COLORS[task.status] ?? DEFAULT_STATUS_COLOR}`}
             >
               {index + 1}
             </div>
@@ -165,12 +131,10 @@ function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
           <div className="flex items-center gap-2 mt-0.5">
             <div className="flex items-center gap-1">
               <span
-                className={`inline-block w-1.5 h-1.5 rounded-full ${getStatusDotColor(
-                  task.status
-                )}`}
+                className={`inline-block w-1.5 h-1.5 rounded-full ${TASK_STATUS_CONFIG[task.status]?.dotClass ?? 'bg-slate-400'}`}
               />
               <span className="text-[10px] font-medium text-muted-foreground">
-                {getStatusLabel(task.status)}
+                {TASK_STATUS_CONFIG[task.status]?.label ?? task.status}
               </span>
             </div>
             <span className="text-[10px] text-muted-foreground truncate max-w-16 font-mono" title={task.revision}>

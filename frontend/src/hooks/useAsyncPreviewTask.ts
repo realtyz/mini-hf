@@ -1,5 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import endpoints from '@/lib/api-endpoints'
+import { queryKeys } from '@/lib/query-keys'
+import { useElapsedTimer } from '@/hooks/useElapsedTimer'
+import { STRINGS } from '@/lib/constants/strings'
 import type {
   RepoSource,
   RepoType,
@@ -7,7 +12,6 @@ import type {
   AsyncPreviewTaskStatusResponse,
   TaskPreviewData,
   PreviewTaskStatus,
-  ApiError,
 } from '@/lib/api-types'
 
 export interface TaskPreviewRequest {
@@ -49,118 +53,76 @@ export function useAsyncPreviewTask(
   const { pollInterval = 1000, maxPolls = 300 } = options
 
   const [taskId, setTaskId] = useState<string | null>(null)
-  const [status, setStatus] = useState<PreviewTaskStatus | null>(null)
-  const [progressMessage, setProgressMessage] = useState('')
-  const [progressPercent, setProgressPercent] = useState(0)
-  const [data, setData] = useState<TaskPreviewData | null>(null)
-  const [error, setError] = useState<Error | null>(null)
-  const [isStarting, setIsStarting] = useState(false)
-  const [, setPollCount] = useState(0)
   const [startTime, setStartTime] = useState<number | null>(null)
-  const [elapsedTime, setElapsedTime] = useState(0)
+  const pollCountRef = useRef(0)
+  const queryClient = useQueryClient()
 
-  const startPreview = useCallback(async (requestData: TaskPreviewRequest) => {
-    setIsStarting(true)
-    setError(null)
-    setData(null)
-    setStatus(null)
-    setProgressMessage('')
-    setProgressPercent(0)
-    setPollCount(0)
-    setStartTime(Date.now())
-    setElapsedTime(0)
+  const startMutation = useMutation({
+    mutationFn: async (requestData: TaskPreviewRequest) => {
+      const result = await api.post<AsyncPreviewTaskResponse>(endpoints.task.preview, requestData)
+      return result.data.task_id
+    },
+    onSuccess: (id) => {
+      setTaskId(id)
+      pollCountRef.current = 0
+      setStartTime(Date.now())
+    },
+  })
 
-    try {
-      const result = await api.post<AsyncPreviewTaskResponse>('/task/preview', requestData)
-      setTaskId(result.data.task_id)
-    } catch (err) {
-      const errorMessage = (err as ApiError).message ?? '启动预览任务失败'
-      setError(new Error(errorMessage))
-    } finally {
-      setIsStarting(false)
-    }
-  }, [])
+  const statusQuery = useQuery({
+    queryKey: queryKeys.tasks.previewStatus(taskId),
+    queryFn: async () => {
+      pollCountRef.current += 1
+      const result = await api.get<AsyncPreviewTaskStatusResponse>(
+        endpoints.task.previewStatus(taskId!)
+      )
+      return result.data
+    },
+    enabled: !!taskId,
+    refetchInterval: (query) => {
+      const status = query.state.data?.status
+      if (status === 'completed' || status === 'failed') return false
+      if (pollCountRef.current >= maxPolls) return false
+      return pollInterval
+    },
+    retry: false,
+  })
+
+  const startPreview = useCallback(
+    (requestData: TaskPreviewRequest) => {
+      startMutation.mutate(requestData)
+    },
+    [startMutation]
+  )
 
   const cancelPreview = useCallback(() => {
     setTaskId(null)
-    setStatus(null)
-    setPollCount(0)
-    setIsStarting(false)
-  }, [])
-
-  useEffect(() => {
-    if (!taskId) return
-    if (status === 'completed' || status === 'failed') return
-
-    let currentPollCount = 0
-
-    const fetchStatus = async () => {
-      try {
-        const result = await api.get<AsyncPreviewTaskStatusResponse>(
-          `/task/preview/${taskId}`
-        )
-        const taskData = result.data
-
-        setStatus(taskData.status)
-        setProgressMessage(taskData.progress_message)
-        setProgressPercent(taskData.progress_percent)
-        setPollCount(currentPollCount)
-
-        if (taskData.status === 'completed' && taskData.result) {
-          setData(taskData.result)
-        } else if (taskData.status === 'failed') {
-          setError(new Error(taskData.error_message || '预览任务失败'))
-        }
-      } catch (err) {
-        const errorMessage = (err as ApiError).message ?? '获取预览状态失败'
-        setError(new Error(errorMessage))
-      }
-    }
-
-    fetchStatus()
-
-    const interval = setInterval(() => {
-      currentPollCount++
-      setPollCount(currentPollCount)
-
-      if (currentPollCount >= maxPolls) {
-        setError(new Error('预览任务超时，请稍后重试'))
-        clearInterval(interval)
-        return
-      }
-
-      fetchStatus()
-    }, pollInterval)
-
-    return () => clearInterval(interval)
-  }, [taskId, status, pollInterval, maxPolls])
-
-  const isPolling = !!taskId && status !== 'completed' && status !== 'failed' && !error
-  const isSuccess = status === 'completed' && !!data
-  const isError = status === 'failed' || !!error
-
-  useEffect(() => {
-    if (!isPolling || !startTime) return
-
-    const timer = setInterval(() => {
-      setElapsedTime(Date.now() - startTime)
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [isPolling, startTime])
+    queryClient.removeQueries({ queryKey: queryKeys.tasks.previewStatus(taskId) })
+  }, [taskId, queryClient])
 
   const reset = useCallback(() => {
     setTaskId(null)
-    setStatus(null)
-    setProgressMessage('')
-    setProgressPercent(0)
-    setData(null)
-    setError(null)
-    setIsStarting(false)
-    setPollCount(0)
     setStartTime(null)
-    setElapsedTime(0)
-  }, [])
+    pollCountRef.current = 0
+    queryClient.removeQueries({ queryKey: queryKeys.tasks.previewStatus(taskId) })
+    startMutation.reset()
+  }, [taskId, queryClient, startMutation])
+
+  const status = statusQuery.data?.status ?? null
+  const isTerminal = status === 'completed' || status === 'failed'
+  const timedOut = pollCountRef.current >= maxPolls && !!taskId && !isTerminal
+  const hasError = status === 'failed' || !!startMutation.error || !!statusQuery.error || timedOut
+
+  const isStarting = startMutation.isPending
+  const isPolling = !!taskId && !isTerminal && !hasError
+  const isSuccess = status === 'completed' && !!statusQuery.data?.result
+  const isError = hasError
+
+  const elapsedTime = useElapsedTimer(isPolling, startTime)
+
+  const error: Error | null = (startMutation.error as Error | null)
+    ?? (statusQuery.error as Error | null)
+    ?? (timedOut ? new Error(STRINGS.taskPreviewTimeout) : null)
 
   return {
     startPreview,
@@ -169,10 +131,10 @@ export function useAsyncPreviewTask(
     isStarting,
     isPolling,
     status,
-    progressMessage,
-    progressPercent,
+    progressMessage: statusQuery.data?.progress_message ?? '',
+    progressPercent: statusQuery.data?.progress_percent ?? 0,
     elapsedTime,
-    data,
+    data: statusQuery.data?.result ?? null,
     error,
     isSuccess,
     isError,

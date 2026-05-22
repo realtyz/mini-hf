@@ -1,4 +1,4 @@
-import type { PaginationParams, TaskListFilters } from './api-types'
+import type { PaginationParams, TaskListFilters, RepoListParams } from './api-types'
 
 export const queryKeys = {
   dashboard: {
@@ -27,10 +27,12 @@ export const queryKeys = {
       id === null ? ['tasks', 'detail', 'empty'] : [...queryKeys.tasks.all, 'detail', id] as const,
     progress: (id: number | null) =>
       id === null ? ['tasks', 'progress', 'empty'] : [...queryKeys.tasks.all, 'progress', id] as const,
+    previewStatus: (id: string | null) =>
+      id === null ? ['tasks', 'preview-status', 'empty'] : [...queryKeys.tasks.all, 'preview-status', id] as const,
   },
   repos: {
     all: ['repos'] as const,
-    list: (params?: PaginationParams) =>
+    list: (params?: Partial<RepoListParams & { repoType?: string }>) =>
       [...queryKeys.repos.all, 'list', params] as const,
     detail: (id: string) => [...queryKeys.repos.all, 'detail', id] as const,
   },
@@ -42,5 +44,11 @@ export const queryKeys = {
     all: ['configs'] as const,
     list: () => [...queryKeys.configs.all, 'list'] as const,
     detail: (key: string) => [...queryKeys.configs.all, 'detail', key] as const,
+  },
+  public: {
+    all: ['public'] as const,
+    announcement: () => [...queryKeys.public.all, 'announcement'] as const,
+    announcements: () => [...queryKeys.public.all, 'announcements'] as const,
+    hfEndpoints: () => [...queryKeys.public.all, 'hf-endpoints'] as const,
   },
 } as const

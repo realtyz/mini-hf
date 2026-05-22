@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import type { UserResponse } from '@/lib/api-types'
 import { config } from '@/lib/runtime-config'
+import endpoints from '@/lib/api-endpoints'
 
 /**
  * 认证状态管理
@@ -66,7 +67,7 @@ export const useAuthStore = create<AuthState>()(
               Authorization: `Bearer ${refreshToken}`,
               'Content-Type': 'application/json',
             }
-            await fetch(`${config.API_BASE_URL}/auth/logout`, {
+            await fetch(`${config.API_BASE_URL}${endpoints.auth.logout}`, {
               method: 'POST',
               headers,
               body: JSON.stringify({ access_token: token }),

@@ -14,7 +14,7 @@ import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
-import { smoothTransition, prefersReducedMotion } from './motion-config'
+import { smoothTransition, prefersReducedMotion } from '@/lib/animations/motion-config'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Spotlight Card

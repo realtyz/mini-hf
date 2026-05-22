@@ -15,18 +15,8 @@ import { Badge } from '@/components/ui/badge'
 import type { RepoProfile, RepoStatus } from '@/lib/api-types'
 import { format } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
-import { cn } from '@/lib/utils'
+import { cn, formatCompactNumber } from '@/lib/utils'
 import { motion } from 'framer-motion'
-
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K'
-  }
-  return num.toString()
-}
 
 type SoftColor = 'emerald' | 'slate' | 'sky' | 'amber' | 'red'
 
@@ -255,7 +245,7 @@ export const RepoCard = memo(function RepoCard({
             <div className="flex items-center gap-1.5 group/stat">
               <Download className="h-3.5 w-3.5 text-muted-foreground/50 group-hover/stat:text-primary/60 transition-colors" />
               <span className="text-xs font-medium tabular-nums">
-                {formatNumber(repo.downloads)}
+                {formatCompactNumber(repo.downloads)}
               </span>
             </div>
             <div className="flex items-center gap-1.5 group/stat">

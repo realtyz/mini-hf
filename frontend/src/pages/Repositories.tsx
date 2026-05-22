@@ -23,6 +23,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import api from "@/lib/api";
+import endpoints from "@/lib/api-endpoints";
 import type {
   RepoProfile,
   RepoListResponse,
@@ -53,7 +54,7 @@ async function fetchRepositories({
   }
 
   const endpoint =
-    modelSource === "huggingface" ? "/hf_repo/list-public" : "/ms_repo/list";
+    modelSource === "huggingface" ? endpoints.repo.hfListPublic : endpoints.repo.msList;
   return api.get<RepoListResponse>(endpoint, { params: queryParams });
 }
 

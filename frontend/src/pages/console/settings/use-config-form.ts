@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
 import api from '@/lib/api'
+import { STRINGS } from '@/lib/constants/strings'
 import { queryKeys } from '@/lib/query-keys'
+import endpoints from '@/lib/api-endpoints'
 import type { ApiResponse } from '@/lib/api-types'
 import { isEqual } from 'lodash-es'
 
@@ -48,15 +50,20 @@ export function useConfigForm<TForm extends Record<string, unknown>, TResponse>(
 
   const [form, setFormState] = useState<TForm>(defaultForm)
   const [originalForm, setOriginalForm] = useState<TForm>(defaultForm)
+  const responseToFormRef = useRef(responseToForm)
+
+  useEffect(() => {
+    responseToFormRef.current = responseToForm
+  }, [responseToForm])
 
   const query = useQuery({
     queryKey: [...queryKeys.configs.all, category],
-    queryFn: () => api.get<ApiResponse<TResponse>>(`/config/category/${category}`),
+    queryFn: () => api.get<ApiResponse<TResponse>>(endpoints.config.category(category)),
   })
 
   const saveMutation = useMutation({
     mutationFn: (data: Record<string, unknown>) =>
-      api.put(`/config/category/${category}`, data),
+      api.put(endpoints.config.category(category), data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
     },
@@ -65,12 +72,10 @@ export function useConfigForm<TForm extends Record<string, unknown>, TResponse>(
   // Sync API data → local form on first load
   useEffect(() => {
     if (query.data?.data) {
-      const newForm = responseToForm(query.data.data)
+      const newForm = responseToFormRef.current(query.data.data)
       setFormState(newForm)
       setOriginalForm(newForm)
     }
-    // Only run on initial data arrival, not on every query.data change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query.data])
 
   const hasChanges = !isEqual(form, originalForm)
@@ -91,12 +96,12 @@ export function useConfigForm<TForm extends Record<string, unknown>, TResponse>(
     }
     setOriginalForm(form)
     onSaved?.(form)
-    toast.success('配置已保存')
+    toast.success(STRINGS.configSaved)
   }, [form, formToRequest, saveFn, saveMutation, onSaved])
 
   const reset = useCallback(() => {
     setFormState(originalForm)
-    toast.info('已重置为上次保存的配置')
+    toast.info(STRINGS.resetSuccess)
   }, [originalForm])
 
   return {
@@ -117,7 +122,7 @@ export function useConfigForm<TForm extends Record<string, unknown>, TResponse>(
 export function useInitializeDefaults() {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: () => api.post('/config/init'),
+    mutationFn: () => api.post(endpoints.config.init),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.configs.all })
     },

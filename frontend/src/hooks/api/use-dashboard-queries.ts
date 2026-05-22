@@ -3,12 +3,14 @@
  */
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import { STALE_TIMES } from "@/lib/query-client";
 import { useTaskList } from "@/hooks/useTaskList";
 import type {
   TaskResponse,
   DashboardStatsResponse,
 } from "@/lib/api-types";
 import api from "@/lib/api";
+import endpoints from "@/lib/api-endpoints";
 
 /**
  * Dashboard 统计数据
@@ -16,8 +18,8 @@ import api from "@/lib/api";
 export function useDashboardStats() {
   const { data, isLoading } = useQuery({
     queryKey: queryKeys.dashboard.stats(),
-    queryFn: () => api.get<DashboardStatsResponse>("/dashboard/stats"),
-    staleTime: 60 * 1000, // 1 minute
+    queryFn: () => api.get<DashboardStatsResponse>(endpoints.dashboard.stats),
+    staleTime: STALE_TIMES.stats,
   });
 
   return {

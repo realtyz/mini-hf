@@ -18,6 +18,7 @@ import {
 import { useConfigForm } from './use-config-form'
 import { useTestSMTPConnection } from '@/hooks/api'
 import api from '@/lib/api'
+import endpoints from '@/lib/api-endpoints'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 import type { SMTPConfigResponse, SMTPTestRequest } from '@/lib/api-types'
@@ -58,7 +59,7 @@ export function SmtpTab() {
     }
 
     if (!form.password) {
-      await api.put('/config/batch', {
+      await api.put(endpoints.config.batch, {
         configs: [
           { key: 'smtp_host', value: form.host, category: 'email' },
           { key: 'smtp_port', value: form.port, category: 'email' },
@@ -77,7 +78,7 @@ export function SmtpTab() {
         from_email: form.from_email,
         test_before_save: true,
       }
-      await api.put('/config/category/smtp', saveData)
+      await api.put(endpoints.config.category('smtp'), saveData)
     }
   }, [validateForm])
 

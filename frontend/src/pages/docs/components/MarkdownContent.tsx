@@ -106,11 +106,9 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
               {children}
             </blockquote>
           ),
-          code: ({ className, children, ...props }) => {
+          code: ({ className, children, inline, ...props }) => {
             const match = /language-(\w+)/.exec(className || '')
             const language = match ? match[1] : ''
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const inline = (props as any).inline as boolean | undefined
 
             if (inline || !language) {
               return (

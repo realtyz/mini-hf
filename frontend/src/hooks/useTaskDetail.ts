@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
+import { STALE_TIMES } from '@/lib/query-client'
+import endpoints from '@/lib/api-endpoints'
 import type { TaskResponse, ApiResponse } from '@/lib/api-types'
 
 /**
@@ -13,7 +15,7 @@ export function useTaskDetail(taskId: number | null) {
     queryKey: queryKeys.tasks.detail(taskId),
     queryFn: async () => {
       if (!taskId) throw new Error('Task ID is required')
-      const response = await api.get<ApiResponse<TaskResponse>>(`/task/${taskId}`)
+      const response = await api.get<ApiResponse<TaskResponse>>(endpoints.task.detail(taskId))
       return response.data
     },
     enabled: !!taskId,
@@ -27,7 +29,7 @@ export function useTaskDetail(taskId: number | null) {
       return false
     },
     refetchOnWindowFocus: false,
-    staleTime: 5000,
+    staleTime: STALE_TIMES.realtime,
     gcTime: 300000,
   })
 

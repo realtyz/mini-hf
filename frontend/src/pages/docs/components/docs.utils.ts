@@ -29,7 +29,7 @@ export async function loadDocContent(slug: string): Promise<string> {
 
     return content
   } catch (error) {
-    console.error('Failed to load doc:', error)
+    if (import.meta.env.DEV) console.error('Failed to load doc:', error)
     return `# 文档未找到\n\n未找到 "${slug}" 对应的文档。`
   }
 }

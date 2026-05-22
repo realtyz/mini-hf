@@ -4,10 +4,11 @@ import { RecentTasks } from "@/components/dashboard/RecentTasks";
 import { motion } from "framer-motion";
 import { LayoutDashboard, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { useAuthStore } from "@/stores/auth-store";
-import { containerVariants, itemVariants } from "./settings/motion-config";
+import { containerVariants, itemVariants } from "@/lib/animations/motion-config";
 
 export function Dashboard() {
   const queryClient = useQueryClient();
@@ -28,30 +29,23 @@ export function Dashboard() {
       animate="visible"
     >
       {/* 页面标题 */}
-      <motion.div
-        variants={itemVariants}
-        className="flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center">
-            <LayoutDashboard className="size-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">仪表盘</h1>
-            <p className="text-[13px] text-muted-foreground mt-0.5">
-              系统概览与实时监控数据
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleRefresh}
-          className="w-24 gap-2 cursor-pointer text-[13px] h-8"
-        >
-          <RefreshCw className="size-3.5" />
-          刷新
-        </Button>
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          icon={LayoutDashboard}
+          title="仪表盘"
+          subtitle="系统概览与实时监控数据"
+          actions={
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              className="w-24 gap-2 cursor-pointer text-[13px] h-8"
+            >
+              <RefreshCw className="size-3.5" />
+              刷新
+            </Button>
+          }
+        />
       </motion.div>
 
       {/* 统计卡片 */}

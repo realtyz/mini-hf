@@ -1,3 +1,9 @@
+declare global {
+  interface Window {
+    __RUNTIME_CONFIG__?: Partial<RuntimeConfig>
+  }
+}
+
 interface RuntimeConfig {
   API_BASE_URL: string
   HF_SERVER_URL: string
@@ -16,8 +22,7 @@ const defaults: RuntimeConfig = {
 }
 
 function getRuntimeConfig(): RuntimeConfig {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const runtime = (window as any).__RUNTIME_CONFIG__ || {}
+  const runtime = window.__RUNTIME_CONFIG__ || {}
   return {
     API_BASE_URL: runtime.API_BASE_URL || defaults.API_BASE_URL,
     HF_SERVER_URL: runtime.HF_SERVER_URL || defaults.HF_SERVER_URL,

@@ -3,6 +3,15 @@ import type { ApiError, ApiResponse } from '@/lib/api-types'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryClient } from '@/lib/query-client'
 import { config } from '@/lib/runtime-config'
+import endpoints from '@/lib/api-endpoints'
+
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    skipAuthRefresh?: boolean
+    skipAuthRedirect?: boolean
+    _retry?: boolean
+  }
+}
 
 /**
  * API 客户端配置
@@ -53,7 +62,7 @@ async function refreshAccessToken(): Promise<string | null> {
       token_type: string
       expires_in: number
     }>>(
-      `${config.API_BASE_URL}/auth/refresh`,
+      `${config.API_BASE_URL}${endpoints.auth.refresh}`,
       {},
       {
         headers: {
@@ -66,7 +75,7 @@ async function refreshAccessToken(): Promise<string | null> {
     useAuthStore.getState().setToken(access_token, expires_in, refresh_token)
     return access_token
   } catch (error) {
-    console.error('Failed to refresh token:', error)
+    if (import.meta.env.DEV) console.error('Failed to refresh token:', error)
     return null
   }
 }
@@ -90,7 +99,6 @@ function onTokenRefreshed(newToken: string) {
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     // 跳过非认证请求（如刷新 token 本身）
-    // @ts-expect-error - skipAuthRefresh 是自定义属性
     if (config.skipAuthRefresh) {
       return config
     }
@@ -140,12 +148,11 @@ api.interceptors.response.use(
       | { code?: number; message?: string; data?: unknown }
       | undefined
     const status = error.response?.status
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const config = error.config as any
+    const config = error.config
 
     // 401 未授权处理
     if (status === 401 && !config?.skipAuthRedirect) {
-      const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean }
+      const originalRequest = error.config
 
       // 如果不是刷新请求且没有重试过，尝试刷新 token
       if (!config?.skipAuthRefresh && !originalRequest._retry) {

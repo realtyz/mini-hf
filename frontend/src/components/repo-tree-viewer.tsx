@@ -14,6 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import api from "@/lib/api";
 import { config } from "@/lib/runtime-config";
+import endpoints from "@/lib/api-endpoints";
 import type { RepoTreeResponse, RepoTreeItem } from "@/lib/api-types";
 import { cn, formatBytes } from "@/lib/utils";
 
@@ -28,7 +29,7 @@ async function fetchRepoTree(
   repoId: string,
   commitHash: string,
 ): Promise<RepoTreeResponse> {
-  const endpoint = `/hf_repo/${encodeURIComponent(repoId)}/tree/${encodeURIComponent(commitHash)}`;
+  const endpoint = endpoints.repo.tree(repoId, commitHash);
   return api.get<RepoTreeResponse>(endpoint);
 }
 
@@ -326,7 +327,7 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
                   {item.type === "file" &&
                     (item.is_cached ? (
                       <a
-                        href={`${config.API_BASE_URL}/hf_repo/${encodeURIComponent(repoId)}/file?commit_hash=${encodeURIComponent(commitHash)}&path=${encodeURIComponent(item.path)}`}
+                        href={`${config.API_BASE_URL}${endpoints.repo.fileUrl(repoId, commitHash, item.path)}`}
                         download={item.name}
                         title="下载文件"
                         onClick={(e) => e.stopPropagation()}

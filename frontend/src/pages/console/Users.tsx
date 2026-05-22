@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { containerVariants, itemVariants } from "./settings/motion-config";
+import { containerVariants, itemVariants } from "@/lib/animations/motion-config";
 import { useState, useMemo, useEffect } from "react";
 import { debounce } from "lodash-es";
 import {
@@ -66,6 +66,7 @@ import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PaginatedNavigation } from "@/components/paginated-navigation";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { toast } from "sonner";
 import {
   useUsers,
@@ -707,41 +708,34 @@ export function Users() {
       animate="visible"
     >
       {/* Header */}
-      <motion.div
-        variants={itemVariants}
-        className="mb-6 flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center">
-            <UsersIcon className="size-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">用户管理</h1>
-            <p className="text-[13px] text-muted-foreground mt-0.5">
-              管理系统用户账号和权限
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 w-24 cursor-pointer"
-              onClick={() => refetch()}
-              disabled={isLoading}
-            >
-              <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
-              刷新
-            </Button>
-          </motion.div>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button size="sm" className="gap-2 w-24 cursor-pointer" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              新建用户
-            </Button>
-          </motion.div>
-        </div>
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          icon={UsersIcon}
+          title="用户管理"
+          subtitle="管理系统用户账号和权限"
+          actions={
+            <>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 w-24 cursor-pointer"
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                  刷新
+                </Button>
+              </motion.div>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button size="sm" className="gap-2 w-24 cursor-pointer" onClick={() => setCreateOpen(true)}>
+                  <Plus className="h-4 w-4" />
+                  新建用户
+                </Button>
+              </motion.div>
+            </>
+          }
+        />
       </motion.div>
 
       {/* Search Bar */}

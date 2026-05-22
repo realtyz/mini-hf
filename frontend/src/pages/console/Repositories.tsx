@@ -12,14 +12,14 @@ import {
 } from "@/components/ui/select";
 import { PaginatedNavigation } from "@/components/paginated-navigation";
 import { RepoGrid } from "@/components/repo";
+import { PageHeader } from "@/components/shared/PageHeader";
 import { useRepoList, PAGE_SIZE } from "@/hooks/useRepoList";
+import { useSessionStorageState } from "@/hooks/useSessionStorageState";
 import type { RepoProfile, RepoStatus } from "@/lib/api-types";
 import { cn } from "@/lib/utils";
 
-// sessionStorage key
 const REPO_LIST_STATE_KEY = "repoListState";
 
-// 状态类型定义
 interface RepoListState {
   repoType: "all" | "model" | "dataset";
   search: string;
@@ -28,30 +28,6 @@ interface RepoListState {
   sortOrder: string;
   page: number;
 }
-
-// 从 sessionStorage 读取状态
-function loadStateFromStorage(): Partial<RepoListState> | null {
-  try {
-    const saved = sessionStorage.getItem(REPO_LIST_STATE_KEY);
-    if (saved) {
-      return JSON.parse(saved);
-    }
-  } catch {
-    // 忽略解析错误
-  }
-  return null;
-}
-
-// 保存状态到 sessionStorage
-function saveStateToStorage(state: RepoListState) {
-  try {
-    sessionStorage.setItem(REPO_LIST_STATE_KEY, JSON.stringify(state));
-  } catch {
-    // 忽略存储错误
-  }
-}
-
-type RepoTypeFilter = "all" | "model" | "dataset";
 
 // 状态配置：显示名称和颜色
 const STATUS_CONFIG: {
@@ -98,75 +74,61 @@ const DEFAULT_STATUSES: RepoStatus[] = ["active", "updating", "cleaning"];
 export function RepositoriesConsole() {
   const navigate = useNavigate();
 
-  // 从 sessionStorage 加载初始状态
-  const savedState = loadStateFromStorage();
+  const [repoListState, setRepoListState] = useSessionStorageState<RepoListState>(
+    REPO_LIST_STATE_KEY,
+    {
+      repoType: "all",
+      search: "",
+      statuses: DEFAULT_STATUSES,
+      sortBy: "cache_updated_at",
+      sortOrder: "desc",
+      page: 1,
+    }
+  );
 
-  const [repoType, setRepoType] = useState<RepoTypeFilter>(savedState?.repoType ?? "all");
-  const [search, setSearch] = useState(savedState?.search ?? "");
-  const [debouncedSearch, setDebouncedSearch] = useState(savedState?.search ?? "");
-  const [statuses, setStatuses] = useState<RepoStatus[]>(savedState?.statuses ?? DEFAULT_STATUSES);
-  const [sortBy, setSortBy] = useState<string>(savedState?.sortBy ?? "cache_updated_at");
-  const [sortOrder, setSortOrder] = useState<string>(savedState?.sortOrder ?? "desc");
-  const [page, setPage] = useState(savedState?.page ?? 1);
+  const [debouncedSearch, setDebouncedSearch] = useState(repoListState.search);
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1);
+      setDebouncedSearch(repoListState.search);
+      setRepoListState((prev) => ({ ...prev, page: 1 }));
     }, 300);
     return () => clearTimeout(timer);
-  }, [search]);
-
-  useEffect(() => {
-    saveStateToStorage({
-      repoType,
-      search,
-      statuses,
-      sortBy,
-      sortOrder,
-      page,
-    });
-  }, [repoType, search, statuses, sortBy, sortOrder, page]);
+  }, [repoListState.search, setRepoListState]);
 
   const { data, isLoading, error, refetch } = useRepoList({
-    repoType,
-    skip: (page - 1) * PAGE_SIZE,
+    repoType: repoListState.repoType,
+    skip: (repoListState.page - 1) * PAGE_SIZE,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
-    statuses: statuses.length > 0 ? statuses : undefined,
-    sort_by: sortBy,
-    sort_order: sortOrder,
+    statuses: repoListState.statuses.length > 0 ? repoListState.statuses : undefined,
+    sort_by: repoListState.sortBy,
+    sort_order: repoListState.sortOrder,
   });
 
   const repositories = data?.data || [];
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  // 切换状态选择
+  const updateState = (patch: Partial<RepoListState>) => {
+    setRepoListState((prev) => ({ ...prev, ...patch }));
+  };
+
   const toggleStatus = (status: RepoStatus) => {
-    setStatuses((prev) =>
-      prev.includes(status)
-        ? prev.filter((s) => s !== status)
-        : [...prev, status],
-    );
-    setPage(1);
+    setRepoListState((prev) => ({
+      ...prev,
+      statuses: prev.statuses.includes(status)
+        ? prev.statuses.filter((s) => s !== status)
+        : [...prev.statuses, status],
+      page: 1,
+    }));
   };
 
   const handleRepoTypeChange = (value: string) => {
-    setRepoType(value as RepoTypeFilter);
-    setPage(1);
+    setRepoListState((prev) => ({ ...prev, repoType: value as RepoListState["repoType"], page: 1 }));
   };
 
   const handleViewDetail = (repo: RepoProfile) => {
-    // 确保状态已保存（尽管 useEffect 会自动保存，这里显式调用确保及时性）
-    saveStateToStorage({
-      repoType,
-      search,
-      statuses,
-      sortBy,
-      sortOrder,
-      page,
-    });
     navigate(
       `/console/repositories/detail?repoId=${encodeURIComponent(repo.repo_id)}&type=${repo.repo_type}`,
     );
@@ -174,50 +136,37 @@ export function RepositoriesConsole() {
 
   return (
     <div className="flex flex-1 flex-col animate-fade-in-up">
-      {/* 页面标题 - 改进设计 */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="size-10 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center">
-              <Database className="size-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight">仓库管理</h1>
-              <p className="text-[13px] text-muted-foreground mt-0.5">
-                管理和浏览已缓存的模型与数据集
-              </p>
-            </div>
-          </div>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => refetch()}
-          className="w-24 cursor-pointer gap-2 text-[13px] h-8"
-        >
-          <RefreshCw className="size-3.5" />
-          刷新
-        </Button>
-      </div>
+      <PageHeader
+        icon={Database}
+        title="仓库管理"
+        subtitle="管理和浏览已缓存的模型与数据集"
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => refetch()}
+            className="w-24 cursor-pointer gap-2 text-[13px] h-8"
+          >
+            <RefreshCw className="size-3.5" />
+            刷新
+          </Button>
+        }
+      />
 
-      {/* 筛选区 - 重新设计 */}
       <div className="rounded-2xl border bg-card mb-6 overflow-hidden">
-        {/* 搜索和筛选行 */}
         <div className="p-4 flex flex-wrap items-center gap-3">
-          {/* 搜索框 */}
           <div className="relative flex-1 min-w-50 max-w-sm">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
             <Input
               type="search"
               placeholder="搜索仓库名称..."
               className="pl-9 h-9 bg-muted/30 border-transparent focus:border-primary/30 focus:bg-background"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              value={repoListState.search}
+              onChange={(e) => setRepoListState((prev) => ({ ...prev, search: e.target.value }))}
             />
           </div>
 
-          {/* 类型筛选 */}
-          <Select value={repoType} onValueChange={handleRepoTypeChange}>
+          <Select value={repoListState.repoType} onValueChange={handleRepoTypeChange}>
             <SelectTrigger className="w-32 h-9 bg-muted/30 border-transparent hover:border-border">
               <SelectValue placeholder="仓库类型" />
             </SelectTrigger>
@@ -240,8 +189,7 @@ export function RepositoriesConsole() {
             </SelectContent>
           </Select>
 
-          {/* 排序 */}
-          <Select value={sortBy} onValueChange={setSortBy}>
+          <Select value={repoListState.sortBy} onValueChange={(v) => updateState({ sortBy: v })}>
             <SelectTrigger className="w-32 h-9 bg-muted/30 border-transparent hover:border-border">
               <SelectValue placeholder="排序方式" />
             </SelectTrigger>
@@ -252,15 +200,14 @@ export function RepositoriesConsole() {
             </SelectContent>
           </Select>
 
-          {/* 排序方向 */}
           <Button
             variant="outline"
             size="icon"
             className="size-9 bg-muted/30 border-transparent hover:border-border"
-            onClick={() => setSortOrder(sortOrder === "asc" ? "desc" : "asc")}
-            title={sortOrder === "asc" ? "升序" : "降序"}
+            onClick={() => updateState({ sortOrder: repoListState.sortOrder === "asc" ? "desc" : "asc" })}
+            title={repoListState.sortOrder === "asc" ? "升序" : "降序"}
           >
-            {sortOrder === "asc" ? (
+            {repoListState.sortOrder === "asc" ? (
               <ArrowUp className="size-3.5" />
             ) : (
               <ArrowDown className="size-3.5" />
@@ -268,7 +215,6 @@ export function RepositoriesConsole() {
           </Button>
         </div>
 
-        {/* 状态筛选 - 改进样式 */}
         <div className="px-4 py-3 bg-muted/20 border-t border-border/50 flex items-center gap-3">
           <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
             <SlidersHorizontal className="size-3.5" />
@@ -276,7 +222,7 @@ export function RepositoriesConsole() {
           </div>
           <div className="flex flex-wrap items-center gap-1.5">
             {STATUS_CONFIG.map((config) => {
-              const isActive = statuses.includes(config.value);
+              const isActive = repoListState.statuses.includes(config.value);
               return (
                 <button
                   key={config.value}
@@ -303,7 +249,6 @@ export function RepositoriesConsole() {
         </div>
       </div>
 
-      {/* 卡片列表 */}
       <RepoGrid
         repos={repositories}
         isLoading={isLoading}
@@ -311,22 +256,21 @@ export function RepositoriesConsole() {
         onViewDetail={handleViewDetail}
       />
 
-      {/* 分页 */}
       {!isLoading && totalPages > 0 && (
         <div className="mt-6 flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
             显示{" "}
             <span className="font-medium text-foreground">
-              {Math.min((page - 1) * PAGE_SIZE + 1, total)}-
-              {Math.min(page * PAGE_SIZE, total)}
+              {Math.min((repoListState.page - 1) * PAGE_SIZE + 1, total)}-
+              {Math.min(repoListState.page * PAGE_SIZE, total)}
             </span>{" "}
             个，共 <span className="font-medium text-foreground">{total}</span> 个仓库
           </p>
           {totalPages > 1 && (
             <PaginatedNavigation
-              currentPage={page}
+              currentPage={repoListState.page}
               totalPages={totalPages}
-              onPageChange={setPage}
+              onPageChange={(p) => updateState({ page: p })}
               className="mx-0 w-auto"
             />
           )}

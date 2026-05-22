@@ -1,95 +1,28 @@
 import { useState } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router'
-import { ArrowLeft, Box, Database, Download, GitCommit, ChevronRight, Trash2, Loader2, HardDrive, Calendar, Clock, Copy, Check, AlertTriangle } from 'lucide-react'
-import { RepoTreeViewer } from '@/components/repo-tree-viewer'
+import { ArrowLeft, Box, Database, Download, GitCommit, Trash2, Calendar, Clock, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-keys'
 import api from '@/lib/api'
+import endpoints from '@/lib/api-endpoints'
 import type { RepoDetailResponse } from '@/lib/api-types'
-import { formatBytes } from '@/lib/utils'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn, formatCompactNumber } from '@/lib/utils'
+import { StatCard } from '@/components/shared/StatCard'
+import { getRepoStatusLabel, getRepoStatusDotClass, REPO_STATUS_CONFIG } from '@/lib/constants/repo'
+import type { RepoStatus } from '@/lib/api-types'
+import { DeleteRepoDialog } from './RepositoryDetail/DeleteRepoDialog'
+import { SnapshotList } from './RepositoryDetail/SnapshotList'
+import { RepositoryDetailSkeleton } from './RepositoryDetail/RepositoryDetailSkeleton'
 
 async function fetchRepoDetail(repoId: string, repoType: string): Promise<RepoDetailResponse> {
   const endpoint = repoType === 'model'
-    ? `/hf_repo/model/${encodeURIComponent(repoId)}`
-    : `/hf_repo/dataset/${encodeURIComponent(repoId)}`
+    ? endpoints.repo.hfModel(repoId)
+    : endpoints.repo.hfDataset(repoId)
   return api.get<RepoDetailResponse>(endpoint)
-}
-
-type BadgeVariant = "success" | "neutral" | "info" | "danger";
-
-function getStatusBadgeVariant(status: string): BadgeVariant {
-  switch (status) {
-    case 'active':
-      return 'success'
-    case 'inactive':
-      return 'neutral'
-    case 'updating':
-      return 'info'
-    case 'cleaning':
-      return 'danger'
-    default:
-      return 'neutral'
-  }
-}
-
-function getSnapshotBadgeClass(status: string): string {
-  return status === 'active'
-    ? 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300'
-    : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-}
-
-function getStatusLabel(status: string): string {
-  const labels: Record<string, string> = {
-    active: '活跃',
-    inactive: '非活跃',
-    updating: '更新中',
-    cleaning: '清理中',
-  }
-  return labels[status] || status
-}
-
-function getStatusDotClass(status: string) {
-  switch (status) {
-    case 'active':
-      return 'bg-emerald-500'
-    case 'inactive':
-      return 'bg-slate-400'
-    case 'updating':
-      return 'bg-sky-500 animate-pulse'
-    case 'cleaning':
-      return 'bg-red-500'
-    default:
-      return 'bg-slate-400'
-  }
-}
-
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return (num / 1000000).toFixed(1) + 'M'
-  }
-  if (num >= 1000) {
-    return (num / 1000).toFixed(1) + 'K'
-  }
-  return num.toString()
 }
 
 interface RepositoryDetailProps {
@@ -103,7 +36,7 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
   const repoType = searchParams.get('type') || 'model'
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['repo-detail', repoId, repoType],
+    queryKey: queryKeys.repos.detail(repoId),
     queryFn: () => fetchRepoDetail(repoId, repoType),
     enabled: !!repoId,
   })
@@ -112,13 +45,8 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
   const snapshots = data?.data.snapshots || []
 
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
   const [isLeaving, setIsLeaving] = useState(false)
-
-  // 对话框状态
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
-  const [hardDelete, setHardDelete] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -137,42 +65,9 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
     setIsLeaving(true)
   }
 
-  const [expandedSnapshots, setExpandedSnapshots] = useState<Set<number>>(new Set())
-
-  const toggleSnapshot = (snapshotId: number) => {
-    setExpandedSnapshots((prev) => {
-      const next = new Set(prev)
-      if (next.has(snapshotId)) {
-        next.delete(snapshotId)
-      } else {
-        next.add(snapshotId)
-      }
-      return next
-    })
-  }
-
-  // 删除仓库
-  const handleDeleteClick = () => {
-    setDeleteDialogOpen(true)
-    setHardDelete(false)
-  }
-
-  const handleConfirmDelete = async () => {
-    if (!repo) return
-    setIsProcessing(true)
-    try {
-      const endpoint = `/hf_repo/${encodeURIComponent(repoId)}`
-      await api.delete(endpoint, { params: { hard: hardDelete } })
-      toast.success(hardDelete ? '仓库已彻底删除' : '仓库已删除')
-      setDeleteDialogOpen(false)
-      queryClient.invalidateQueries({ queryKey: queryKeys.repos.all })
-      setIsLeaving(true)
-      setTimeout(() => navigate(backPath), 300)
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : '删除失败，请重试'
-      toast.error(errorMessage)
-      setIsProcessing(false)
-    }
+  const handleDeleted = () => {
+    setIsLeaving(true)
+    setTimeout(() => navigate(backPath), 300)
   }
 
   if (isLoading) {
@@ -193,12 +88,14 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
     )
   }
 
+  const statusConfig = REPO_STATUS_CONFIG[repo.status as RepoStatus]
+
   return (
     <div
       className={`container mx-auto flex flex-1 flex-col px-4 py-8 ${isLeaving ? 'animate-out fade-out slide-out-to-bottom-4 duration-300 fill-mode-forwards' : 'animate-in fade-in slide-in-from-bottom-4 duration-300'}`}
       onAnimationEnd={isLeaving ? () => navigate(backPath) : undefined}
     >
-      {/* 返回按钮 */}
+      {/* Back button */}
       <Link
         to={backPath}
         onClick={handleBack}
@@ -208,11 +105,10 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
         返回仓库列表
       </Link>
 
-      {/* 标题区 - 改进设计 */}
+      {/* Header */}
       <div className="flex items-start justify-between mb-8 gap-4">
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
-            {/* Type icon */}
             <div className={cn(
               "size-12 rounded-xl flex items-center justify-center shrink-0",
               "bg-primary/5 border border-primary/10"
@@ -245,9 +141,9 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
                 {repo.pipeline_tag && (
                   <Badge variant="neutral" className="text-[11px]">{repo.pipeline_tag}</Badge>
                 )}
-                <Badge variant={getStatusBadgeVariant(repo.status)} className="text-[11px]">
-                  <span className={cn("size-1.5 rounded-full mr-1 shrink-0", getStatusDotClass(repo.status))} />
-                  {getStatusLabel(repo.status)}
+                <Badge variant={statusConfig?.badgeVariant ?? 'neutral'} className="text-[11px]">
+                  <span className={cn("size-1.5 rounded-full mr-1 shrink-0", getRepoStatusDotClass(repo.status as RepoStatus))} />
+                  {getRepoStatusLabel(repo.status as RepoStatus)}
                 </Badge>
               </div>
             </div>
@@ -259,26 +155,21 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
               variant="destructive"
               size="sm"
               className="text-[13px] cursor-pointer"
-              onClick={handleDeleteClick}
-              disabled={isProcessing}
+              onClick={() => setDeleteDialogOpen(true)}
             >
-              {isProcessing ? (
-                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              )}
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
               删除仓库
             </Button>
           </div>
         )}
       </div>
 
-      {/* 统计卡片 - 重新设计 */}
+      {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard
           icon={<Download className="size-4" />}
           label="下载量"
-          value={formatNumber(repo.downloads)}
+          value={formatCompactNumber(repo.downloads)}
           colorClass="text-sky-500"
         />
         <StatCard
@@ -301,200 +192,17 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
         />
       </div>
 
-      {/* 版本列表 - 改进设计 */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">版本管理</CardTitle>
-            <span className="text-xs text-muted-foreground">{snapshots.length} 个版本</span>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {snapshots.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12">
-              <div className="size-12 rounded-full bg-muted flex items-center justify-center mb-3">
-                <GitCommit className="size-5 text-muted-foreground/50" />
-              </div>
-              <p className="text-[13px] text-muted-foreground">暂无版本信息</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {snapshots.map((snapshot) => {
-                const isExpanded = expandedSnapshots.has(snapshot.id)
-                return (
-                  <div
-                    key={snapshot.id}
-                    className={cn(
-                      "rounded-xl border overflow-hidden transition-all duration-200",
-                      isExpanded ? "border-primary/30 bg-primary/2" : "border-border/60 hover:border-border"
-                    )}
-                  >
-                    <div
-                      className="flex items-center justify-between px-4 py-3 cursor-pointer select-none hover:bg-muted/40 active:bg-muted/60 transition-colors group"
-                      onClick={() => toggleSnapshot(snapshot.id)}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className={cn(
-                          "text-muted-foreground shrink-0 transition-colors",
-                          isExpanded && "text-primary"
-                        )}>
-                          <ChevronRight className={`h-4 w-4 transition-transform duration-200 ${isExpanded ? 'rotate-90' : ''}`} />
-                        </span>
-                        <div className="min-w-0">
-                          <div className="font-semibold text-[14px] group-hover:text-primary transition-colors">{snapshot.revision}</div>
-                          <div className="text-[12px] text-muted-foreground font-mono truncate max-w-64">
-                            {snapshot.commit_hash}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 shrink-0">
-                        {snapshot.total_size != null && (
-                          <div className="hidden sm:flex items-center gap-2 text-[12px] tabular-nums text-muted-foreground">
-                            <HardDrive className="size-3" />
-                            <span className="font-medium text-foreground/70">{formatBytes(snapshot.cached_size ?? 0)}</span>
-                            <span className="opacity-40">/</span>
-                            <span>{formatBytes(snapshot.total_size)}</span>
-                          </div>
-                        )}
-                        <Badge className={getSnapshotBadgeClass(snapshot.status)}>
-                          {snapshot.status === 'active' ? '活跃' : '已归档'}
-                        </Badge>
-                      </div>
-                    </div>
-                    {isExpanded && (
-                      <div className="grid transition-all duration-250 ease-out grid-rows-[1fr]">
-                        <div className="overflow-hidden border-t border-border/50">
-                          <div className="px-4 pb-4 pt-4">
-                            <RepoTreeViewer
-                              repoId={repoId}
-                              commitHash={snapshot.commit_hash}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Snapshot list */}
+      <SnapshotList snapshots={snapshots} repoId={repoId} />
 
-      {/* 删除仓库确认对话框 */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="sm:max-w-106.25">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-left">确认删除仓库</AlertDialogTitle>
-            <AlertDialogDescription className="text-left">
-              您即将删除仓库 <span className="font-semibold text-foreground">{repo.repo_id}</span>。{!hardDelete && '此操作将删除所有缓存的文件和版本数据。'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="hard-delete"
-                checked={hardDelete}
-                onCheckedChange={(checked) => setHardDelete(checked === true)}
-              />
-              <Label
-                htmlFor="hard-delete"
-                className="flex-1 cursor-pointer peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">彻底删除</span>
-                  <span className="text-xs text-muted-foreground">(同时删除数据库记录)</span>
-                </div>
-              </Label>
-            </div>
-            {hardDelete && (
-              <div className="mt-3 ml-6 space-y-1">
-                <div className="flex items-start gap-2 text-xs text-destructive">
-                  <AlertTriangle className="size-3 shrink-0 mt-0.5" />
-                  <span>此操作将从数据库完全移除仓库记录，所有数据将永久丢失！</span>
-                </div>
-                <ul className="ml-5 text-xs text-muted-foreground space-y-1 list-disc">
-                  <li>从数据库完全移除仓库记录</li>
-                  <li>从数据库删除所有文件树记录</li>
-                  <li>从数据库删除所有版本快照</li>
-                </ul>
-              </div>
-            )}
-          </div>
-          <AlertDialogFooter className="flex-row gap-3 sm:justify-end">
-            <AlertDialogCancel
-              disabled={isProcessing}
-              className="flex-1 sm:flex-initial sm:min-w-25"
-            >
-              取消
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              disabled={isProcessing}
-              className={cn(
-                "flex-1 sm:flex-initial sm:min-w-25",
-                hardDelete ? "" : "border border-red-300 bg-transparent text-red-600 hover:bg-red-50 hover:border-red-400 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/50"
-              )}
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {hardDelete ? "彻底删除中..." : "删除中..."}
-                </>
-              ) : (
-                <>
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  {hardDelete ? "确认彻底删除" : "确认删除"}
-                </>
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  )
-}
-
-// 统计卡片组件
-function StatCard({ icon, label, value, colorClass }: { icon: React.ReactNode; label: string; value: string; colorClass?: string }) {
-  return (
-    <Card className="overflow-hidden">
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={cn("size-9 rounded-lg flex items-center justify-center bg-muted/50", colorClass)}>
-            {icon}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-            <p className="text-lg font-bold truncate tabular-nums">{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function RepositoryDetailSkeleton() {
-  return (
-    <div className="container mx-auto flex flex-1 flex-col px-4 py-8">
-      <Skeleton className="h-4 w-32 mb-6" />
-      <div className="flex items-start gap-3 mb-8">
-        <Skeleton className="size-12 rounded-xl shrink-0" />
-        <div className="min-w-0 flex-1">
-          <Skeleton className="h-7 w-64 mb-2" />
-          <div className="flex gap-2">
-            <Skeleton className="h-5 w-14 rounded-full" />
-            <Skeleton className="h-5 w-16 rounded-full" />
-            <Skeleton className="h-5 w-12 rounded-full" />
-          </div>
-        </div>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-19 rounded-xl" />
-        ))}
-      </div>
-      <Skeleton className="h-64 rounded-xl" />
+      {/* Delete dialog */}
+      <DeleteRepoDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        repoId={repoId}
+        repoName={repo.repo_id}
+        onDeleted={handleDeleted}
+      />
     </div>
   )
 }

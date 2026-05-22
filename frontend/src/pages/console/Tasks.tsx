@@ -1,23 +1,6 @@
 import { useState, useMemo, useCallback } from "react";
-import {
-  Plus,
-  RefreshCw,
-  Search,
-  AlertCircle,
-  ClipboardList,
-  Loader2,
-  Inbox,
-  Filter,
-} from "lucide-react";
+import { Plus, RefreshCw, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { PaginatedNavigation } from "@/components/paginated-navigation";
 import {
   Table,
@@ -26,66 +9,37 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import {
   TaskRow,
   TaskDetailDrawer,
   CreateTaskDialog,
 } from "@/components/tasks";
+import { PageHeader } from "@/components/shared/PageHeader";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { ErrorState } from "@/components/shared/ErrorState";
+import { EmptyState } from "@/components/shared/EmptyState";
 import { useTaskList, usePendingApprovalCount } from "@/hooks/useTaskList";
 import { useTaskActions } from "@/hooks/useTaskActions";
 import { useAuthStore } from "@/stores/auth-store";
 import type { TaskResponse, TaskStatus } from "@/lib/api-types";
-import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
-import { containerVariants, itemVariants } from "./settings/motion-config";
+import { containerVariants, itemVariants } from "@/lib/animations/motion-config";
+import { TaskFilterBar } from "./tasks/TaskFilterBar";
+import { TaskAlertBanner } from "./tasks/TaskAlertBanner";
 
 const PAGE_SIZE = 10;
-
-const STATUS_OPTIONS: {
-  value: TaskStatus | "all";
-  label: string;
-  color?: string;
-}[] = [
-    { value: "all", label: "全部状态" },
-    { value: "pending_approval", label: "等待审批", color: "text-amber-500" },
-    { value: "pending", label: "排队中", color: "text-slate-500" },
-    { value: "running", label: "进行中", color: "text-blue-500" },
-    { value: "pausing", label: "暂停中", color: "text-orange-500" },
-    { value: "paused", label: "已暂停", color: "text-yellow-500" },
-    { value: "completed", label: "已完成", color: "text-emerald-500" },
-    { value: "failed", label: "失败", color: "text-red-500" },
-    { value: "cancelled", label: "已取消", color: "text-gray-500" },
-  ];
-
 
 export function Tasks() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
 
-  // 筛选状态
   const [status, setStatus] = useState<TaskStatus | "all">("all");
   const [search, setSearch] = useState("");
-
-  // 分页状态
   const [page, setPage] = useState(1);
-
-  // 详情抽屉状态
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // 新建任务弹窗状态
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
-  // 任务操作状态
-  const [pinningTaskId, setPinningTaskId] = useState<number | null>(null);
-  const [unpinningTaskId, setUnpinningTaskId] = useState<number | null>(null);
-  const [approvingTaskId, setApprovingTaskId] = useState<number | null>(null);
-  const [rejectingTaskId, setRejectingTaskId] = useState<number | null>(null);
-  const [cancelingTaskId, setCancelingTaskId] = useState<number | null>(null);
-  const [retryingTaskId, setRetryingTaskId] = useState<number | null>(null);
-
-  // 获取任务列表（控制台使用认证API，后端分页）
   const { data, isLoading, error, refetch } = useTaskList({
     status: status === "all" ? undefined : status,
     limit: PAGE_SIZE,
@@ -94,13 +48,9 @@ export function Tasks() {
     public: false,
   });
 
-  // 获取待审批数量（仅管理员）
   const pendingApprovalCount = usePendingApprovalCount();
-
-  // 任务操作 hooks
   const { pinTask, unpinTask, reviewTask, cancelTask, retryTask } = useTaskActions();
 
-  // 分页计算 - 基于后端返回的总数
   const { paginatedTasks, total, totalPages } = useMemo(() => {
     return {
       paginatedTasks: data?.data || [],
@@ -121,92 +71,43 @@ export function Tasks() {
     }
   }, []);
 
-  const handleFilterPendingApproval = useCallback(() => {
-    setStatus("pending_approval");
-    setPage(1);
-  }, []);
-
-  const handleSearchChange = useCallback((value: string) => {
+  const handleSearchChange = (value: string) => {
     setSearch(value);
     setPage(1);
-  }, []);
+  };
 
-  const handleStatusChange = useCallback((value: TaskStatus | "all") => {
+  const handleStatusChange = (value: TaskStatus | "all") => {
     setStatus(value);
     setPage(1);
-  }, []);
-
-  
+  };
 
   const handlePinTask = useCallback(
-    async (task: TaskResponse) => {
-      setPinningTaskId(task.id);
-      try {
-        await pinTask.mutateAsync(task.id);
-      } finally {
-        setPinningTaskId(null);
-      }
-    },
+    (task: TaskResponse) => { pinTask.mutate(task.id); },
     [pinTask]
   );
 
   const handleUnpinTask = useCallback(
-    async (task: TaskResponse) => {
-      setUnpinningTaskId(task.id);
-      try {
-        await unpinTask.mutateAsync(task.id);
-      } finally {
-        setUnpinningTaskId(null);
-      }
-    },
+    (task: TaskResponse) => { unpinTask.mutate(task.id); },
     [unpinTask]
   );
 
   const handleApproveTask = useCallback(
-    async (task: TaskResponse) => {
-      setApprovingTaskId(task.id);
-      try {
-        await reviewTask.mutateAsync({ taskId: task.id, approved: true });
-      } finally {
-        setApprovingTaskId(null);
-      }
-    },
+    (task: TaskResponse) => { reviewTask.mutate({ taskId: task.id, approved: true }); },
     [reviewTask]
   );
 
   const handleRejectTask = useCallback(
-    async (task: TaskResponse) => {
-      setRejectingTaskId(task.id);
-      try {
-        await reviewTask.mutateAsync({ taskId: task.id, approved: false });
-      } finally {
-        setRejectingTaskId(null);
-      }
-    },
+    (task: TaskResponse) => { reviewTask.mutate({ taskId: task.id, approved: false }); },
     [reviewTask]
   );
 
   const handleCancelTask = useCallback(
-    async (task: TaskResponse) => {
-      setCancelingTaskId(task.id);
-      try {
-        await cancelTask.mutateAsync(task.id);
-      } finally {
-        setCancelingTaskId(null);
-      }
-    },
+    (task: TaskResponse) => { cancelTask.mutate(task.id); },
     [cancelTask]
   );
 
   const handleRetryTask = useCallback(
-    async (task: TaskResponse) => {
-      setRetryingTaskId(task.id);
-      try {
-        await retryTask.mutateAsync(task.id);
-      } finally {
-        setRetryingTaskId(null);
-      }
-    },
+    (task: TaskResponse) => { retryTask.mutate(task.id); },
     [retryTask]
   );
 
@@ -217,161 +118,56 @@ export function Tasks() {
       animate="visible"
       variants={containerVariants}
     >
-      {/* 页面标题 */}
-      <motion.div className="mb-6 flex items-center justify-between" variants={itemVariants}>
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center">
-            <ClipboardList className="size-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">任务列表</h1>
-            <p className="text-[13px] text-muted-foreground mt-0.5">
-              查看和管理模型/数据集下载任务
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2 w-24 cursor-pointer"
-              onClick={() => refetch()}
-            >
-              <RefreshCw className="size-4" />
-              刷新
-            </Button>
-          </motion.div>
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              size="sm"
-              className="gap-2 w-24 cursor-pointer"
-              onClick={() => setCreateDialogOpen(true)}
-            >
-              <Plus className="size-4" />
-              新建任务
-            </Button>
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* 待审批提示（仅管理员） */}
-      <AnimatePresence>
-        {isAdmin && pendingApprovalCount > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -20, height: 0 }}
-            animate={{ opacity: 1, y: 0, height: "auto" }}
-            exit={{ opacity: 0, y: -20, height: 0 }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            className="mb-6 overflow-hidden"
-          >
-            <Alert className="border-amber-200/60 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-800/40 rounded-xl">
-              <AlertCircle className="size-4 text-amber-500 dark:text-amber-400" />
-              <AlertTitle className="text-amber-900 dark:text-amber-100 font-semibold text-sm">
-                待处理任务
-              </AlertTitle>
-              <AlertDescription className="flex items-center justify-between text-amber-700 dark:text-amber-300 text-sm mt-1">
-                <span>
-                  当前有{" "}
-                  <motion.strong
-                    className="font-semibold"
-                    initial={{ scale: 1 }}
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 0.5, delay: 0.2 }}
-                  >
-                    {pendingApprovalCount}
-                  </motion.strong>{" "}
-                  个任务等待审批
-                </span>
-                {status !== "pending_approval" && (
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleFilterPendingApproval}
-                      className="border-amber-300 hover:bg-amber-100 dark:border-amber-700 dark:hover:bg-amber-800/40"
-                    >
-                      查看待审批
-                    </Button>
-                  </motion.div>
-                )}
-              </AlertDescription>
-            </Alert>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* 筛选栏 - 改进样式 */}
-      <motion.div
-        className="rounded-xl border bg-card p-4 mb-6"
-        variants={itemVariants}
-        whileHover={{ boxShadow: "0 4px 20px -4px rgba(0, 0, 0, 0.08)" }}
-        transition={{ duration: 0.2 }}
-      >
-        <div className="flex flex-wrap items-center gap-3">
-          {/* 状态筛选 */}
-          <motion.div whileHover={{ scale: 1.01 }} className="relative">
-            <Select
-              value={status}
-              onValueChange={(v) => handleStatusChange(v as TaskStatus | "all")}
-            >
-              <SelectTrigger className="w-36 h-9">
-                <div className="flex items-center gap-2">
-                  <Filter className="size-3.5 text-muted-foreground" />
-                  <SelectValue placeholder="状态筛选" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                {STATUS_OPTIONS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    <span className="flex items-center gap-2">
-                      {option.color && option.value !== "all" && (
-                        <span
-                          className={cn(
-                            "size-2 rounded-full",
-                            option.color.replace("text-", "bg-"),
-                          )}
-                        />
-                      )}
-                      {option.label}
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </motion.div>
-
-          {/* 搜索框 */}
-          <div className="relative flex-1 min-w-50 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="搜索仓库名称..."
-              className="pl-9 h-9 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-              value={search}
-              onChange={(e) => handleSearchChange(e.target.value)}
-            />
-          </div>
-
-          {/* 结果计数 */}
-          <AnimatePresence mode="wait">
-            {!isLoading && !error && (
-              <motion.div
-                key="count"
-                initial={{ opacity: 0, x: 10 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -10 }}
-                className="ml-auto text-sm text-muted-foreground"
-              >
-                共 <span className="font-medium text-foreground">{total}</span>{" "}
-                个任务
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          icon={ClipboardList}
+          title="任务列表"
+          subtitle="查看和管理模型/数据集下载任务"
+          actions={
+            <>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 w-24 cursor-pointer"
+                  onClick={() => refetch()}
+                >
+                  <RefreshCw className="size-4" />
+                  刷新
+                </Button>
               </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  size="sm"
+                  className="gap-2 w-24 cursor-pointer"
+                  onClick={() => setCreateDialogOpen(true)}
+                >
+                  <Plus className="size-4" />
+                  新建任务
+                </Button>
+              </motion.div>
+            </>
+          }
+        />
       </motion.div>
 
-      {/* 任务列表 */}
+      <TaskAlertBanner
+        visible={isAdmin && pendingApprovalCount > 0}
+        pendingCount={pendingApprovalCount}
+        isFilteringPending={status === "pending_approval"}
+        onFilterPending={() => { setStatus("pending_approval"); setPage(1); }}
+      />
+
+      <TaskFilterBar
+        status={status}
+        onStatusChange={handleStatusChange}
+        search={search}
+        onSearchChange={handleSearchChange}
+        total={total}
+        isLoading={isLoading}
+        error={error}
+      />
+
       <motion.div
         className="rounded-xl border bg-card overflow-hidden"
         variants={itemVariants}
@@ -383,17 +179,8 @@ export function Tasks() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex h-64 items-center justify-center"
             >
-              <div className="flex flex-col items-center gap-3 text-muted-foreground">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                >
-                  <Loader2 className="size-8" />
-                </motion.div>
-                <span className="text-sm">加载中...</span>
-              </div>
+              <LoadingSkeleton message="加载中..." />
             </motion.div>
           ) : error ? (
             <motion.div
@@ -401,29 +188,8 @@ export function Tasks() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="flex h-64 items-center justify-center"
             >
-              <div className="text-center">
-                <motion.div
-                  initial={{ scale: 0.8 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.3 }}
-                  className="text-destructive mb-3"
-                >
-                  <AlertCircle className="size-10 mx-auto" />
-                </motion.div>
-                <p className="text-sm text-muted-foreground">加载失败</p>
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-3"
-                    onClick={() => refetch()}
-                  >
-                    重试
-                  </Button>
-                </motion.div>
-              </div>
+              <ErrorState message="加载失败" onRetry={() => refetch()} />
             </motion.div>
           ) : total === 0 ? (
             <motion.div
@@ -432,45 +198,14 @@ export function Tasks() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
-              className="flex h-64 items-center justify-center"
             >
-              <div className="text-center">
-                <motion.div
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.1 }}
-                  className="rounded-2xl bg-muted p-5 mb-4 mx-auto w-fit"
-                >
-                  <Inbox className="size-8 text-muted-foreground" />
-                </motion.div>
-                <motion.p
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.15 }}
-                  className="text-sm text-muted-foreground"
-                >
-                  {search ? "未找到匹配的任务" : "暂无任务"}
-                </motion.p>
-                <motion.div
-                  initial={{ y: 10, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                >
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-4"
-                    onClick={() =>
-                      search ? handleSearchChange("") : setCreateDialogOpen(true)
-                    }
-                  >
-                    <Plus className="mr-1.5 size-3.5" />
-                    {search ? "清除搜索" : "新建任务"}
-                  </Button>
-                </motion.div>
-              </div>
+              <EmptyState
+                message={search ? "未找到匹配的任务" : "暂无任务"}
+                actionLabel={search ? "清除搜索" : "新建任务"}
+                onAction={() =>
+                  search ? handleSearchChange("") : setCreateDialogOpen(true)
+                }
+              />
             </motion.div>
           ) : (
             <motion.div
@@ -520,12 +255,12 @@ export function Tasks() {
                       onReject={handleRejectTask}
                       onCancel={handleCancelTask}
                       onRetry={handleRetryTask}
-                      isPinning={pinningTaskId === task.id}
-                      isUnpinning={unpinningTaskId === task.id}
-                      isApproving={approvingTaskId === task.id}
-                      isRejecting={rejectingTaskId === task.id}
-                      isCanceling={cancelingTaskId === task.id}
-                      isRetrying={retryingTaskId === task.id}
+                      isPinning={pinTask.isPending && pinTask.variables === task.id}
+                      isUnpinning={unpinTask.isPending && unpinTask.variables === task.id}
+                      isApproving={reviewTask.isPending && reviewTask.variables?.taskId === task.id && reviewTask.variables?.approved === true}
+                      isRejecting={reviewTask.isPending && reviewTask.variables?.taskId === task.id && reviewTask.variables?.approved === false}
+                      isCanceling={cancelTask.isPending && cancelTask.variables === task.id}
+                      isRetrying={retryTask.isPending && retryTask.variables === task.id}
                       index={index}
                     />
                   ))}
@@ -536,7 +271,6 @@ export function Tasks() {
         </AnimatePresence>
       </motion.div>
 
-      {/* 分页 */}
       <AnimatePresence>
         {!isLoading && !error && total > 0 && (
           <motion.div
@@ -567,14 +301,12 @@ export function Tasks() {
         )}
       </AnimatePresence>
 
-      {/* 任务详情抽屉 */}
       <TaskDetailDrawer
         taskId={selectedTaskId}
         open={drawerOpen}
         onOpenChange={handleDrawerOpenChange}
       />
 
-      {/* 新建任务弹窗 */}
       <CreateTaskDialog
         open={createDialogOpen}
         onOpenChange={setCreateDialogOpen}

@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
+import { STALE_TIMES } from '@/lib/query-client'
+import endpoints from '@/lib/api-endpoints'
 import type { TaskListResponse, ActiveTaskListResponse, TaskListFilters, PaginationParams, TaskStatus } from '@/lib/api-types'
 
 export interface UseTaskListOptions {
@@ -60,7 +62,7 @@ export function useTaskList(options: UseTaskListOptions = {}) {
     skip,
   }
 
-  const endpoint = isPublic ? '/task/list-public' : '/task/list'
+  const endpoint = isPublic ? endpoints.task.listPublic : endpoints.task.list
 
   // 公共模式下不轮询（活跃任务由 useActiveTasks 独立轮询）
   // 认证模式下保持原有的活跃任务检测轮询逻辑
@@ -94,7 +96,7 @@ export function useTaskList(options: UseTaskListOptions = {}) {
           return hasActiveTasks(data?.data) ? 10000 : false
         }
       : false,
-    staleTime: isPublic ? 60 * 1000 : (enablePolling ? 10000 : 60 * 1000),
+    staleTime: isPublic ? STALE_TIMES.stats : (enablePolling ? STALE_TIMES.list : STALE_TIMES.stats),
   })
 }
 
@@ -113,11 +115,11 @@ export function useActiveTasks(options: { enablePolling?: boolean } = {}) {
   return useQuery<ActiveTaskListResponse>({
     queryKey: queryKeys.tasks.active(),
     queryFn: async () => {
-      const response = await api.get<ActiveTaskListResponse>('/task/active-public')
+      const response = await api.get<ActiveTaskListResponse>(endpoints.task.activePublic)
       return response
     },
     refetchInterval: enablePolling ? 10000 : false,
-    staleTime: enablePolling ? 10000 : 60 * 1000,
+    staleTime: enablePolling ? STALE_TIMES.list : STALE_TIMES.stats,
   })
 }
 

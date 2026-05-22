@@ -4,6 +4,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { queryKeys } from '@/lib/query-keys'
+import endpoints from '@/lib/api-endpoints'
 import { useAuthStore } from '@/stores/auth-store'
 import type {
   ApiResponse,
@@ -34,7 +35,7 @@ export function useLogin() {
       formData.append('password', credentials.password)
 
       const response = await api.post<LoginResponse>(
-        '/auth/sign-in',
+        endpoints.auth.signIn,
         formData.toString(),
         {
           headers: {
@@ -59,7 +60,7 @@ export function useRegister() {
   return useMutation({
     mutationFn: async (data: RegisterRequest) => {
       const response = await api.post<ApiResponse<UserResponse>>(
-        '/auth/register',
+        endpoints.auth.register,
         data
       )
       return response.data
@@ -74,7 +75,7 @@ export function useSendVerifyCode() {
   return useMutation({
     mutationFn: async (data: SendVerifyCodeRequest) => {
       const response = await api.post<ApiResponse<SendVerifyCodeResponse>>(
-        '/auth/send-verify-code',
+        endpoints.auth.sendVerifyCode,
         data
       )
       return response.data
@@ -89,7 +90,7 @@ export function useVerifyEmail() {
   return useMutation({
     mutationFn: async (data: VerifyEmailRequest) => {
       const response = await api.post<ApiResponse<VerifyEmailResponse>>(
-        '/auth/verify-email',
+        endpoints.auth.verifyEmail,
         data
       )
       return response.data
@@ -104,7 +105,7 @@ export function useRegisterWithCode() {
   return useMutation({
     mutationFn: async (data: RegisterWithCodeRequest) => {
       const response = await api.post<ApiResponse<UserResponse>>(
-        '/auth/register-with-code',
+        endpoints.auth.registerWithCode,
         data
       )
       return response.data
@@ -120,7 +121,7 @@ export function useVerifyToken() {
     queryKey: queryKeys.auth.verify(),
     queryFn: async () => {
       const response = await api.get<ApiResponse<TokenVerifyResponse>>(
-        '/auth/verify'
+        endpoints.auth.verify
       )
       return response.data
     },
@@ -140,7 +141,7 @@ export function useCurrentUser() {
   return useQuery({
     queryKey: queryKeys.auth.me(),
     queryFn: async () => {
-      const response = await api.get<ApiResponse<UserResponse>>('/user/me')
+      const response = await api.get<ApiResponse<UserResponse>>(endpoints.user.me)
       setUser(response.data)
       return response.data
     },

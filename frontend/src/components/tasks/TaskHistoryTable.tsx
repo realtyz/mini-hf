@@ -84,7 +84,7 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
       setRetryTaskId(null);
     } catch (error) {
       // 错误已经由全局拦截器和useTaskActions中的toast处理
-      console.error("重试失败:", error);
+      if (import.meta.env.DEV) console.error("重试失败:", error);
     }
   };
 
