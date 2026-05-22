@@ -19,11 +19,10 @@ import { cn, formatBytes } from "@/lib/utils";
 
 interface RepoTreeViewerProps {
   repoId: string;
-  repoType: string;
   commitHash: string;
 }
 
-import { type TreeNode, buildTree, getChildrenAtPath } from "@/lib/fileTreeUtils";
+import { buildTree, getChildrenAtPath } from "@/lib/fileTreeUtils";
 
 async function fetchRepoTree(
   repoId: string,

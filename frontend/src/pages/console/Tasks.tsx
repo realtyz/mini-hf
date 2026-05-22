@@ -38,6 +38,7 @@ import { useAuthStore } from "@/stores/auth-store";
 import type { TaskResponse, TaskStatus } from "@/lib/api-types";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { containerVariants, itemVariants } from "./settings/motion-config";
 
 const PAGE_SIZE = 10;
 
@@ -57,29 +58,6 @@ const STATUS_OPTIONS: {
     { value: "cancelled", label: "已取消", color: "text-gray-500" },
   ];
 
-// Animation variants
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.4,
-      ease: [0.16, 1, 0.3, 1] as const,
-    },
-  },
-};
 
 export function Tasks() {
   const { user } = useAuthStore();

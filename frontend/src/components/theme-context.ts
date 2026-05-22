@@ -5,6 +5,7 @@ type Theme = 'dark' | 'light' | 'system'
 interface ThemeProviderState {
   theme: Theme
   setTheme: (theme: Theme) => void
+  resolvedTheme: 'light' | 'dark'
 }
 
 export type { Theme, ThemeProviderState }

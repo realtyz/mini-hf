@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { queryKeys } from '@/lib/query-keys'
 import type { RepoListResponse, RepoListParams, RepoStatus } from '@/lib/api-types'
 
 interface UseRepoListParams extends Omit<RepoListParams, 'statuses'> {
@@ -37,7 +38,7 @@ export function useRepoList(params: UseRepoListParams) {
   const { repoType, skip = 0, limit = PAGE_SIZE, statuses, ...rest } = params
 
   return useQuery({
-    queryKey: ['repositories', { repoType, skip, limit, statuses, ...rest }],
+    queryKey: [...queryKeys.repos.all, 'list', { repoType, skip, limit, statuses, ...rest }],
     queryFn: () => fetchRepositories({ repoType, skip, limit, statuses, ...rest }),
   })
 }

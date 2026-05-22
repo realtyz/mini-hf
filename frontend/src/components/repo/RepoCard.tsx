@@ -1,14 +1,14 @@
 import { useState, useCallback, memo } from 'react'
 import {
-  IconBox,
-  IconDatabase,
-  IconDownload,
-  IconGitCommit,
-  IconCopy,
-  IconCheck,
-  IconChevronRight,
-  IconClock,
-} from '@tabler/icons-react'
+  Box,
+  Database,
+  Download,
+  GitCommit,
+  Copy,
+  Check,
+  ChevronRight,
+  Clock,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -91,9 +91,9 @@ const statusTheme: Record<
 
 function getRepoTypeIcon(type: string, className?: string) {
   return type === 'model' ? (
-    <IconBox className={className} />
+    <Box className={className} />
   ) : (
-    <IconDatabase className={className} />
+    <Database className={className} />
   )
 }
 
@@ -205,16 +205,16 @@ export const RepoCard = memo(function RepoCard({
                   title="复制仓库名称"
                 >
                   {copied ? (
-                    <IconCheck className="h-3 w-3 text-emerald-500" />
+                    <Check className="h-3 w-3 text-emerald-500" />
                   ) : (
-                    <IconCopy className="h-3 w-3" />
+                    <Copy className="h-3 w-3" />
                   )}
                 </button>
               </CardTitle>
             </div>
 
             {/* Arrow indicator */}
-            <IconChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all duration-200 shrink-0 -translate-x-1 opacity-0 group-hover:opacity-100" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all duration-200 shrink-0 -translate-x-1 opacity-0 group-hover:opacity-100" />
           </div>
 
           {/* Status badges */}
@@ -253,13 +253,13 @@ export const RepoCard = memo(function RepoCard({
           {/* Stats row */}
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-1.5 group/stat">
-              <IconDownload className="h-3.5 w-3.5 text-muted-foreground/50 group-hover/stat:text-primary/60 transition-colors" />
+              <Download className="h-3.5 w-3.5 text-muted-foreground/50 group-hover/stat:text-primary/60 transition-colors" />
               <span className="text-xs font-medium tabular-nums">
                 {formatNumber(repo.downloads)}
               </span>
             </div>
             <div className="flex items-center gap-1.5 group/stat">
-              <IconGitCommit className="h-3.5 w-3.5 text-muted-foreground/50 group-hover/stat:text-primary/60 transition-colors" />
+              <GitCommit className="h-3.5 w-3.5 text-muted-foreground/50 group-hover/stat:text-primary/60 transition-colors" />
               <span className="text-xs font-medium">{repo.cached_commits} 版本</span>
             </div>
           </div>
@@ -267,7 +267,7 @@ export const RepoCard = memo(function RepoCard({
           {/* Time info */}
           <div className="mt-3 pt-3 border-t border-border/30 flex flex-col justify-center gap-2 text-[11px] text-muted-foreground/70">
             <div className="flex items-center gap-1.5">
-              <IconClock className="h-3 w-3 shrink-0" />
+              <Clock className="h-3 w-3 shrink-0" />
               <span className="text-muted-foreground/50">最近下载:</span>
               <span className="font-medium">
                 {repo.last_downloaded_at

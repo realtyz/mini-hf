@@ -1,14 +1,12 @@
 /**
  * Dashboard 专用数据查询 Hooks
  */
-import { useQuery, useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { useTaskList } from "@/hooks/useTaskList";
 import type {
   TaskResponse,
-  TaskStatus,
   DashboardStatsResponse,
-  TaskListResponse,
 } from "@/lib/api-types";
 import api from "@/lib/api";
 
@@ -110,48 +108,3 @@ export function useRecentTasks(limit = 10) {
   });
 }
 
-/**
- * 任务状态计数
- * 使用 useQueries 并行查询各状态任务数量
- */
-export function useTaskStatusCounts() {
-  const statuses: TaskStatus[] = [
-    "running",
-    "completed",
-    "failed",
-    "pending_approval",
-    "pending",
-  ];
-
-  const queries = useQueries({
-    queries: statuses.map((status) => ({
-      queryKey: [
-        ...queryKeys.tasks.all,
-        "list",
-        { filters: { status }, params: { limit: 1 } },
-      ],
-      queryFn: async () => {
-        const response = await api.get<TaskListResponse>("/task/list", {
-          params: { status, limit: 1 },
-        });
-        return response;
-      },
-      // 状态计数不需要频繁更新，每 30 秒刷新一次即可
-      refetchInterval: 30 * 1000,
-      staleTime: 30 * 1000,
-    })),
-  });
-
-  const counts = queries.reduce(
-    (acc, query, index) => {
-      const status = statuses[index];
-      acc[status] = query.data?.total ?? 0;
-      return acc;
-    },
-    {} as Record<TaskStatus, number>,
-  );
-
-  const isLoading = queries.some((q) => q.isLoading);
-
-  return { counts, isLoading };
-}

@@ -1,4 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { containerVariants, itemVariants } from "./settings/motion-config";
 import { useState, useMemo, useEffect } from "react";
 import { debounce } from "lodash-es";
 import {
@@ -81,29 +82,6 @@ const PAGE_SIZE = 10;
 // Animation Variants
 // ═══════════════════════════════════════════════════════════════════════════════
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      type: "spring" as const,
-      stiffness: 100,
-      damping: 20,
-    },
-  },
-};
 
 const tableRowVariants = {
   hidden: { opacity: 0, x: -20 },

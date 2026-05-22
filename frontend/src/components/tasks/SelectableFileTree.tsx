@@ -10,7 +10,6 @@ import {
   getChildrenAtPath,
   getFilesInDirectory,
   getDirectorySelectionState,
-  type TreeNode,
 } from "@/lib/fileTreeUtils";
 
 interface SelectableFileTreeProps {

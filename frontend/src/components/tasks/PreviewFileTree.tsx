@@ -3,7 +3,7 @@ import { Folder, File } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatBytes } from "@/lib/utils";
 import type { PreviewItem } from "@/lib/api-types";
-import { buildTree, getChildrenAtPath, type TreeNode } from "@/lib/fileTreeUtils";
+import { buildTree, getChildrenAtPath } from "@/lib/fileTreeUtils";
 
 interface PreviewFileTreeProps {
   items: PreviewItem[];

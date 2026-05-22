@@ -1,9 +1,9 @@
 import {
-  IconDatabase,
-  IconFile,
-  IconDeviceSdCard,
-  IconDownload,
-} from "@tabler/icons-react";
+  Database,
+  File,
+  HardDrive,
+  Download,
+} from "lucide-react";
 import {
   Card,
   CardDescription,
@@ -236,7 +236,7 @@ export function StatCards() {
     {
       title: "存储容量",
       value: stats.storageCapacity,
-      icon: <IconDeviceSdCard className="h-5 w-5" />,
+      icon: <HardDrive className="h-5 w-5" />,
       description: "S3 存储桶总大小",
       color: "yellow" as const,
       isStorage: true,
@@ -244,21 +244,21 @@ export function StatCards() {
     {
       title: "文件数量",
       value: stats.totalFiles,
-      icon: <IconFile className="h-5 w-5" />,
+      icon: <File className="h-5 w-5" />,
       description: "S3 存储桶中的文件总数",
       color: "green" as const,
     },
     {
       title: "仓库总数",
       value: stats.totalRepos,
-      icon: <IconDatabase className="h-5 w-5" />,
+      icon: <Database className="h-5 w-5" />,
       description: "已缓存的 HuggingFace 仓库",
       color: "blue" as const,
     },
     {
       title: "下载次数",
       value: stats.totalDownloads,
-      icon: <IconDownload className="h-5 w-5" />,
+      icon: <Download className="h-5 w-5" />,
       description: "所有仓库的总下载次数",
       color: "purple" as const,
     },

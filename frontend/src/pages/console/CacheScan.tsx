@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { containerVariants, itemVariants } from "./settings/motion-config";
 import {
   ScanSearch,
   RefreshCw,
@@ -95,28 +96,6 @@ const repoTypeBadgeVariants: Record<string, "secondary" | "outline"> = {
 // Animation Variants
 // =============================================================================
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.06,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.4,
-      ease: [0.16, 1, 0.3, 1] as const,
-    },
-  },
-};
 
 // =============================================================================
 // Utility Functions

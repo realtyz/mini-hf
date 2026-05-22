@@ -1,16 +1,15 @@
 import {
-  IconArrowRight,
-  IconDatabase,
-  IconCloudDownload,
-} from '@tabler/icons-react'
+  ArrowRight,
+  Database,
+  CloudDownload,
+} from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useRecentTasks } from '@/hooks/api/use-dashboard-queries'
 import { useTaskProgress } from '@/hooks/api/use-task-progress'
-import type { TaskResponse } from '@/lib/api-types'
-import type { TaskStatus } from '@/types/task'
+import type { TaskResponse, TaskStatus } from '@/lib/api-types'
 import { formatBytes, formatDistanceToNow, cn } from '@/lib/utils'
 import { TASK_STATUS_CONFIG } from '@/lib/constants/task'
 import { Link } from 'react-router'
@@ -96,12 +95,12 @@ function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
           </div>
           <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <IconDatabase className="size-3" />
+              <Database className="size-3" />
               {task.repo_type === 'model' ? '模型' : '数据集'}
             </span>
             <span className="text-muted-foreground/40">·</span>
             <span className="flex items-center gap-1">
-              <IconCloudDownload className="size-3" />
+              <CloudDownload className="size-3" />
               {formatBytes(task.total_storage || 0)}
             </span>
             <span className="text-muted-foreground/40">·</span>
@@ -115,7 +114,7 @@ function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
         </div>
 
         {/* Hover 箭头指示 */}
-        <IconArrowRight className="size-4 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-all duration-200 shrink-0" />
+        <ArrowRight className="size-4 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-all duration-200 shrink-0" />
       </div>
     </motion.div>
   )
@@ -154,7 +153,7 @@ function EmptyState() {
       className="text-center py-12"
     >
       <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/50 dark:to-slate-900/50 mb-4 shadow-sm">
-        <IconCloudDownload className="size-6 text-slate-400 dark:text-slate-500" />
+        <CloudDownload className="size-6 text-slate-400 dark:text-slate-500" />
       </div>
       <p className="text-muted-foreground font-medium">暂无任务记录</p>
       <p className="text-xs text-muted-foreground/60 mt-1">新创建的任务将显示在这里</p>
@@ -192,7 +191,7 @@ export function RecentTasks() {
           >
             <Link to="/console/tasks">
               查看全部
-              <IconArrowRight className="size-4 transition-transform group-hover/btn:translate-x-0.5" />
+              <ArrowRight className="size-4 transition-transform group-hover/btn:translate-x-0.5" />
             </Link>
           </Button>
         </CardHeader>

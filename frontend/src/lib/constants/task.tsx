@@ -1,13 +1,13 @@
 import type { TaskStatus } from '@/lib/api-types'
 import type { ReactNode } from 'react'
 import {
-  IconClipboardCheck,
-  IconClock,
-  IconLoader,
-  IconCircleCheckFilled,
-  IconX,
-  IconPlayerPause,
-} from '@tabler/icons-react'
+  ClipboardCheck,
+  Clock,
+  Loader,
+  CircleCheck,
+  X,
+  CirclePause,
+} from 'lucide-react'
 
 export interface TaskStatusConfig {
   label: string
@@ -27,7 +27,7 @@ export interface TaskStatusConfig {
 export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   pending_approval: {
     label: '待审批',
-    icon: <IconClipboardCheck className="size-3.5" />,
+    icon: <ClipboardCheck className="size-3.5" />,
     badgeClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
     color: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
     dotClass: 'bg-amber-500',
@@ -37,7 +37,7 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   },
   pending: {
     label: '等待中',
-    icon: <IconClock className="size-3.5" />,
+    icon: <Clock className="size-3.5" />,
     badgeClass: 'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300',
     color: 'bg-slate-50 text-slate-700 dark:bg-slate-950 dark:text-slate-300',
     dotClass: 'bg-slate-400',
@@ -47,7 +47,7 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   },
   running: {
     label: '进行中',
-    icon: <IconLoader className="size-3.5 animate-spin" />,
+    icon: <Loader className="size-3.5 animate-spin" />,
     badgeClass: 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300',
     color: 'bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300',
     dotClass: 'bg-blue-500',
@@ -57,7 +57,7 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   },
   completed: {
     label: '已完成',
-    icon: <IconCircleCheckFilled className="size-3.5" />,
+    icon: <CircleCheck className="size-3.5" />,
     badgeClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
     color: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300',
     dotClass: 'bg-emerald-500',
@@ -67,7 +67,7 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   },
   failed: {
     label: '失败',
-    icon: <IconX className="size-3.5" />,
+    icon: <X className="size-3.5" />,
     badgeClass: 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300',
     color: 'bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300',
     dotClass: 'bg-red-500',
@@ -77,7 +77,7 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   },
   canceling: {
     label: '取消中',
-    icon: <IconPlayerPause className="size-3.5" />,
+    icon: <CirclePause className="size-3.5" />,
     badgeClass: 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300',
     color: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
     dotClass: 'bg-orange-500',
@@ -87,7 +87,7 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   },
   cancelled: {
     label: '已取消',
-    icon: <IconX className="size-3.5" />,
+    icon: <X className="size-3.5" />,
     badgeClass: 'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300',
     color: 'bg-slate-50 text-slate-700 dark:bg-slate-950 dark:text-slate-300',
     dotClass: 'bg-slate-400',
@@ -97,7 +97,7 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   },
   pausing: {
     label: '暂停中',
-    icon: <IconPlayerPause className="size-3.5" />,
+    icon: <CirclePause className="size-3.5" />,
     badgeClass: 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-300',
     color: 'bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
     dotClass: 'bg-orange-500',
@@ -107,7 +107,7 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   },
   paused: {
     label: '已暂停',
-    icon: <IconPlayerPause className="size-3.5" />,
+    icon: <CirclePause className="size-3.5" />,
     badgeClass: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950/50 dark:text-yellow-300',
     color: 'bg-yellow-50 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
     dotClass: 'bg-yellow-500',

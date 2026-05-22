@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-keys'
 import api from '@/lib/api'
 import type { RepoDetailResponse } from '@/lib/api-types'
 import { formatBytes } from '@/lib/utils'
@@ -164,7 +165,7 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
       await api.delete(endpoint, { params: { hard: hardDelete } })
       toast.success(hardDelete ? '仓库已彻底删除' : '仓库已删除')
       setDeleteDialogOpen(false)
-      queryClient.invalidateQueries({ queryKey: ['repositories'] })
+      queryClient.invalidateQueries({ queryKey: queryKeys.repos.all })
       setIsLeaving(true)
       setTimeout(() => navigate(backPath), 300)
     } catch (error) {
@@ -366,7 +367,6 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
                           <div className="px-4 pb-4 pt-4">
                             <RepoTreeViewer
                               repoId={repoId}
-                              repoType={repoType}
                               commitHash={snapshot.commit_hash}
                             />
                           </div>
