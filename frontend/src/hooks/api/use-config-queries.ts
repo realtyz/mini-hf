@@ -5,10 +5,10 @@
  * which encapsulates the full fetch → edit → save → reset lifecycle.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import api from '@/lib/api'
-import { queryKeys } from '@/lib/query-keys'
-import { STALE_TIMES } from '@/lib/query-client'
-import endpoints from '@/lib/api-endpoints'
+import api from '@/lib/api/client'
+import { queryKeys } from '@/lib/query/keys'
+import { STALE_TIMES } from '@/lib/query/client'
+import endpoints from '@/lib/api/endpoints'
 import type {
   ApiResponse,
   ConfigItem,
@@ -21,7 +21,7 @@ import type {
   HFEndpointConfigResponse,
   AnnouncementConfigResponse,
   AnnouncementItem,
-} from '@/lib/api-types'
+} from '@/lib/api/types'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Generic config CRUD (low-level building blocks)

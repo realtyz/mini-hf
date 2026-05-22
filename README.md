@@ -9,10 +9,12 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
 - **HF Hub Compatible** — Drop-in replacement for `HF_ENDPOINT` with common API compatibility
 - **Multi-Source Support** — Cache models from both HuggingFace and ModelScope
 - **Smart Version Management** — Automatically track model revisions with incremental updates
-- **Web Management UI** — Modern React-based dashboard for repository and task management
+- **Web Management UI** — Modern React 19 dashboard for repository, task, user, and system management
+- **Cache Scanning** — Detect and clean up unreferenced S3 objects to reclaim storage
+- **User Management** — Admin-controlled user accounts with role-based access and email verification
 - **Distributed Architecture** — Scalable worker pool for parallel model downloads
 - **S3-Compatible Storage** — Store models in MinIO, Ceph, AWS S3, or other S3-compatible backends
-- **Task Queue** — PostgreSQL-backed job queue with retry and progress tracking
+- **Task Queue** — PostgreSQL-backed job queue with retry, progress tracking, and incremental updates
 - **Docker Ready** — Complete containerized deployment with Docker Compose
 
 
@@ -177,6 +179,8 @@ Create `frontend/.env`:
 APP_API_BASE_URL=http://localhost:9800/api/v1
 ```
 
+**Tech stack**: React 19 · React Router 7 · TanStack Query 5 · Tailwind CSS 4 · shadcn/ui · Zustand (auth state) · framer-motion · Axios (API client with JWT interceptors).
+
 ## API Reference
 
 ### Management API (Port 9800)
@@ -185,13 +189,28 @@ Base: `/api/v1`
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/auth/login` | POST | JWT login |
+| `/auth/sign-in` | POST | Sign in (JWT login) |
+| `/auth/register` | POST | Register with email verification |
 | `/auth/refresh` | POST | Refresh access token |
+| `/auth/logout` | POST | Logout |
 | `/user/me` | GET | Current user info |
-| `/repos` | GET/POST | List/create repositories |
-| `/tasks` | GET/POST | List/create tasks |
-| `/configs` | GET/PUT | System configuration |
-| `/health` | GET | Health check |
+| `/user` | GET/POST | List / create users (admin) |
+| `/user/{id}` | GET/PUT/DELETE | User CRUD (admin) |
+| `/task` | GET/POST | List / create tasks |
+| `/task/{id}` | GET | Task detail |
+| `/task/{id}/review` | POST | Approve pending task |
+| `/task/{id}/cancel` | POST | Cancel task |
+| `/task/{id}/retry` | POST | Retry failed task |
+| `/task/preview` | POST | Preview task before creation |
+| `/hf_repo/list` | GET | List HuggingFace repositories |
+| `/hf_repo/{repo_id}` | GET | Repository detail |
+| `/dashboard/stats` | GET | Dashboard statistics |
+| `/cache/scan/run` | POST | Run cache scan |
+| `/cache/scan/result` | GET | Cache scan results |
+| `/config` | GET/POST | List / create config entries |
+| `/config/{key}` | GET/PUT/DELETE | Config entry CRUD |
+| `/health/announcement` | GET | System announcements |
+| `/health/hf-endpoints` | GET | HF endpoint health check |
 
 
 ### HF-Compatible API (Port 9801)
@@ -215,12 +234,29 @@ mini-hf/
 │   ├── mgmt_server/         # Management API (FastAPI)
 │   ├── hf_server/           # HF-compatible API (FastAPI)
 │   └── worker/              # Task processor
-├── frontend/                 # React frontend
+├── frontend/                 # React 19 frontend
 │   ├── src/
 │   │   ├── components/      # UI components (shadcn/ui)
+│   │   │   ├── ui/          #   shadcn/ui primitives (Button, Card, Badge, etc.)
+│   │   │   ├── shared/      #   Cross-feature reused components (ErrorBoundary, PaginatedNavigation, etc.)
+│   │   │   ├── auth/        #   Auth-specific components
+│   │   │   ├── repo/        #   Repository cards, grids
+│   │   │   ├── tasks/       #   Task management components
+│   │   │   ├── dashboard/   #   Dashboard widgets
+│   │   │   └── theme/       #   Theme provider + toggle
 │   │   ├── pages/           # Route pages
-│   │   ├── lib/             # API client and utilities
-│   │   └── router.tsx       # Route definitions
+│   │   │   ├── landing/     #   Public landing page components
+│   │   │   ├── console/     #   Protected admin pages (lazy-loaded)
+│   │   │   └── docs/        #   Documentation pages
+│   │   ├── hooks/           # Custom hooks
+│   │   │   └── api/         #   TanStack Query hooks (use-*-queries.ts)
+│   │   ├── lib/             # Library code
+│   │   │   ├── api/         #   Axios client, endpoint constants, types
+│   │   │   ├── query/       #   QueryClient config, query key factory
+│   │   │   ├── animations/  #   framer-motion animation variants
+│   │   │   └── constants/   #   App-wide constants
+│   │   ├── stores/          # Zustand stores (auth, etc.)
+│   │   └── router.tsx       # Route definitions (React Router 7)
 │   └── package.json
 ├── docker-compose.yml        # Docker deployment
 ├── Dockerfile               # Backend Docker image

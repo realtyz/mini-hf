@@ -2,7 +2,7 @@ import { useState, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Loader2, XCircle, Pause, UploadCloud, ChevronDown, ChevronRight, FileWarning, Inbox } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import type { FileProgressItem } from "@/lib/api-types";
+import type { FileProgressItem } from "@/lib/api/types";
 
 export type { FileProgressItem };
 import { formatBytes } from "@/lib/utils";

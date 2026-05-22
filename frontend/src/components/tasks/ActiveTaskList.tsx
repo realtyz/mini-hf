@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Smile, Globe, Loader2, Clock, Pin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { TaskResponse, TaskStatus } from "@/lib/api-types";
+import type { TaskResponse, TaskStatus } from "@/lib/api/types";
 import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
 
 interface ActiveTaskListProps {

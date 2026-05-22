@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { cn } from '@/lib/utils'
-import type { TocItem } from './docs.types'
+import type { TocItem } from '../docs.types'
 
 interface TableOfContentsProps {
   items: TocItem[]

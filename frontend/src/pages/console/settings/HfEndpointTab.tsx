@@ -3,10 +3,10 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { cn } from '@/lib/utils'
-import { SettingsSection, SectionHeader, ActionsFooter } from './components'
+import { SettingsSection, SectionHeader, ActionsFooter } from './SettingsComponents'
 import { useConfigForm } from './use-config-form'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { HFEndpointConfigResponse } from '@/lib/api-types'
+import type { HFEndpointConfigResponse } from '@/lib/api/types'
 
 interface HFForm {
   endpoints: string[]

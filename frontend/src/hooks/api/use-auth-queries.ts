@@ -2,9 +2,9 @@
  * 认证相关 API Hooks
  */
 import { useMutation, useQuery } from '@tanstack/react-query'
-import api from '@/lib/api'
-import { queryKeys } from '@/lib/query-keys'
-import endpoints from '@/lib/api-endpoints'
+import api from '@/lib/api/client'
+import { queryKeys } from '@/lib/query/keys'
+import endpoints from '@/lib/api/endpoints'
 import { useAuthStore } from '@/stores/auth-store'
 import type {
   ApiResponse,
@@ -18,7 +18,7 @@ import type {
   UserResponse,
   VerifyEmailRequest,
   VerifyEmailResponse,
-} from '@/lib/api-types'
+} from '@/lib/api/types'
 
 /**
  * 登录 mutation

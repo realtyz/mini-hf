@@ -1,7 +1,7 @@
 import { Outlet, useLocation } from "react-router";
-import { Header } from "@/pages/components/Header";
-import { Footer } from "@/pages/components/Footer";
-import { AnnouncementBanner } from "@/pages/components/AnnouncementBanner";
+import { Header } from "@/pages/landing/Header";
+import { Footer } from "@/pages/landing/Footer";
+import { AnnouncementBanner } from "@/pages/landing/AnnouncementBanner";
 import { useState } from "react";
 
 export function LandingLayout() {

@@ -2,8 +2,8 @@ import { useState, useMemo } from "react";
 import { Folder, File } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatBytes } from "@/lib/utils";
-import type { PreviewItem } from "@/lib/api-types";
-import { buildTree, getChildrenAtPath } from "@/lib/fileTreeUtils";
+import type { PreviewItem } from "@/lib/api/types";
+import { buildTree, getChildrenAtPath } from "@/lib/file-tree-utils";
 
 interface PreviewFileTreeProps {
   items: PreviewItem[];

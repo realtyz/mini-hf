@@ -17,8 +17,6 @@ docs/**
 .kilo
 .opencode
 
-AGENTS.md
-CLAUDE.md
 opencode.json
 
 code_review

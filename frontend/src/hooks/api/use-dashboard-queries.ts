@@ -2,15 +2,15 @@
  * Dashboard 专用数据查询 Hooks
  */
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
-import { STALE_TIMES } from "@/lib/query-client";
-import { useTaskList } from "@/hooks/useTaskList";
+import { queryKeys } from "@/lib/query/keys";
+import { STALE_TIMES } from "@/lib/query/client";
+import { useTaskList } from "@/hooks/use-task-list";
 import type {
   TaskResponse,
   DashboardStatsResponse,
-} from "@/lib/api-types";
-import api from "@/lib/api";
-import endpoints from "@/lib/api-endpoints";
+} from "@/lib/api/types";
+import api from "@/lib/api/client";
+import endpoints from "@/lib/api/endpoints";
 
 /**
  * Dashboard 统计数据

@@ -1,6 +1,6 @@
 import { useParams, Navigate } from 'react-router'
 import { DocLayout } from './components/DocLayout'
-import { getDocList } from './components/docs.utils'
+import { getDocList } from './docs.utils'
 
 export function DocsPage() {
   const { slug } = useParams<{ slug: string }>()

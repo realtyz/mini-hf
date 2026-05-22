@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router'
 import { BookOpen, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { DocMeta } from './docs.types'
+import type { DocMeta } from '../docs.types'
 
 interface DocSidebarProps {
   docs: DocMeta[]

@@ -4,13 +4,13 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/utils";
-import type { PreviewItem } from "@/lib/api-types";
+import type { PreviewItem } from "@/lib/api/types";
 import {
   buildTree,
   getChildrenAtPath,
   getFilesInDirectory,
   getDirectorySelectionState,
-} from "@/lib/fileTreeUtils";
+} from "@/lib/file-tree-utils";
 
 interface SelectableFileTreeProps {
   items: PreviewItem[];

@@ -10,7 +10,7 @@ import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typesc
 import javascript from 'react-syntax-highlighter/dist/esm/languages/prism/javascript'
 import atomDark from 'react-syntax-highlighter/dist/esm/styles/prism/atom-dark'
 import prismLight from 'react-syntax-highlighter/dist/esm/styles/prism/prism'
-import { useTheme } from '@/components/use-theme'
+import { useTheme } from '@/hooks/use-theme'
 import { cn } from '@/lib/utils'
 import {
   Table,

@@ -11,7 +11,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import type { RepoSource, RepoType } from '@/lib/api-types'
+import type { RepoSource, RepoType } from '@/lib/api/types'
 
 interface FormData {
   source: RepoSource

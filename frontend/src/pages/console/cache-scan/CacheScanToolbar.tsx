@@ -29,7 +29,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import type { ScanCategory } from "@/lib/api-types";
+import type { ScanCategory } from "@/lib/api/types";
 
 const THRESHOLD_PRESETS = [30, 60, 90, 180];
 
@@ -124,7 +124,7 @@ export function CacheScanToolbar({
                 placeholder="自定义"
                 value={customDays}
                 onChange={(e) => setCustomDays(e.target.value)}
-                className="w-[72px] h-8 text-[12px]"
+                className="w-18 h-8 text-[12px]"
               />
               <AlertDialog>
                 <AlertDialogTrigger asChild>

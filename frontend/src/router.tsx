@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { lazy } from 'react'
 import type { RouteObject } from 'react-router'
 import LandingLayout from './layouts/LandingLayout'
 import LandingPage from './pages'
@@ -8,26 +8,15 @@ import Repositories from './pages/Repositories'
 import TasksPublic from './pages/TasksPublic'
 import ConsoleLayout from './layouts/ConsoleLayout'
 import { ProtectedRoute } from './components/auth'
+import LazyLoad from './components/shared/LazyLoad'
 
-const Dashboard = lazy(() => import('./pages/console/Dashboard'))
-const RepositoriesConsole = lazy(() => import('./pages/console/Repositories'))
-const RepositoryDetail = lazy(() => import('./pages/console/RepositoryDetail'))
-const Tasks = lazy(() => import('./pages/console/Tasks'))
-const Settings = lazy(() => import('./pages/console/Settings'))
-const Users = lazy(() => import('./pages/console/Users'))
-const CacheScan = lazy(() => import('./pages/console/CacheScan'))
-
-function LazyLoad({ children }: { children: React.ReactNode }) {
-  return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-      </div>
-    }>
-      {children}
-    </Suspense>
-  )
-}
+const Dashboard = lazy(() => import('./pages/console/dashboard'))
+const RepositoriesConsole = lazy(() => import('./pages/console/repositories'))
+const RepositoryDetail = lazy(() => import('./pages/console/repository-detail'))
+const Tasks = lazy(() => import('./pages/console/tasks'))
+const Settings = lazy(() => import('./pages/console/settings'))
+const Users = lazy(() => import('./pages/console/users'))
+const CacheScan = lazy(() => import('./pages/console/cache-scan'))
 
 export const routes: RouteObject[] = [
   {

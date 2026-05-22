@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
-import { PaginatedNavigation } from "@/components/paginated-navigation";
+import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
 import {
   Table,
   TableBody,
@@ -31,10 +31,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { TaskResponse } from "@/lib/api-types";
+import type { TaskResponse } from "@/lib/api/types";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { useTaskActions } from "@/hooks/useTaskActions";
+import { useTaskActions } from "@/hooks/use-task-actions";
 import { useNavigate } from "react-router";
 
 interface TaskHistoryTableProps {

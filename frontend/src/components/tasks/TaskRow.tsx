@@ -22,9 +22,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { ConfirmDialog } from '@/components/tasks/ConfirmDialog'
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { formatBytes } from '@/lib/utils'
-import type { TaskResponse } from '@/lib/api-types'
+import type { TaskResponse } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
 import { motion } from 'framer-motion'
 import { useAuthStore } from '@/stores/auth-store'

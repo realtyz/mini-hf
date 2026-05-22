@@ -10,9 +10,9 @@ import {
   SectionHeader,
   ToggleItem,
   ActionsFooter,
-} from './components'
+} from './SettingsComponents'
 import { useConfigForm } from './use-config-form'
-import type { AnnouncementConfigResponse } from '@/lib/api-types'
+import type { AnnouncementConfigResponse } from '@/lib/api/types'
 
 type AnnouncementType = 'info' | 'warning' | 'urgent'
 

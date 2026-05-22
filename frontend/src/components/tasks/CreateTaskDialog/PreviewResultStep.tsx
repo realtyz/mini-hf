@@ -5,7 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { SelectableFileTree } from '../SelectableFileTree'
 import { formatBytes } from '@/lib/utils'
-import type { TaskPreviewData } from '@/lib/api-types'
+import type { TaskPreviewData } from '@/lib/api/types'
 
 interface PreviewResultStepProps {
   previewData: TaskPreviewData

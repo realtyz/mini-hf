@@ -11,7 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { itemVariants } from "@/lib/animations/motion-config";
 import { cn } from "@/lib/utils";
 import { STRINGS } from "@/lib/constants/strings";
-import type { TaskStatus } from "@/lib/api-types";
+import type { TaskStatus } from "@/lib/api/types";
 
 const STATUS_OPTIONS: {
   value: TaskStatus | "all";

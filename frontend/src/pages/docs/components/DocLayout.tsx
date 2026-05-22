@@ -6,8 +6,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { DocSidebar } from './DocSidebar'
 import { TableOfContents } from './TableOfContents'
 import { MarkdownContent } from './MarkdownContent'
-import { getDocList, loadDocContent, extractToc } from './docs.utils'
-import type { DocMeta, TocItem } from './docs.types'
+import { getDocList, loadDocContent, extractToc } from '../docs.utils'
+import type { DocMeta, TocItem } from '../docs.types'
 
 interface DocLayoutProps {
   slug: string

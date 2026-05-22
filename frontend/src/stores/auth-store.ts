@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { UserResponse } from '@/lib/api-types'
+import type { UserResponse } from '@/lib/api/types'
 import { config } from '@/lib/runtime-config'
-import endpoints from '@/lib/api-endpoints'
+import endpoints from '@/lib/api/endpoints'
 
 /**
  * 认证状态管理

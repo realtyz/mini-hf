@@ -22,15 +22,15 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import api from "@/lib/api";
-import endpoints from "@/lib/api-endpoints";
+import api from "@/lib/api/client";
+import endpoints from "@/lib/api/endpoints";
 import type {
   RepoProfile,
   RepoListResponse,
   RepoListParams,
-} from "@/lib/api-types";
+} from "@/lib/api/types";
 import { RepoGrid } from "@/components/repo";
-import { PaginatedNavigation } from "@/components/paginated-navigation";
+import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
 
 const PAGE_SIZE = 16;
 

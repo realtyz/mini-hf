@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
-import api from '@/lib/api'
+import api from '@/lib/api/client'
 import { STRINGS } from '@/lib/constants/strings'
-import { queryKeys } from '@/lib/query-keys'
-import endpoints from '@/lib/api-endpoints'
-import type { ApiResponse } from '@/lib/api-types'
+import { queryKeys } from '@/lib/query/keys'
+import endpoints from '@/lib/api/endpoints'
+import type { ApiResponse } from '@/lib/api/types'
 import { isEqual } from 'lodash-es'
 
 export interface UseConfigFormOptions<TForm extends Record<string, unknown>, TResponse> {

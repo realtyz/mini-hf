@@ -1,4 +1,4 @@
-import type { TaskStatus } from '@/lib/api-types'
+import type { TaskStatus } from '@/lib/api/types'
 import type { ReactNode } from 'react'
 import {
   ClipboardCheck,

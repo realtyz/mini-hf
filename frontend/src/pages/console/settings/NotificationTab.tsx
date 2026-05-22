@@ -17,10 +17,10 @@ import {
   FormField,
   ToggleItem,
   ActionsFooter,
-} from './components'
+} from './SettingsComponents'
 import { useConfigForm } from './use-config-form'
 import { motion, AnimatePresence } from 'framer-motion'
-import type { NotificationConfigResponse } from '@/lib/api-types'
+import type { NotificationConfigResponse } from '@/lib/api/types'
 
 interface NotificationForm {
   email: string

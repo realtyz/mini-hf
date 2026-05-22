@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
-import { STALE_TIMES } from "@/lib/query-client";
-import type { ScanResultResponse } from "@/lib/api-types";
-import api from "@/lib/api";
-import endpoints from "@/lib/api-endpoints";
+import { queryKeys } from "@/lib/query/keys";
+import { STALE_TIMES } from "@/lib/query/client";
+import type { ScanResultResponse } from "@/lib/api/types";
+import api from "@/lib/api/client";
+import endpoints from "@/lib/api/endpoints";
 
 export function useCacheScanResult() {
   const { data, isLoading, isError, error, refetch } = useQuery({

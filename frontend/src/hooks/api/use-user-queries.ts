@@ -2,16 +2,16 @@
  * 用户管理相关 API Hooks（需要 admin 权限）
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import api from '@/lib/api'
-import { queryKeys } from '@/lib/query-keys'
-import endpoints from '@/lib/api-endpoints'
+import api from '@/lib/api/client'
+import { queryKeys } from '@/lib/query/keys'
+import endpoints from '@/lib/api/endpoints'
 import type {
   ApiResponse,
   UserCreateRequest,
   UserListResponse,
   UserResponse,
   UserUpdateRequest,
-} from '@/lib/api-types'
+} from '@/lib/api/types'
 
 /**
  * 获取用户列表（管理员）

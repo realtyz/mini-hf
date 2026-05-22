@@ -24,8 +24,8 @@ import {
   TaskHistoryTable,
 } from "@/components/tasks";
 import { useAuthStore } from "@/stores/auth-store";
-import { useActiveTasks, useTaskList } from "@/hooks/useTaskList";
-import { queryKeys } from "@/lib/query-keys";
+import { useActiveTasks, useTaskList } from "@/hooks/use-task-list";
+import { queryKeys } from "@/lib/query/keys";
 import { useQueryClient } from "@tanstack/react-query";
 
 // Skeleton with shimmer animation

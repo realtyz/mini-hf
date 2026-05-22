@@ -1,5 +1,5 @@
 import { Badge } from "@/components/ui/badge";
-import type { TaskStatus } from "@/lib/api-types";
+import type { TaskStatus } from "@/lib/api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 

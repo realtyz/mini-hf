@@ -10,10 +10,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { useTaskActions } from '@/hooks/useTaskActions'
-import { useAsyncPreviewTask } from '@/hooks/useAsyncPreviewTask'
+import { useTaskActions } from '@/hooks/use-task-actions'
+import { useAsyncPreviewTask } from '@/hooks/use-async-preview-task'
 import { usePublicHFEndpoints } from '@/hooks/api/use-config-queries'
-import type { RepoSource, RepoType } from '@/lib/api-types'
+import type { RepoSource, RepoType } from '@/lib/api/types'
 import { AnimatePresence } from 'framer-motion'
 import { PreviewFormStep } from './CreateTaskDialog/PreviewFormStep'
 import { PreviewLoadingState } from './CreateTaskDialog/PreviewLoadingState'

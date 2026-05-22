@@ -1,5 +1,5 @@
-import { HeroSection } from "./components/HeroSection";
-import { TrendingSection } from "./components/TrendingSection";
+import { HeroSection } from "./landing/HeroSection";
+import { TrendingSection } from "./landing/TrendingSection";
 
 export function LandingPage() {
   return (

@@ -14,14 +14,14 @@ import {
   FormField,
   ToggleItem,
   ActionsFooter,
-} from './components'
+} from './SettingsComponents'
 import { useConfigForm } from './use-config-form'
 import { useTestSMTPConnection } from '@/hooks/api'
-import api from '@/lib/api'
-import endpoints from '@/lib/api-endpoints'
+import api from '@/lib/api/client'
+import endpoints from '@/lib/api/endpoints'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
-import type { SMTPConfigResponse, SMTPTestRequest } from '@/lib/api-types'
+import type { SMTPConfigResponse, SMTPTestRequest } from '@/lib/api/types'
 
 interface SMTPForm {
   host: string

@@ -1,4 +1,4 @@
-import type { RepoProfile } from "@/lib/api-types";
+import type { RepoProfile } from "@/lib/api/types";
 import { RepoCard } from "./RepoCard";
 import { RepoCardSkeleton } from "./RepoCardSkeleton";
 import { SearchX, FolderOpen } from "lucide-react";

@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 
-import { queryKeys } from '@/lib/query-keys'
-import { STALE_TIMES } from '@/lib/query-client'
-import api from '@/lib/api'
-import endpoints from '@/lib/api-endpoints'
-import type { TaskProgressData, TaskStatus, ApiResponse } from '@/lib/api-types'
+import { queryKeys } from '@/lib/query/keys'
+import { STALE_TIMES } from '@/lib/query/client'
+import api from '@/lib/api/client'
+import endpoints from '@/lib/api/endpoints'
+import type { TaskProgressData, TaskStatus, ApiResponse } from '@/lib/api/types'
 
 /**
  * 获取任务文件级进度

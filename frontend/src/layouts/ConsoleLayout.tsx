@@ -65,8 +65,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useCurrentUser } from "@/hooks/api/use-auth-queries";
 import { useAuthStore } from "@/stores/auth-store";
-import { useTheme } from "@/components/use-theme";
-import { queryClient } from "@/lib/query-client";
+import { useTheme } from "@/hooks/use-theme";
+import { queryClient } from "@/lib/query/client";
 
 // =============================================================================
 // Types & Interfaces
@@ -300,7 +300,7 @@ function TaskListLink() {
   );
 }
 
-import { ThemeToggle } from "@/components/shared/ThemeToggle";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 /**
  * 用户下拉菜单

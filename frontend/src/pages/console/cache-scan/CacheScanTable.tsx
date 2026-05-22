@@ -32,7 +32,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn, formatBytes } from "@/lib/utils";
-import type { RepoScanItem } from "@/lib/api-types";
+import type { RepoScanItem } from "@/lib/api/types";
 
 const repoTypeLabels: Record<string, string> = {
   model: "模型",

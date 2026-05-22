@@ -1,4 +1,4 @@
-import type { RepoStatus } from '@/lib/api-types'
+import type { RepoStatus } from '@/lib/api/types'
 
 export interface RepoStatusConfig {
   label: string

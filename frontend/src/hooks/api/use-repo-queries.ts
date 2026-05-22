@@ -1,6 +1,6 @@
 import { useMutation } from '@tanstack/react-query'
-import api from '@/lib/api'
-import endpoints from '@/lib/api-endpoints'
+import api from '@/lib/api/client'
+import endpoints from '@/lib/api/endpoints'
 
 export function useDeleteRepo() {
   return useMutation({
