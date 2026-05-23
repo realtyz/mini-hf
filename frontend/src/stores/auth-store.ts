@@ -116,13 +116,10 @@ export const useAuthStore = create<AuthState>()(
       // 重新水化后验证状态一致性
       onRehydrateStorage: () => (state) => {
         if (state) {
-          // 如果有 token 但 isAuthenticated 为 false，自动修正
-          if (state.token && !state.isAuthenticated) {
-            state.isAuthenticated = true
-          }
-          // 如果没有 token 但 isAuthenticated 为 true，自动修正
-          if (!state.token && state.isAuthenticated) {
-            state.isAuthenticated = false
+          const hasToken = !!state.token
+          if (hasToken !== state.isAuthenticated) {
+            // 使用 setState 触发响应式更新，避免直接 mutation
+            useAuthStore.setState({ isAuthenticated: hasToken })
           }
         }
       },

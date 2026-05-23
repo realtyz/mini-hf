@@ -3,6 +3,7 @@ import type { ApiError, ApiResponse } from '@/lib/api/types'
 import { useAuthStore } from '@/stores/auth-store'
 import { queryClient } from '@/lib/query/client'
 import { config } from '@/lib/runtime-config'
+import { emitAuthLogout } from '@/lib/auth-events'
 import endpoints from '@/lib/api/endpoints'
 
 declare module 'axios' {
@@ -33,9 +34,8 @@ interface ApiInstance {
   delete<T = unknown>(url: string, config?: Record<string, unknown>): Promise<T>
 }
 
-// 刷新 token 的队列
-let isRefreshing = false
-let refreshSubscribers: ((token: string) => void)[] = []
+// 正在进行的 token 刷新 Promise，用于并发请求去重
+let refreshPromise: Promise<string | null> | null = null
 
 const api = axios.create({
   baseURL: config.API_BASE_URL,
@@ -80,21 +80,6 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
-/**
- * 订阅 token 刷新
- */
-function subscribeTokenRefresh(callback: (token: string) => void) {
-  refreshSubscribers.push(callback)
-}
-
-/**
- * 通知所有订阅者 token 已刷新
- */
-function onTokenRefreshed(newToken: string) {
-  refreshSubscribers.forEach((callback) => callback(newToken))
-  refreshSubscribers = []
-}
-
 // 请求拦截器：添加 JWT token
 api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
@@ -107,28 +92,20 @@ api.interceptors.request.use(
 
     if (token && config.headers) {
       // 检查 token 是否即将过期，如果是则先刷新
-      if (isTokenAboutToExpire(120) && !isRefreshing) {
-        isRefreshing = true
-        const newToken = await refreshAccessToken()
-        isRefreshing = false
+      if (isTokenAboutToExpire(120)) {
+        if (!refreshPromise) {
+          refreshPromise = refreshAccessToken().finally(() => { refreshPromise = null })
+        }
+        const newToken = await refreshPromise
 
         if (newToken) {
-          onTokenRefreshed(newToken)
           config.headers.Authorization = `Bearer ${newToken}`
         } else {
           // 刷新失败，登出
           useAuthStore.getState().logout()
           queryClient.clear()
-          window.location.href = '/login'
+          emitAuthLogout()
         }
-      } else if (isRefreshing) {
-        // 正在刷新中，等待新 token
-        return new Promise((resolve) => {
-          subscribeTokenRefresh((newToken: string) => {
-            config.headers.Authorization = `Bearer ${newToken}`
-            resolve(config)
-          })
-        }) as Promise<InternalAxiosRequestConfig>
       } else {
         config.headers.Authorization = `Bearer ${token}`
       }
@@ -158,22 +135,12 @@ api.interceptors.response.use(
       if (!config?.skipAuthRefresh && !originalRequest._retry) {
         originalRequest._retry = true
 
-        if (isRefreshing) {
-          // 等待刷新完成
-          return new Promise((resolve) => {
-            subscribeTokenRefresh((newToken: string) => {
-              originalRequest.headers.Authorization = `Bearer ${newToken}`
-              resolve(api(originalRequest))
-            })
-          })
+        if (!refreshPromise) {
+          refreshPromise = refreshAccessToken().finally(() => { refreshPromise = null })
         }
-
-        isRefreshing = true
-        const newToken = await refreshAccessToken()
-        isRefreshing = false
+        const newToken = await refreshPromise
 
         if (newToken) {
-          onTokenRefreshed(newToken)
           originalRequest.headers.Authorization = `Bearer ${newToken}`
           return api(originalRequest)
         }
@@ -182,7 +149,7 @@ api.interceptors.response.use(
       // 刷新失败或已重试过，登出并跳转
       useAuthStore.getState().logout()
       queryClient.clear()
-      window.location.href = '/login'
+      emitAuthLogout()
     }
 
     // 返回格式化的错误对象
