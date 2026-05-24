@@ -9,7 +9,6 @@ from cache.services.cache import CacheService
 from database import AsyncSession, unit_of_work
 from database.db_models import User
 from services import TaskNotificationService, VerifyCodeService
-from services import task_notification_service, verify_code_service
 from services.config import ConfigService
 from services.task import TaskService
 from mgmt_server.core.constants import UserRole
@@ -39,11 +38,6 @@ async def get_cache_service() -> CacheService:
     return cache_service
 
 
-async def get_task_notification_service() -> TaskNotificationService:
-    """Get the shared notification service singleton."""
-    return task_notification_service
-
-
 # ------------------------------------------------------------------
 # Service factories
 # ------------------------------------------------------------------
@@ -68,6 +62,14 @@ async def get_config_service(
 ) -> ConfigService:
     """Get config service dependency."""
     return ConfigService(db)
+
+
+async def get_task_notification_service(
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
+    config_service: Annotated[ConfigService, Depends(get_config_service)],
+) -> TaskNotificationService:
+    """Get task notification service dependency."""
+    return TaskNotificationService(config_service=config_service, session=db)
 
 
 async def get_config_management_service(
@@ -99,6 +101,9 @@ async def get_task_lifecycle_service(
     user_service: Annotated[UserService, Depends(get_user_service)],
     config_service: Annotated[ConfigService, Depends(get_config_service)],
     cache_service: Annotated[CacheService, Depends(get_cache_service)],
+    notification_service: Annotated[
+        TaskNotificationService, Depends(get_task_notification_service)
+    ],
 ) -> TaskLifecycleService:
     """Get task lifecycle service dependency."""
     return TaskLifecycleService(
@@ -107,6 +112,7 @@ async def get_task_lifecycle_service(
         user_service=user_service,
         config_service=config_service,
         cache_service=cache_service,
+        notification_service=notification_service,
     )
 
 
@@ -139,12 +145,11 @@ async def get_cache_scan_service(
     return CacheScanService(db, cache=cache)
 
 
-async def get_verify_code_service() -> VerifyCodeService:
-    """Get verify code service dependency.
-
-    Returns the centralized verify_code_service from emailer package.
-    """
-    return verify_code_service
+async def get_verify_code_service(
+    config_service: Annotated[ConfigService, Depends(get_config_service)],
+) -> VerifyCodeService:
+    """Get verify code service dependency."""
+    return VerifyCodeService(config_service=config_service)
 
 
 async def get_token_service(
@@ -174,6 +179,9 @@ ConfigManagementServiceDep = Annotated[
     ConfigManagementService, Depends(get_config_management_service)
 ]
 VerifyCodeServiceDep = Annotated[VerifyCodeService, Depends(get_verify_code_service)]
+TaskNotificationServiceDep = Annotated[
+    TaskNotificationService, Depends(get_task_notification_service)
+]
 TokenServiceDep = Annotated[TokenService, Depends(get_token_service)]
 CurrentUserToken = Annotated[TokenPayload, Depends(verify_bearer_token)]
 RefreshUser = Annotated[TokenPayload, Depends(verify_refresh_token)]

@@ -13,7 +13,8 @@ from loguru import logger
 
 from core import settings
 from database import new_session
-from services import task_notification_service
+from services import TaskNotificationService
+from services.config import ConfigService
 from services.task import TaskService, Task
 from worker.handlers.contracts import HandlerFunc, TaskControl
 from worker.retry import RetryPolicy
@@ -200,7 +201,10 @@ class Worker:
     ) -> None:
         """Send a task notification, logging but never raising on failure."""
         try:
-            await task_notification_service.send_task_notification(task, status, error)
+            async with new_session() as session:
+                config_service = ConfigService(session)
+                notification = TaskNotificationService(config_service, session)
+                await notification.send_task_notification(task, status, error)
         except Exception:
             logger.warning("Failed to send {} notification", status)
 

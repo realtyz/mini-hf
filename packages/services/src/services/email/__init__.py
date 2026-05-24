@@ -19,14 +19,6 @@ Example:
         template_name="welcome.html",
         context={"name": "John"}
     )
-
-    # Verification code service
-    from services.email import verify_code_service
-    success, message, retry_after = await verify_code_service.send_code("user@example.com")
-
-    # Task notification service
-    from services.email import task_notification_service
-    await task_notification_service.send_task_notification(task, "completed")
 """
 
 from .client import EmailClient
@@ -41,8 +33,6 @@ from .exceptions import (
 from .services import (
     TaskNotificationService,
     VerifyCodeService,
-    task_notification_service,
-    verify_code_service,
 )
 
 __all__ = [
@@ -55,6 +45,4 @@ __all__ = [
     "TemplateError",
     "VerifyCodeService",
     "TaskNotificationService",
-    "verify_code_service",
-    "task_notification_service",
 ]

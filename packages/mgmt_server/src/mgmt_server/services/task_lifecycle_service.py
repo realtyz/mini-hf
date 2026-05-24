@@ -9,7 +9,7 @@ from typing import Any
 from cache.services.cache import CacheService
 from database.db_models import Task, TaskStatus, User
 from loguru import logger
-from services import task_notification_service
+from services import TaskNotificationService
 from services.config import ConfigService
 from services.task import TaskService
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,12 +49,14 @@ class TaskLifecycleService:
         user_service: UserService,
         config_service: ConfigService,
         cache_service: CacheService,
+        notification_service: TaskNotificationService,
     ) -> None:
         self._session = session
         self._task_service = task_service
         self._user_service = user_service
         self._config_service = config_service
         self._cache_service = cache_service
+        self._notification = notification_service
 
     # ------------------------------------------------------------------
     # Permission helpers
@@ -116,8 +118,7 @@ class TaskLifecycleService:
 
         Returns the (possibly updated) task after auto-approval.
         """
-        config_service = self._config_service
-        notification_config = await config_service.get_notification_config()
+        notification_config = await self._config_service.get_notification_config()
 
         auto_approve_enabled = notification_config.auto_approve_enabled
         auto_approve_threshold_gb = notification_config.auto_approve_threshold_gb
@@ -205,7 +206,7 @@ class TaskLifecycleService:
             )
 
         logger.info("Sending approval notification email for task {}", task.id)
-        await task_notification_service.send_task_approval_notification(
+        await self._notification.send_task_approval_notification(
             task=task,
             notification_emails=notification_email,
         )
@@ -243,7 +244,7 @@ class TaskLifecycleService:
             success = await self._task_service.request_cancel(task_id)
             if not success:
                 raise ValidationError("Failed to cancel task")
-            await task_notification_service.send_task_notification(
+            await self._notification.send_task_notification(
                 task=task, status="cancelled"
             )
 

@@ -12,10 +12,12 @@ from pathlib import Path
 from typing import Literal
 
 from loguru import logger
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from database import UserRepository
 from database.db_models import Task
 from .client import EmailClient
-from services.config import SMTPConfig
+from services.config import ConfigService
 from .exceptions import EmailError
 
 
@@ -29,20 +31,14 @@ class VerifyCodeService:
 
     This service handles sending and verifying email verification codes.
     Codes are stored in Redis cache with a TTL.
-
-    Example:
-        from services import verify_code_service
-
-        # Send verification code
-        success, message, retry_after = await verify_code_service.send_code("user@example.com")
-
-        # Verify code
-        success, message = await verify_code_service.verify_code("user@example.com", "123456")
     """
 
     CODE_LENGTH = 6
     CODE_TTL = 300  # 5 minutes
     RESEND_INTERVAL = 60  # seconds
+
+    def __init__(self, config_service: ConfigService) -> None:
+        self._config = config_service
 
     def _get_key(self, email: str) -> str:
         """Build Redis key for email."""
@@ -53,24 +49,6 @@ class VerifyCodeService:
     def _generate_code(self) -> str:
         """Generate random verification code."""
         return "".join(random.choices(string.digits, k=self.CODE_LENGTH))
-
-    async def _get_smtp_config(self) -> SMTPConfig | None:
-        """Read SMTP configuration from database.
-
-        Returns:
-            SMTPConfig instance if configured, None otherwise
-        """
-        try:
-            from database import new_session
-            from services.config import ConfigService
-
-            async with new_session() as session:
-                config_service = ConfigService(session)
-                smtp_config = await config_service.get_smtp_config()
-                return smtp_config if smtp_config.is_configured else None
-        except Exception as e:
-            logger.error("Failed to read SMTP config from database: {}", e)
-            return None
 
     async def _get_stored_data(self, email: str) -> dict | None:
         """Get stored verification code data from cache."""
@@ -128,8 +106,8 @@ class VerifyCodeService:
 
         # Send email
         try:
-            config = await self._get_smtp_config()
-            if not config or not config.is_configured:
+            config = await self._config.get_smtp_config()
+            if not config.is_configured:
                 logger.warning(
                     "SMTP not configured, skipping email send. "
                     f"Verification code for {email}: {code}"
@@ -162,8 +140,8 @@ class VerifyCodeService:
         eliminating timing side-channel user enumeration.
         """
         try:
-            config = await self._get_smtp_config()
-            if not config or not config.is_configured:
+            config = await self._config.get_smtp_config()
+            if not config.is_configured:
                 logger.debug(
                     "SMTP not configured, skipping already-registered notification"
                 )
@@ -219,54 +197,18 @@ class TaskNotificationService:
 
     This service sends email notifications when tasks complete, fail,
     or are cancelled.
-
-    Example:
-        from services import task_notification_service
-
-        # Send completion notification
-        await task_notification_service.send_task_notification(task, "completed")
-
-        # Send failure notification
-        await task_notification_service.send_task_notification(task, "failed", "Error message")
     """
 
-    async def _get_smtp_config(self) -> SMTPConfig | None:
-        """Read SMTP configuration from database.
-
-        Returns:
-            SMTPConfig instance if configured, None otherwise
-        """
-        try:
-            from database import new_session
-            from services.config import ConfigService
-
-            async with new_session() as session:
-                config_service = ConfigService(session)
-                smtp_config = await config_service.get_smtp_config()
-                return smtp_config if smtp_config.is_configured else None
-        except Exception as e:
-            logger.error("Failed to read SMTP config from database: {}", e)
-            return None
+    def __init__(
+        self, config_service: ConfigService, session: AsyncSession
+    ) -> None:
+        self._config = config_service
+        self._session = session
 
     async def _get_user_email(self, user_id: int) -> str | None:
-        """Get user email by user ID.
-
-        Args:
-            user_id: User ID to look up
-
-        Returns:
-            User email if found, None otherwise
-        """
-        try:
-            from database import UserRepository, new_session
-
-            async with new_session() as session:
-                repo = UserRepository(session)
-                user = await repo.get_by_id(user_id)
-                return user.email if user else None
-        except Exception as e:
-            logger.error(f"Failed to get user email for user {user_id}: {e}")
-            return None
+        repo = UserRepository(self._session)
+        user = await repo.get_by_id(user_id)
+        return user.email if user else None
 
     async def send_task_notification(
         self,
@@ -286,8 +228,8 @@ class TaskNotificationService:
         """
         try:
             # 1. Check if SMTP is configured
-            config = await self._get_smtp_config()
-            if not config or not config.is_configured:
+            config = await self._config.get_smtp_config()
+            if not config.is_configured:
                 logger.debug("SMTP not configured, skipping email notification")
                 return False
 
@@ -360,8 +302,8 @@ class TaskNotificationService:
         """
         try:
             # 1. Check if SMTP is configured
-            config = await self._get_smtp_config()
-            if not config or not config.is_configured:
+            config = await self._config.get_smtp_config()
+            if not config.is_configured:
                 logger.debug(
                     "SMTP not configured, skipping approval email notification"
                 )
@@ -407,8 +349,3 @@ class TaskNotificationService:
                 f"Failed to send approval email notification for task {task.id}: {e}"
             )
             return False
-
-
-# Singleton instances
-verify_code_service = VerifyCodeService()
-task_notification_service = TaskNotificationService()
