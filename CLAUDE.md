@@ -90,6 +90,7 @@ Summary: React 19 + React Router 7 + TanStack Query 5 + Tailwind CSS 4 + shadcn/
 ### Key Files
 
 - Settings: `packages/core/src/core/settings.py`
+- Config registry: `packages/services/src/services/config/registry.py` (single source of truth for system config keys)
 - Database session: `packages/database/src/database/core.py`
 - Database models: `packages/database/src/database/db_models/`
 - Database repositories: `packages/database/src/database/db_repositories/`
@@ -116,7 +117,10 @@ Base: `/api/v1`
 | `GET /health` | Health check |
 | `/repos/*` | Repository management |
 | `/tasks/*` | Task queue operations |
+| `/config/schema` | Config schema for UI generation (registry-driven) |
+| `/config/batch` | Batch config update |
 | `/configs/*` | System configuration |
+| `/system/announcements` | Announcement CRUD (uses `Announcement` model, not config keys) |
 
 ### HF API (Port 9801)
 

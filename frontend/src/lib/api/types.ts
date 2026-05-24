@@ -458,6 +458,77 @@ export interface HFEndpointSaveRequest {
   default_endpoint: string
 }
 
+// ==================== 配置 Schema (registry-driven) ====================
+
+export type ConfigValueType = 'string' | 'int' | 'float' | 'bool' | 'json' | 'password' | 'select'
+
+export type ConfigWidget =
+  | 'input'
+  | 'number'
+  | 'switch'
+  | 'select'
+  | 'password'
+  | 'textarea'
+  | 'hf_endpoint_list'
+
+export interface ConfigUISchema {
+  widget: ConfigWidget
+  placeholder: string
+  input_type: string
+  options: { label: string; value: string }[]
+  rows: number
+  helper_text: string
+  col_span: number
+}
+
+export interface ConfigFieldSchema {
+  key: string
+  label: string
+  type: ConfigValueType
+  default: unknown
+  value: unknown
+  sensitive: boolean
+  has_value: boolean
+  required: boolean
+  min_value: number | null
+  max_value: number | null
+  description: string
+  ui: ConfigUISchema
+}
+
+export interface ConfigCategorySchema {
+  id: string
+  label: string
+  description: string
+  visual: 'email' | 'huggingface' | 'notification' | string
+  fields: ConfigFieldSchema[]
+  custom_actions: string[]
+}
+
+export interface ConfigSchemaData {
+  categories: ConfigCategorySchema[]
+}
+
+export type ConfigSchemaResponse = ApiResponse<ConfigSchemaData>
+
+// ==================== 公告 CRUD（新系统） ====================
+
+export interface AnnouncementCreateRequest {
+  title?: string | null
+  content: string
+  announcement_type?: AnnouncementType
+  is_pinned?: boolean
+  is_active?: boolean
+}
+
+export interface AnnouncementUpdateRequest {
+  title?: string | null
+  content?: string
+  announcement_type?: AnnouncementType
+  is_pinned?: boolean
+  is_active?: boolean
+}
+
 // ==================== 通知配置 ====================
 
 export interface NotificationConfigResponse {

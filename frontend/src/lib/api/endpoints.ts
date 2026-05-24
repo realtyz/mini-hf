@@ -66,6 +66,7 @@ const endpoints = {
 
   config: {
     list: '/config',
+    schema: '/config/schema',
     detail: (key: string) => `/config/${encodeURIComponent(key)}`,
     create: '/config',
     update: (key: string) => `/config/${encodeURIComponent(key)}`,
@@ -83,6 +84,7 @@ const endpoints = {
 
   system: {
     announcements: '/system/announcements',
+    announcementsAdmin: '/system/announcements/admin',
   },
 } as const
 

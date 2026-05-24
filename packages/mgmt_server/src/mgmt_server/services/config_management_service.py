@@ -16,6 +16,18 @@ from services.config import (
     NotificationConfig,
 )
 
+import json
+from dataclasses import asdict
+
+from services.config import ConfigRegistry
+from services.config.registry import ConfigValueType
+
+from mgmt_server.api.v1.schemas.configs import (
+    ConfigCategorySchema,
+    ConfigFieldSchema,
+    ConfigSchemaData,
+    ConfigUISchema,
+)
 from mgmt_server.core.constants import SMTP_TEST_TIMEOUT
 from mgmt_server.core.exceptions import ValidationError
 
@@ -190,6 +202,9 @@ class ConfigManagementService:
     # ------------------------------------------------------------------
 
     async def get_announcement_config(self) -> AnnouncementConfig:
+        logger.warning(
+            "get_announcement_config() is deprecated — use GET /system/announcements instead"
+        )
         return await self._config.get_announcement_config()
 
     async def save_announcement_config(
@@ -199,8 +214,90 @@ class ConfigManagementService:
         announcement_type: Literal["info", "warning", "urgent"],
         is_active: bool,
     ) -> AnnouncementConfig:
+        logger.warning(
+            "save_announcement_config() is deprecated — use POST/PUT /system/announcements instead"
+        )
         return await self._config.save_announcement_config(
             content=content,
             announcement_type=announcement_type,
             is_active=is_active,
         )
+
+    # ------------------------------------------------------------------
+    # Schema
+    # ------------------------------------------------------------------
+
+    async def get_schema(self) -> ConfigSchemaData:
+        categories: list[ConfigCategorySchema] = []
+        for category_meta in ConfigRegistry.categories():
+            fields: list[ConfigFieldSchema] = []
+            for entry in ConfigRegistry.by_category(category_meta.id):
+                raw_value = await self._config.get(entry.key.value, "")
+                has_value = bool(raw_value)
+
+                if entry.sensitive:
+                    field_value: object = ""
+                elif not raw_value:
+                    field_value = entry.default
+                elif entry.type is ConfigValueType.JSON:
+                    try:
+                        field_value = json.loads(raw_value)
+                    except (json.JSONDecodeError, TypeError):
+                        logger.warning(
+                            "Failed to parse JSON config '{}', falling back to default",
+                            entry.key.value,
+                        )
+                        field_value = entry.default
+                elif entry.type is ConfigValueType.BOOL:
+                    lowered = raw_value.lower()
+                    field_value = lowered in ("true", "1")
+                elif entry.type is ConfigValueType.INT:
+                    try:
+                        field_value = int(raw_value)
+                    except (ValueError, TypeError):
+                        logger.warning(
+                            "Failed to parse int config '{}' (raw={!r}), falling back to default",
+                            entry.key.value,
+                            raw_value,
+                        )
+                        field_value = entry.default
+                elif entry.type is ConfigValueType.FLOAT:
+                    try:
+                        field_value = float(raw_value)
+                    except (ValueError, TypeError):
+                        logger.warning(
+                            "Failed to parse float config '{}' (raw={!r}), falling back to default",
+                            entry.key.value,
+                            raw_value,
+                        )
+                        field_value = entry.default
+                else:
+                    field_value = raw_value
+
+                fields.append(
+                    ConfigFieldSchema(
+                        key=entry.key.value,
+                        label=entry.label,
+                        type=entry.type.value,
+                        default=entry.default,
+                        value=field_value,
+                        sensitive=entry.sensitive,
+                        has_value=has_value,
+                        required=entry.required,
+                        min_value=entry.min_value,
+                        max_value=entry.max_value,
+                        description=entry.description,
+                        ui=ConfigUISchema(**asdict(entry.ui)),
+                    )
+                )
+            categories.append(
+                ConfigCategorySchema(
+                    id=category_meta.id.value,
+                    label=category_meta.label,
+                    description=category_meta.description,
+                    visual=category_meta.visual,
+                    fields=fields,
+                    custom_actions=category_meta.custom_actions,
+                )
+            )
+        return ConfigSchemaData(categories=categories)

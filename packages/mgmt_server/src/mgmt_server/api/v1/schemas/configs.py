@@ -320,3 +320,50 @@ class AnnouncementResponse(BaseModel):
             created_at=announcement.created_at,
             updated_at=announcement.updated_at,
         )
+
+
+# ------------------------------------------------------------------
+# Config schema endpoint (registry-driven)
+# ------------------------------------------------------------------
+
+
+class ConfigUISchema(BaseModel):
+    widget: str
+    placeholder: str = ""
+    input_type: str = "text"
+    options: list[dict[str, str]] = Field(default_factory=list)
+    rows: int = 3
+    helper_text: str = ""
+    col_span: int = 1
+
+
+class ConfigFieldSchema(BaseModel):
+    key: str
+    label: str
+    type: str
+    default: object
+    value: object
+    sensitive: bool
+    has_value: bool = False
+    required: bool = False
+    min_value: int | float | None = None
+    max_value: int | float | None = None
+    description: str = ""
+    ui: ConfigUISchema
+
+
+class ConfigCategorySchema(BaseModel):
+    id: str
+    label: str
+    description: str
+    visual: str
+    fields: list[ConfigFieldSchema]
+    custom_actions: list[str] = Field(default_factory=list)
+
+
+class ConfigSchemaData(BaseModel):
+    categories: list[ConfigCategorySchema]
+
+
+class ConfigSchemaResponse(BaseResponse[ConfigSchemaData]):
+    pass

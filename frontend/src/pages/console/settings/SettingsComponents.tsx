@@ -17,7 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { smoothTransition, prefersReducedMotion } from '@/lib/animations/motion-config'
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Spotlight Card
+// Spotlight Card — refined minimal surface
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function SpotlightCard({
@@ -30,7 +30,8 @@ export function SpotlightCard({
   return (
     <div
       className={cn(
-        'rounded-2xl border border-border/60 bg-card shadow-sm',
+        'rounded-xl border border-border/50 bg-card shadow-sm transition-shadow duration-200',
+        'hover:shadow-md',
         className
       )}
     >
@@ -40,7 +41,7 @@ export function SpotlightCard({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Form Field
+// Form Field — polished input with focus ring and animated feedback
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface FormFieldProps {
@@ -71,12 +72,12 @@ export function FormField({
   const [isFocused, setIsFocused] = useState(false)
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn('space-y-1.5', className)}>
       <Label
         htmlFor={id}
         className={cn(
           'text-sm font-medium transition-colors duration-150',
-          isFocused && 'text-primary'
+          error ? 'text-destructive' : isFocused ? 'text-primary' : 'text-foreground/80'
         )}
       >
         {label}
@@ -86,7 +87,7 @@ export function FormField({
           <div
             className={cn(
               'absolute left-3 top-1/2 -translate-y-1/2 transition-colors duration-150 pointer-events-none',
-              isFocused ? 'text-primary' : 'text-muted-foreground'
+              error ? 'text-destructive/70' : isFocused ? 'text-primary/70' : 'text-muted-foreground/50'
             )}
           >
             {icon}
@@ -103,8 +104,9 @@ export function FormField({
           className={cn(
             icon && 'pl-10',
             'transition-all duration-200',
-            error && 'border-red-500 focus-visible:ring-red-500',
-            !error && isFocused && 'border-primary/50'
+            error
+              ? 'border-destructive/50 focus-visible:ring-destructive/20'
+              : 'focus-visible:ring-primary/20'
           )}
         />
       </div>
@@ -115,7 +117,7 @@ export function FormField({
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
-            className="text-xs text-red-500"
+            className="text-xs text-destructive"
           >
             {error}
           </motion.p>
@@ -136,11 +138,11 @@ export function FormField({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Settings Section
+// Settings Section — consistent card wrapper with header/footer
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface SettingsSectionProps {
-  icon: React.ReactNode
+  icon?: React.ReactNode
   title: string
   description: string
   children: React.ReactNode
@@ -160,25 +162,27 @@ export function SettingsSection({
 }: SettingsSectionProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 12 }}
+      initial={{ opacity: 0, y: prefersReducedMotion ? 0 : 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...smoothTransition, delay }}
     >
       <SpotlightCard className={className}>
-        <CardHeader className="pt-6 pb-4">
-          <div className="flex items-start gap-4">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary ring-1 ring-primary/10">
-              {icon}
-            </div>
-            <div className="flex-1 space-y-1 pt-0.5">
-              <CardTitle className="text-lg font-semibold tracking-tight">{title}</CardTitle>
+        <CardHeader className="pb-3 pt-5 px-5 sm:px-6">
+          <div className="flex items-start gap-3">
+            {icon && (
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
+                {icon}
+              </div>
+            )}
+            <div className="flex-1 space-y-0.5 pt-0.5">
+              <CardTitle className="text-base font-semibold tracking-tight">{title}</CardTitle>
               <CardDescription className="text-[13px] leading-relaxed">{description}</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="pt-1 pb-6">{children}</CardContent>
+        <CardContent className="px-5 sm:px-6 pb-5">{children}</CardContent>
         {footer && (
-          <CardFooter className="border-t border-border/50 bg-muted/20 px-6 py-4 rounded-b-2xl">
+          <CardFooter className="border-t border-border/40 bg-muted/30 px-5 sm:px-6 py-3.5 rounded-b-xl">
             {footer}
           </CardFooter>
         )}
@@ -188,20 +192,20 @@ export function SettingsSection({
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Section Header
+// Section Header — lightweight divider with optional icon
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }) {
   return (
-    <div className="flex items-center gap-2.5 pb-3 mb-1 border-b border-border/40">
-      <span className="text-muted-foreground">{icon}</span>
-      <h3 className="text-sm font-semibold tracking-tight text-foreground/85">{title}</h3>
+    <div className="flex items-center gap-2.5 pb-2.5 mb-2 border-b border-border/30">
+      <span className="text-muted-foreground/70">{icon}</span>
+      <h3 className="text-sm font-semibold text-foreground/80">{title}</h3>
     </div>
   )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Toggle Item
+// Toggle Item — compact row with switch
 // ═══════════════════════════════════════════════════════════════════════════════
 
 interface ToggleItemProps {
@@ -224,36 +228,43 @@ export function ToggleItem({
   return (
     <div
       className={cn(
-        'flex items-start justify-between gap-4 rounded-xl border p-4 transition-all duration-200',
-        'hover:border-primary/20',
-        checked && 'border-primary/15 bg-primary/3'
+        'flex items-start justify-between gap-4 rounded-lg border p-3.5 transition-all duration-200',
+        'hover:border-border',
+        checked
+          ? 'border-primary/20 bg-primary/3'
+          : 'border-border/40 bg-transparent'
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 min-w-0">
         {icon && (
           <div
             className={cn(
-              'mt-0.5 transition-colors duration-200',
-              checked ? 'text-primary' : 'text-muted-foreground'
+              'mt-0.5 shrink-0 transition-colors duration-200',
+              checked ? 'text-primary' : 'text-muted-foreground/60'
             )}
           >
             {icon}
           </div>
         )}
-        <div className="space-y-0.5">
+        <div className="space-y-0.5 min-w-0">
           <Label htmlFor={id} className="text-sm font-medium cursor-pointer">
             {title}
           </Label>
           <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
         </div>
       </div>
-      <Switch id={id} checked={checked} onCheckedChange={onCheckedChange} className="mt-0.5" />
+      <Switch
+        id={id}
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        className="mt-0.5 shrink-0"
+      />
     </div>
   )
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Unsaved Changes Badge
+// Change Status — save-state indicator
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function ChangeStatus({ hasChanges }: { hasChanges: boolean }) {
@@ -265,12 +276,12 @@ export function ChangeStatus({ hasChanges }: { hasChanges: boolean }) {
             <span className="animate-ping absolute inline-flex size-full rounded-full bg-amber-400 opacity-75" />
             <span className="relative inline-flex rounded-full size-2 bg-amber-500" />
           </span>
-          <span className="text-muted-foreground">有未保存的更改</span>
+          <span className="text-muted-foreground text-xs">有未保存的更改</span>
         </>
       ) : (
         <>
           <CheckCircle2 className="size-4 text-emerald-500" />
-          <span className="text-muted-foreground">所有更改已保存</span>
+          <span className="text-muted-foreground text-xs">所有更改已保存</span>
         </>
       )}
     </div>
@@ -278,7 +289,7 @@ export function ChangeStatus({ hasChanges }: { hasChanges: boolean }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Actions Footer — consistent save/reset buttons for config sections
+// Actions Footer — save / reset bar
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export function ActionsFooter({
@@ -297,17 +308,31 @@ export function ActionsFooter({
   return (
     <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <ChangeStatus hasChanges={hasChanges} />
-      <div className="flex flex-wrap gap-2 sm:justify-end">
+      <div className="flex flex-wrap items-center gap-2 sm:justify-end">
         {extra}
         {hasChanges && (
-          <Button variant="outline" onClick={onReset} disabled={isSaving} className="gap-2">
-            <RotateCcw className="size-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onReset}
+            disabled={isSaving}
+            className="gap-1.5 h-9"
+          >
+            <RotateCcw className="size-3.5" />
             重置
           </Button>
         )}
-        <Button onClick={onSave} disabled={!hasChanges || isSaving} className="gap-2 min-w-25">
-          {isSaving && <Loader2 className="size-4 animate-spin" />}
-          {!isSaving && <Save className="size-4" />}
+        <Button
+          size="sm"
+          onClick={onSave}
+          disabled={!hasChanges || isSaving}
+          className="gap-1.5 h-9"
+        >
+          {isSaving ? (
+            <Loader2 className="size-3.5 animate-spin" />
+          ) : (
+            <Save className="size-3.5" />
+          )}
           保存更改
         </Button>
       </div>

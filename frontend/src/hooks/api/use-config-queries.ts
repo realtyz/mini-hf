@@ -16,11 +16,14 @@ import type {
   ConfigUpdateRequest,
   ConfigBatchUpdateRequest,
   ConfigListResponse,
+  ConfigSchemaResponse,
   SMTPTestRequest,
   SMTPTestResponse,
   HFEndpointConfigResponse,
   AnnouncementConfigResponse,
   AnnouncementItem,
+  AnnouncementCreateRequest,
+  AnnouncementUpdateRequest,
 } from '@/lib/api/types'
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -104,6 +107,71 @@ export function useTestSMTPConnection() {
   return useMutation({
     mutationFn: async (data: SMTPTestRequest) => {
       return api.post<SMTPTestResponse>(endpoints.config.smtpTest, data)
+    },
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Schema-driven config form
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function useConfigSchema() {
+  return useQuery({
+    queryKey: queryKeys.configs.schema(),
+    queryFn: async () => api.get<ConfigSchemaResponse>(endpoints.config.schema),
+    staleTime: STALE_TIMES.config,
+  })
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// Announcement CRUD (System endpoint)
+// ═══════════════════════════════════════════════════════════════════════════════
+
+export function useAdminAnnouncements() {
+  return useQuery({
+    queryKey: [...queryKeys.configs.all, 'announcements', 'admin'],
+    queryFn: async () => {
+      const res = await api.get<ApiResponse<AnnouncementItem[]>>(endpoints.system.announcementsAdmin)
+      return res.data
+    },
+    staleTime: STALE_TIMES.config,
+  })
+}
+
+export function useCreateAnnouncement() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (data: AnnouncementCreateRequest) => {
+      const res = await api.post<ApiResponse<AnnouncementItem>>(endpoints.system.announcements, data)
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.configs.all, 'announcements'] })
+    },
+  })
+}
+
+export function useUpdateAnnouncement() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, ...data }: { id: number } & AnnouncementUpdateRequest) => {
+      const res = await api.put<ApiResponse<AnnouncementItem>>(`${endpoints.system.announcements}/${id}`, data)
+      return res.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.configs.all, 'announcements'] })
+    },
+  })
+}
+
+export function useDeleteAnnouncement() {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`${endpoints.system.announcements}/${id}`)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [...queryKeys.configs.all, 'announcements'] })
     },
   })
 }

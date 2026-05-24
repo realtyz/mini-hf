@@ -18,6 +18,7 @@ from mgmt_server.api.v1.schemas.configs import (
     ConfigDetailResponse,
     ConfigItem,
     ConfigListResponse,
+    ConfigSchemaResponse,
     ConfigUpdateRequest,
     ConfigUpdateResponse,
     HFEndpointConfigResponse,
@@ -48,7 +49,15 @@ async def list_configs(
     )
 
 
-@router.get("/category/smtp", response_model=BaseResponse[SMTPConfigResponse])
+@router.get("/schema", response_model=ConfigSchemaResponse)
+async def get_config_schema(
+    admin_user: AdminUserDep,
+    svc: ConfigManagementServiceDep,
+) -> ConfigSchemaResponse:
+    return ConfigSchemaResponse(data=await svc.get_schema())
+
+
+@router.get("/category/smtp", response_model=BaseResponse[SMTPConfigResponse], deprecated=True)
 async def get_smtp_config(
     admin_user: AdminUserDep,
     svc: ConfigManagementServiceDep,
@@ -60,7 +69,7 @@ async def get_smtp_config(
 
 
 @router.get(
-    "/category/huggingface", response_model=BaseResponse[HFEndpointConfigResponse]
+    "/category/huggingface", response_model=BaseResponse[HFEndpointConfigResponse], deprecated=True
 )
 async def get_hf_endpoint_config(
     admin_user: AdminUserDep,
@@ -97,7 +106,7 @@ async def test_smtp_connection(
     return SMTPTestResponse(data=success, test_message=message)
 
 
-@router.put("/category/smtp", response_model=BaseResponse[SMTPConfigResponse])
+@router.put("/category/smtp", response_model=BaseResponse[SMTPConfigResponse], deprecated=True)
 async def save_smtp_config(
     admin_user: AdminUserDep,
     svc: ConfigManagementServiceDep,
@@ -120,7 +129,7 @@ async def save_smtp_config(
 
 
 @router.put(
-    "/category/huggingface", response_model=BaseResponse[HFEndpointConfigResponse]
+    "/category/huggingface", response_model=BaseResponse[HFEndpointConfigResponse], deprecated=True
 )
 async def save_hf_endpoint_config(
     admin_user: AdminUserDep,
@@ -138,7 +147,7 @@ async def save_hf_endpoint_config(
 
 
 @router.get(
-    "/category/notification", response_model=BaseResponse[NotificationConfigResponse]
+    "/category/notification", response_model=BaseResponse[NotificationConfigResponse], deprecated=True
 )
 async def get_notification_config(
     admin_user: AdminUserDep,
@@ -151,7 +160,7 @@ async def get_notification_config(
 
 
 @router.put(
-    "/category/notification", response_model=BaseResponse[NotificationConfigResponse]
+    "/category/notification", response_model=BaseResponse[NotificationConfigResponse], deprecated=True
 )
 async def save_notification_config(
     admin_user: AdminUserDep,
@@ -171,7 +180,7 @@ async def save_notification_config(
 
 
 @router.get(
-    "/category/announcement", response_model=BaseResponse[AnnouncementConfigResponse]
+    "/category/announcement", response_model=BaseResponse[AnnouncementConfigResponse], deprecated=True
 )
 async def get_announcement_config(
     admin_user: AdminUserDep,
@@ -184,7 +193,7 @@ async def get_announcement_config(
 
 
 @router.put(
-    "/category/announcement", response_model=BaseResponse[AnnouncementConfigResponse]
+    "/category/announcement", response_model=BaseResponse[AnnouncementConfigResponse], deprecated=True
 )
 async def save_announcement_config(
     admin_user: AdminUserDep,

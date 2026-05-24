@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.db_models.system_config import SystemConfig
 from services.config._provider import ConfigProvider
+from services.config.registry import ConfigKey, ConfigRegistry
 
 
 @dataclass
@@ -106,100 +107,8 @@ class ConfigService:
             await client.send_email(...)
     """
 
-    # Default configurations for initialization
-    DEFAULT_CONFIGS = [
-        {
-            "key": "smtp_host",
-            "value": "",
-            "category": "email",
-            "description": "SMTP server hostname",
-        },
-        {
-            "key": "smtp_port",
-            "value": "587",
-            "category": "email",
-            "description": "SMTP server port",
-        },
-        {
-            "key": "smtp_username",
-            "value": "",
-            "category": "email",
-            "description": "SMTP authentication username",
-        },
-        {
-            "key": "smtp_password",
-            "value": "",
-            "category": "email",
-            "description": "SMTP authentication password",
-            "is_sensitive": True,
-        },
-        {
-            "key": "smtp_use_tls",
-            "value": "true",
-            "category": "email",
-            "description": "Use TLS encryption for SMTP",
-        },
-        {
-            "key": "smtp_from_email",
-            "value": "",
-            "category": "email",
-            "description": "Default sender email address",
-        },
-        {
-            "key": "hf_endpoints",
-            "value": '["https://huggingface.co", "https://hf-mirror.com"]',
-            "category": "huggingface",
-            "description": "可用的 HuggingFace endpoint 列表（JSON 数组）",
-        },
-        {
-            "key": "hf_default_endpoint",
-            "value": "https://huggingface.co",
-            "category": "huggingface",
-            "description": "默认使用的 HuggingFace endpoint",
-        },
-        {
-            "key": "notification_email",
-            "value": "",
-            "category": "notification",
-            "description": "通知接收邮箱，多个用逗号分隔",
-        },
-        {
-            "key": "notification_task_approval",
-            "value": "true",
-            "category": "notification",
-            "description": "是否推送任务审批通知",
-        },
-        {
-            "key": "auto_approve_enabled",
-            "value": "false",
-            "category": "notification",
-            "description": "是否开启自动审批",
-        },
-        {
-            "key": "auto_approve_threshold_gb",
-            "value": "100",
-            "category": "notification",
-            "description": "自动审批阈值（GB）",
-        },
-        {
-            "key": "system_announcement",
-            "value": "",
-            "category": "announcement",
-            "description": "系统公告内容",
-        },
-        {
-            "key": "system_announcement_type",
-            "value": "info",
-            "category": "announcement",
-            "description": "公告类型: info/warning/urgent",
-        },
-        {
-            "key": "system_announcement_active",
-            "value": "true",
-            "category": "announcement",
-            "description": "是否启用公告",
-        },
-    ]
+    # Default configurations for initialization — derived from the registry
+    DEFAULT_CONFIGS = ConfigRegistry.defaults_dict()
 
     def __init__(self, session: AsyncSession):
         """Initialize ConfigService.
@@ -588,17 +497,64 @@ class ConfigService:
 
     async def batch_update(self, items: list[ConfigUpdateItem]) -> None:
         """Batch update configurations atomically."""
-        dicts = [
-            {
-                "key": item.key,
-                "value": item.value,
-                "category": item.category,
-                "description": item.description,
-                "is_sensitive": item.is_sensitive,
-            }
-            for item in items
-        ]
-        await self._provider.bulk_set(dicts)
+        dicts: list[dict] = []
+        registered_values: dict[str, str] = {}
+        for item in items:
+            if ConfigRegistry.has(item.key):
+                entry = ConfigRegistry.get(item.key)
+                if entry.sensitive and item.value == "":
+                    continue
+                value = ConfigRegistry.normalize_value(entry.key, item.value)
+                registered_values[entry.key.value] = value
+                dicts.append(
+                    {
+                        "key": entry.key.value,
+                        "value": value,
+                        "category": entry.category.value,
+                        "description": entry.description,
+                        "is_sensitive": entry.sensitive,
+                    }
+                )
+            else:
+                dicts.append(
+                    {
+                        "key": item.key,
+                        "value": item.value,
+                        "category": item.category,
+                        "description": item.description,
+                        "is_sensitive": item.is_sensitive,
+                    }
+                )
+        if registered_values:
+            await self._validate_registered_batch(registered_values)
+        if dicts:
+            await self._provider.bulk_set(dicts)
+
+    async def _validate_registered_batch(self, values: dict[str, str]) -> None:
+        await self._validate_hf_batch(values)
+
+    async def _validate_hf_batch(self, values: dict[str, str]) -> None:
+        endpoints_key = ConfigKey.HF_ENDPOINTS.value
+        default_key = ConfigKey.HF_DEFAULT_ENDPOINT.value
+        if endpoints_key not in values and default_key not in values:
+            return
+
+        if endpoints_key in values:
+            raw = values[endpoints_key]
+            parsed = json.loads(raw)
+            endpoints = [str(e).strip() for e in parsed if str(e).strip()]
+        else:
+            endpoints = await self.get_hf_endpoints()
+
+        if default_key in values:
+            default_endpoint = values[default_key].strip()
+        else:
+            default_endpoint = await self.get_hf_default_endpoint()
+
+        if not endpoints:
+            raise ValueError("HF endpoints cannot be empty")
+        if default_endpoint not in endpoints:
+            raise ValueError("Default endpoint must be in the endpoints list")
 
     async def get_smtp_config(self) -> SMTPConfig:
         """Get SMTP configuration as a data class.

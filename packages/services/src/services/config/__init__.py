@@ -22,6 +22,14 @@ Example:
     smtp_config = await config_service.get_smtp_config()
 """
 
+from services.config.registry import (
+    ConfigCategory,
+    ConfigEntry,
+    ConfigKey,
+    ConfigRegistry,
+    ConfigValueType,
+    UIMetadata,
+)
 from services.config.service import (
     ConfigService,
     ConfigUpdateItem,
@@ -32,6 +40,12 @@ from services.config.service import (
 )
 
 __all__ = [
+    "ConfigCategory",
+    "ConfigEntry",
+    "ConfigKey",
+    "ConfigRegistry",
+    "ConfigValueType",
+    "UIMetadata",
     "ConfigService",
     "ConfigUpdateItem",
     "HFEndpointConfig",

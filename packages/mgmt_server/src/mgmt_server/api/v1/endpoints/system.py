@@ -41,6 +41,25 @@ async def list_public_announcements(
 
 
 @router.get(
+    "/announcements/admin",
+    response_model=BaseResponse[list[AnnouncementResponse]],
+)
+async def list_all_announcements(
+    admin: AdminUserDep,
+    db: DbDep,
+) -> BaseResponse[list[AnnouncementResponse]]:
+    """List all announcements including inactive ones. Admin only."""
+    result = await db.execute(
+        select(Announcement)
+        .order_by(desc(Announcement.is_pinned), desc(Announcement.created_at))
+    )
+    announcements = result.scalars().all()
+    return BaseResponse[list[AnnouncementResponse]](
+        data=[AnnouncementResponse.from_model(a) for a in announcements]
+    )
+
+
+@router.get(
     "/announcements/{announcement_id}",
     response_model=BaseResponse[AnnouncementResponse],
 )
