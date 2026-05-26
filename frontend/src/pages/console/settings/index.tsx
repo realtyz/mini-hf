@@ -1,5 +1,6 @@
-import { useState, useMemo } from 'react'
-import { Bell, Mail, Globe, SettingsIcon, Megaphone } from 'lucide-react'
+import { useMemo } from 'react'
+import { useSearchParams } from 'react-router'
+import { Bell, Mail, Globe, SettingsIcon, Megaphone, ListTodo } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { containerVariants, itemVariants, panelVariants } from '@/lib/animations/motion-config'
@@ -10,7 +11,16 @@ import { ConfigFormEngine } from './ConfigFormEngine'
 import { SmtpTestAction } from './SmtpTestAction'
 import { AnnouncementTab } from './AnnouncementTab'
 
-type SettingsTabId = 'smtp' | 'huggingface' | 'notification' | 'announcement'
+type SettingsTabId = 'smtp' | 'huggingface' | 'notification' | 'announcement' | 'task_control'
+
+const TAB_IDS = ['smtp', 'huggingface', 'notification', 'announcement', 'task_control'] as const
+
+function parseTab(param: string | null): SettingsTabId {
+  if (param && (TAB_IDS as readonly string[]).includes(param)) {
+    return param as SettingsTabId
+  }
+  return tabRegistry[0].id
+}
 
 interface TabConfig {
   id: SettingsTabId
@@ -23,6 +33,7 @@ const tabRegistry: TabConfig[] = [
   { id: 'smtp', label: '邮件配置', description: 'SMTP 邮件服务', icon: Mail },
   { id: 'huggingface', label: 'HF 配置', description: 'Endpoint 节点管理', icon: Globe },
   { id: 'notification', label: '通知', description: '告警与推送设置', icon: Bell },
+  { id: 'task_control', label: '任务控制', description: '任务提交与并发限制', icon: ListTodo },
   { id: 'announcement', label: '公告', description: '系统公告管理', icon: Megaphone },
 ]
 
@@ -43,6 +54,10 @@ function TabContent({ activeTab }: { activeTab: SettingsTabId }) {
   )
   const notificationCategory = useMemo(
     () => schemaCategories.find((c) => c.id === 'notification'),
+    [schemaCategories]
+  )
+  const taskControlCategory = useMemo(
+    () => schemaCategories.find((c) => c.id === 'task_control'),
     [schemaCategories]
   )
 
@@ -72,6 +87,10 @@ function TabContent({ activeTab }: { activeTab: SettingsTabId }) {
       return notificationCategory ? (
         <ConfigFormEngine category={notificationCategory} />
       ) : null
+    case 'task_control':
+      return taskControlCategory ? (
+        <ConfigFormEngine category={taskControlCategory} />
+      ) : null
     case 'announcement':
       return <AnnouncementTab />
     default:
@@ -80,7 +99,12 @@ function TabContent({ activeTab }: { activeTab: SettingsTabId }) {
 }
 
 export function Settings() {
-  const [activeTab, setActiveTab] = useState<SettingsTabId>(tabRegistry[0].id)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const activeTab = parseTab(searchParams.get('tab'))
+
+  const switchTab = (tab: SettingsTabId) => {
+    setSearchParams({ tab }, { replace: true })
+  }
 
   return (
     <motion.div
@@ -116,7 +140,7 @@ export function Settings() {
                   key={tab.id}
                   role="tab"
                   aria-selected={isActive}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => switchTab(tab.id)}
                   className={cn(
                     'relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-200',
                     isActive
@@ -164,7 +188,7 @@ export function Settings() {
                   key={tab.id}
                   role="tab"
                   aria-selected={isActive}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => switchTab(tab.id)}
                   className={cn(
                     'relative flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2.5 text-xs font-medium transition-all duration-200 whitespace-nowrap',
                     isActive

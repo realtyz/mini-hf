@@ -108,11 +108,11 @@ export function CreateTaskDialog({ open, onOpenChange }: CreateTaskDialogProps) 
   }
 
   const previewError = previewTask.isError
-    ? (previewTask.error instanceof Error ? previewTask.error.message : '预览失败，请检查仓库信息')
+    ? ((previewTask.error as { message?: string } | null)?.message || '预览失败，请检查仓库信息')
     : null
 
   const createError = createTask.isError
-    ? (createTask.error instanceof Error ? createTask.error.message : '创建任务失败')
+    ? ((createTask.error as { message?: string } | null)?.message || '创建任务失败')
     : null
 
   return (

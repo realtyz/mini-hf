@@ -550,6 +550,28 @@ class TaskRepository:
         )
         await self.session.flush()
 
+    async def count_active_tasks_by_user(self, user_id: int) -> int:
+        """Count active (non-terminal) tasks for a given user.
+
+        Active statuses: PENDING_APPROVAL, PENDING, RUNNING, PAUSING, PAUSED, CANCELING.
+        Terminal statuses (excluded): COMPLETED, FAILED, CANCELLED.
+        """
+        stmt = select(func.count()).select_from(Task).where(
+            Task.creator_user_id == user_id,
+            Task.status.in_(
+                [
+                    TaskStatus.PENDING_APPROVAL,
+                    TaskStatus.PENDING,
+                    TaskStatus.RUNNING,
+                    TaskStatus.PAUSING,
+                    TaskStatus.PAUSED,
+                    TaskStatus.CANCELING,
+                ]
+            ),
+        )
+        result = await self.session.execute(stmt)
+        return result.scalar_one()
+
     async def set_pinned(self, task_id: int, pinned: bool) -> None:
         """Set or clear pinned status for a task.
 

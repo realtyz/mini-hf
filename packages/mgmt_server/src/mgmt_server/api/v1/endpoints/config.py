@@ -5,12 +5,10 @@ from typing import Annotated
 from loguru import logger
 from fastapi import APIRouter, Query, status
 
-from mgmt_server.api.deps import AdminUserDep, ConfigManagementServiceDep
-from mgmt_server.core.exceptions import NotFoundError
+from mgmt_server.api.deps import AdminUserDep, ConfigManagementServiceDep, ConfigServiceDep
+from mgmt_server.core.exceptions import NotFoundError, ValidationError
 from mgmt_server.api.v1.schemas.base import BaseResponse
 from mgmt_server.api.v1.schemas.configs import (
-    AnnouncementConfigResponse,
-    AnnouncementSaveRequest,
     ConfigBatchUpdateRequest,
     ConfigCreateRequest,
     ConfigCreateResponse,
@@ -31,7 +29,7 @@ from mgmt_server.api.v1.schemas.configs import (
     SMTPTestResponse,
 )
 from services import SMTPConfig
-from services.config import ConfigUpdateItem
+from services.config import ConfigUpdateItem, NotificationConfig
 
 router = APIRouter()
 
@@ -39,10 +37,10 @@ router = APIRouter()
 @router.get("", response_model=ConfigListResponse)
 async def list_configs(
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
     category: Annotated[str | None, Query(description="Filter by category")] = None,
 ) -> ConfigListResponse:
-    configs = await svc.list_configs(category=category)
+    configs = await config_svc.get_all_models(category=category)
     return ConfigListResponse(
         data=[ConfigItem.from_model(c) for c in configs],
         total=len(configs),
@@ -60,9 +58,9 @@ async def get_config_schema(
 @router.get("/category/smtp", response_model=BaseResponse[SMTPConfigResponse], deprecated=True)
 async def get_smtp_config(
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
 ) -> BaseResponse[SMTPConfigResponse]:
-    smtp_config = await svc.get_smtp_config()
+    smtp_config = await config_svc.get_smtp_config()
     return BaseResponse[SMTPConfigResponse](
         data=SMTPConfigResponse.from_model(smtp_config)
     )
@@ -73,9 +71,9 @@ async def get_smtp_config(
 )
 async def get_hf_endpoint_config(
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
 ) -> BaseResponse[HFEndpointConfigResponse]:
-    config = await svc.get_hf_config()
+    config = await config_svc.get_hf_config()
     return BaseResponse[HFEndpointConfigResponse](
         data=HFEndpointConfigResponse.from_model(config)
     )
@@ -136,11 +134,14 @@ async def save_hf_endpoint_config(
     svc: ConfigManagementServiceDep,
     request: HFEndpointSaveRequest,
 ) -> BaseResponse[HFEndpointConfigResponse]:
-    config = await svc.save_hf_config(
-        endpoints=request.endpoints,
-        default_endpoint=request.default_endpoint,
-        admin_email=admin_user.email,
-    )
+    try:
+        config = await svc.save_hf_config(
+            endpoints=request.endpoints,
+            default_endpoint=request.default_endpoint,
+            admin_email=admin_user.email,
+        )
+    except ValueError as e:
+        raise ValidationError(str(e)) from e
     return BaseResponse[HFEndpointConfigResponse](
         data=HFEndpointConfigResponse.from_model(config)
     )
@@ -151,9 +152,9 @@ async def save_hf_endpoint_config(
 )
 async def get_notification_config(
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
 ) -> BaseResponse[NotificationConfigResponse]:
-    config = await svc.get_notification_config()
+    config = await config_svc.get_notification_config()
     return BaseResponse[NotificationConfigResponse](
         data=NotificationConfigResponse.from_model(config)
     )
@@ -164,59 +165,28 @@ async def get_notification_config(
 )
 async def save_notification_config(
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
     request: NotificationSaveRequest,
 ) -> BaseResponse[NotificationConfigResponse]:
-    config = await svc.save_notification_config(
+    notif = NotificationConfig(
         email=request.email,
         task_approval_push=request.task_approval_push,
         auto_approve_enabled=request.auto_approve_enabled,
         auto_approve_threshold_gb=request.auto_approve_threshold_gb,
-        admin_email=admin_user.email,
     )
+    config = await config_svc.save_notification_config(notif)
+    logger.info("Notification configuration saved by admin {}", admin_user.email)
     return BaseResponse[NotificationConfigResponse](
         data=NotificationConfigResponse.from_model(config)
     )
-
-
-@router.get(
-    "/category/announcement", response_model=BaseResponse[AnnouncementConfigResponse], deprecated=True
-)
-async def get_announcement_config(
-    admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
-) -> BaseResponse[AnnouncementConfigResponse]:
-    config = await svc.get_announcement_config()
-    return BaseResponse[AnnouncementConfigResponse](
-        data=AnnouncementConfigResponse.from_model(config)
-    )
-
-
-@router.put(
-    "/category/announcement", response_model=BaseResponse[AnnouncementConfigResponse], deprecated=True
-)
-async def save_announcement_config(
-    admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
-    request: AnnouncementSaveRequest,
-) -> BaseResponse[AnnouncementConfigResponse]:
-    config = await svc.save_announcement_config(
-        content=request.content,
-        announcement_type=request.announcement_type,
-        is_active=request.is_active,
-    )
-    return BaseResponse[AnnouncementConfigResponse](
-        data=AnnouncementConfigResponse.from_model(config)
-    )
-
 
 @router.get("/{key}", response_model=ConfigDetailResponse)
 async def get_config(
     key: str,
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
 ) -> ConfigDetailResponse:
-    config = await svc.get_config(key)
+    config = await config_svc.get_model(key)
     if not config:
         raise NotFoundError(f"Configuration with key '{key}' not found")
     return ConfigDetailResponse(data=ConfigItem.from_model(config))
@@ -228,9 +198,9 @@ async def get_config(
 async def create_config(
     request: ConfigCreateRequest,
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
 ) -> ConfigCreateResponse:
-    config = await svc.create_config(
+    config = await config_svc.create(
         key=request.key,
         value=request.value,
         category=request.category,
@@ -244,10 +214,10 @@ async def create_config(
 @router.post("/init", response_model=ConfigListResponse)
 async def initialize_default_configs(
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
 ) -> ConfigListResponse:
-    await svc.initialize_defaults()
-    configs = await svc.list_configs()
+    await config_svc.initialize_defaults()
+    configs = await config_svc.get_all_models()
     return ConfigListResponse(
         data=[ConfigItem.from_model(c) for c in configs],
         total=len(configs),
@@ -258,7 +228,7 @@ async def initialize_default_configs(
 async def batch_update_configs(
     request: ConfigBatchUpdateRequest,
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
 ) -> ConfigListResponse:
     items = [
         ConfigUpdateItem(
@@ -270,13 +240,16 @@ async def batch_update_configs(
         )
         for item in request.configs
     ]
-    await svc.batch_update(items)
+    try:
+        await config_svc.batch_update(items)
+    except ValueError as e:
+        raise ValidationError(str(e)) from e
     logger.info(
         "Batch config update by admin {}: {} items",
         admin_user.email,
         len(request.configs),
     )
-    configs = await svc.list_configs()
+    configs = await config_svc.get_all_models()
     return ConfigListResponse(
         data=[ConfigItem.from_model(c) for c in configs],
         total=len(configs),
@@ -288,9 +261,9 @@ async def update_config(
     key: str,
     request: ConfigUpdateRequest,
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
 ) -> ConfigUpdateResponse:
-    config = await svc.update_config(
+    config = await config_svc.set_partial(
         key=key,
         value=request.value,
         description=request.description,
@@ -305,9 +278,9 @@ async def update_config(
 async def delete_config(
     key: str,
     admin_user: AdminUserDep,
-    svc: ConfigManagementServiceDep,
+    config_svc: ConfigServiceDep,
 ) -> ConfigDeleteResponse:
-    deleted = await svc.delete_config(key)
+    deleted = await config_svc.delete(key)
     if not deleted:
         raise NotFoundError(f"Configuration with key '{key}' not found")
     logger.info("Config deleted by admin {}: {}", admin_user.email, key)

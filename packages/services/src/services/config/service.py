@@ -20,7 +20,6 @@ Example:
 
 import json
 from dataclasses import dataclass
-from typing import Literal
 
 from loguru import logger
 from sqlalchemy.exc import IntegrityError
@@ -70,20 +69,18 @@ class NotificationConfig:
 
 
 @dataclass
+class TaskControlConfig:
+    """Typed task control configuration."""
+
+    max_per_user: int
+
+
+@dataclass
 class HFEndpointConfig:
     """Typed HuggingFace endpoint configuration."""
 
     endpoints: list[str]
     default_endpoint: str
-
-
-@dataclass
-class AnnouncementConfig:
-    """Typed announcement configuration."""
-
-    content: str
-    announcement_type: Literal["info", "warning", "urgent"]
-    is_active: bool
 
 
 class ConfigService:
@@ -118,16 +115,6 @@ class ConfigService:
         """
         self._provider = ConfigProvider(session)
         self._logger = logger
-
-    @property
-    def manager(self) -> ConfigProvider:
-        """Get the underlying ConfigManager for direct access."""
-        return self._provider
-
-    @property
-    def config_manager(self) -> ConfigProvider:
-        """Get the underlying ConfigManager for direct access (alias for manager)."""
-        return self._provider
 
     async def get(self, key: str, default: str = "") -> str:
         """Get a configuration value with caching.
@@ -208,13 +195,7 @@ class ConfigService:
         Returns:
             List of SystemConfig models
         """
-        if category:
-            return [
-                c
-                for c in await self._provider._repo.get_all()
-                if c.category == category
-            ]
-        return list(await self._provider._repo.get_all())
+        return list(await self._provider._repo.get_all(category=category))
 
     async def exists(self, key: str) -> bool:
         """Check if a configuration key exists.
@@ -330,170 +311,56 @@ class ConfigService:
         """
         return await self._provider.delete(key)
 
-    async def save_smtp_config(
-        self,
-        host: str,
-        port: int,
-        username: str,
-        password: str,
-        use_tls: bool,
-        from_email: str,
-    ) -> SMTPConfig:
+    async def save_smtp_config(self, smtp: SMTPConfig) -> SMTPConfig:
         """Save all SMTP configuration values atomically."""
-        await self._provider.bulk_set(
-            [
-                {
-                    "key": "smtp_host",
-                    "value": host,
-                    "category": "email",
-                    "description": "SMTP server hostname",
-                },
-                {
-                    "key": "smtp_port",
-                    "value": str(port),
-                    "category": "email",
-                    "description": "SMTP server port",
-                },
-                {
-                    "key": "smtp_username",
-                    "value": username,
-                    "category": "email",
-                    "description": "SMTP authentication username",
-                },
-                {
-                    "key": "smtp_password",
-                    "value": password,
-                    "category": "email",
-                    "description": "SMTP authentication password",
-                    "is_sensitive": True,
-                },
-                {
-                    "key": "smtp_use_tls",
-                    "value": str(use_tls).lower(),
-                    "category": "email",
-                    "description": "Use TLS encryption for SMTP",
-                },
-                {
-                    "key": "smtp_from_email",
-                    "value": from_email,
-                    "category": "email",
-                    "description": "Default sender email address",
-                },
-            ]
-        )
-        return SMTPConfig(
-            host=host,
-            port=port,
-            username=username,
-            password=password,
-            use_tls=use_tls,
-            from_email=from_email,
-        )
+        values: dict[ConfigKey, object] = {
+            ConfigKey.SMTP_HOST: smtp.host,
+            ConfigKey.SMTP_PORT: smtp.port,
+            ConfigKey.SMTP_USERNAME: smtp.username,
+            ConfigKey.SMTP_PASSWORD: smtp.password,
+            ConfigKey.SMTP_USE_TLS: smtp.use_tls,
+            ConfigKey.SMTP_FROM_EMAIL: smtp.from_email,
+        }
+        items = ConfigRegistry.build_save_dicts(values)
+        await self._provider.bulk_set(items)
+        return smtp
 
-    async def save_hf_endpoint_config(
-        self,
-        endpoints: list[str],
-        default_endpoint: str,
-    ) -> HFEndpointConfig:
+    @staticmethod
+    def _clean_hf_endpoints(endpoints: list[str]) -> list[str]:
+        return [e.strip() for e in endpoints if e.strip()]
+
+    @staticmethod
+    def _validate_hf_consistency(endpoints: list[str], default_endpoint: str) -> None:
+        if not endpoints:
+            raise ValueError("HF endpoints cannot be empty")
+        if default_endpoint not in endpoints:
+            raise ValueError("Default endpoint must be in the endpoints list")
+
+    async def save_hf_endpoint_config(self, hf: HFEndpointConfig) -> HFEndpointConfig:
         """Save HuggingFace endpoint configuration atomically."""
-        await self._provider.bulk_set(
-            [
-                {
-                    "key": "hf_endpoints",
-                    "value": json.dumps(endpoints),
-                    "category": "huggingface",
-                    "description": "HuggingFace endpoint list (JSON array)",
-                },
-                {
-                    "key": "hf_default_endpoint",
-                    "value": default_endpoint,
-                    "category": "huggingface",
-                    "description": "Default HuggingFace endpoint",
-                },
-            ]
-        )
-        return HFEndpointConfig(
-            endpoints=endpoints,
-            default_endpoint=default_endpoint,
-        )
+        cleaned_endpoints = self._clean_hf_endpoints(hf.endpoints)
+        cleaned_default = hf.default_endpoint.strip()
+        self._validate_hf_consistency(cleaned_endpoints, cleaned_default)
 
-    async def save_notification_config(
-        self,
-        email: str,
-        task_approval_push: bool,
-        auto_approve_enabled: bool,
-        auto_approve_threshold_gb: int,
-    ) -> NotificationConfig:
+        values: dict[ConfigKey, object] = {
+            ConfigKey.HF_ENDPOINTS: cleaned_endpoints,
+            ConfigKey.HF_DEFAULT_ENDPOINT: cleaned_default,
+        }
+        items = ConfigRegistry.build_save_dicts(values)
+        await self._provider.bulk_set(items)
+        return HFEndpointConfig(endpoints=cleaned_endpoints, default_endpoint=cleaned_default)
+
+    async def save_notification_config(self, notif: NotificationConfig) -> NotificationConfig:
         """Save notification configuration atomically."""
-        await self._provider.bulk_set(
-            [
-                {
-                    "key": "notification_email",
-                    "value": email,
-                    "category": "notification",
-                    "description": "Notification emails, comma-separated",
-                },
-                {
-                    "key": "notification_task_approval",
-                    "value": str(task_approval_push).lower(),
-                    "category": "notification",
-                    "description": "Push task approval notifications",
-                },
-                {
-                    "key": "auto_approve_enabled",
-                    "value": str(auto_approve_enabled).lower(),
-                    "category": "notification",
-                    "description": "Enable auto-approval",
-                },
-                {
-                    "key": "auto_approve_threshold_gb",
-                    "value": str(auto_approve_threshold_gb),
-                    "category": "notification",
-                    "description": "Auto-approval threshold (GB)",
-                },
-            ]
-        )
-        return NotificationConfig(
-            email=email,
-            task_approval_push=task_approval_push,
-            auto_approve_enabled=auto_approve_enabled,
-            auto_approve_threshold_gb=auto_approve_threshold_gb,
-        )
-
-    async def save_announcement_config(
-        self,
-        content: str,
-        announcement_type: Literal["info", "warning", "urgent"],
-        is_active: bool,
-    ) -> AnnouncementConfig:
-        """Save announcement configuration atomically."""
-        await self._provider.bulk_set(
-            [
-                {
-                    "key": "system_announcement",
-                    "value": content,
-                    "category": "announcement",
-                    "description": "System announcement content",
-                },
-                {
-                    "key": "system_announcement_type",
-                    "value": announcement_type,
-                    "category": "announcement",
-                    "description": "Announcement type: info/warning/urgent",
-                },
-                {
-                    "key": "system_announcement_active",
-                    "value": str(is_active).lower(),
-                    "category": "announcement",
-                    "description": "Enable announcement",
-                },
-            ]
-        )
-        return AnnouncementConfig(
-            content=content,
-            announcement_type=announcement_type,
-            is_active=is_active,
-        )
+        values: dict[ConfigKey, object] = {
+            ConfigKey.NOTIFICATION_EMAIL: notif.email,
+            ConfigKey.NOTIFICATION_TASK_APPROVAL: notif.task_approval_push,
+            ConfigKey.AUTO_APPROVE_ENABLED: notif.auto_approve_enabled,
+            ConfigKey.AUTO_APPROVE_THRESHOLD_GB: notif.auto_approve_threshold_gb,
+        }
+        items = ConfigRegistry.build_save_dicts(values)
+        await self._provider.bulk_set(items)
+        return notif
 
     async def batch_update(self, items: list[ConfigUpdateItem]) -> None:
         """Batch update configurations atomically."""
@@ -542,7 +409,7 @@ class ConfigService:
         if endpoints_key in values:
             raw = values[endpoints_key]
             parsed = json.loads(raw)
-            endpoints = [str(e).strip() for e in parsed if str(e).strip()]
+            endpoints = self._clean_hf_endpoints([str(e) for e in parsed])
         else:
             endpoints = await self.get_hf_endpoints()
 
@@ -551,29 +418,27 @@ class ConfigService:
         else:
             default_endpoint = await self.get_hf_default_endpoint()
 
-        if not endpoints:
-            raise ValueError("HF endpoints cannot be empty")
-        if default_endpoint not in endpoints:
-            raise ValueError("Default endpoint must be in the endpoints list")
+        self._validate_hf_consistency(endpoints, default_endpoint)
 
     async def get_smtp_config(self) -> SMTPConfig:
-        """Get SMTP configuration as a data class.
-
-        Returns:
-            SMTPConfig instance with values from database
-        """
         return SMTPConfig(
-            host=await self._provider.get("smtp_host"),
-            port=await self._provider.get_int("smtp_port", 587),
-            username=await self._provider.get("smtp_username"),
-            password=await self._provider.get("smtp_password"),
-            use_tls=await self._provider.get_bool("smtp_use_tls", True),
-            from_email=await self._provider.get("smtp_from_email"),
+            host=await self._provider.get(ConfigKey.SMTP_HOST),
+            port=await self._provider.get_int(
+                ConfigKey.SMTP_PORT,
+                ConfigRegistry.get_default(ConfigKey.SMTP_PORT),
+            ),
+            username=await self._provider.get(ConfigKey.SMTP_USERNAME),
+            password=await self._provider.get(ConfigKey.SMTP_PASSWORD),
+            use_tls=await self._provider.get_bool(
+                ConfigKey.SMTP_USE_TLS,
+                ConfigRegistry.get_default(ConfigKey.SMTP_USE_TLS),
+            ),
+            from_email=await self._provider.get(ConfigKey.SMTP_FROM_EMAIL),
         )
 
     async def get_hf_endpoints(self) -> list[str]:
         """Get list of configured HF endpoints."""
-        raw = await self._provider.get("hf_endpoints", "[]")
+        raw = await self._provider.get(ConfigKey.HF_ENDPOINTS, "[]")
         try:
             endpoints = json.loads(raw)
             if isinstance(endpoints, list):
@@ -586,7 +451,7 @@ class ConfigService:
         """Get default HF endpoint."""
         endpoints = await self.get_hf_endpoints()
         default = await self._provider.get(
-            "hf_default_endpoint", "https://huggingface.co"
+            ConfigKey.HF_DEFAULT_ENDPOINT, "https://huggingface.co"
         )
         default = str(default).strip()
         if default in endpoints:
@@ -617,28 +482,30 @@ class ConfigService:
         ConfigProvider.invalidate(key)
 
     async def get_notification_config(self) -> NotificationConfig:
-        """Get notification configuration as typed object."""
         return NotificationConfig(
-            email=await self._provider.get("notification_email", ""),
+            email=await self._provider.get(
+                ConfigKey.NOTIFICATION_EMAIL,
+                ConfigRegistry.get_default(ConfigKey.NOTIFICATION_EMAIL),
+            ),
             task_approval_push=await self._provider.get_bool(
-                "notification_task_approval", True
+                ConfigKey.NOTIFICATION_TASK_APPROVAL,
+                ConfigRegistry.get_default(ConfigKey.NOTIFICATION_TASK_APPROVAL),
             ),
             auto_approve_enabled=await self._provider.get_bool(
-                "auto_approve_enabled", False
+                ConfigKey.AUTO_APPROVE_ENABLED,
+                ConfigRegistry.get_default(ConfigKey.AUTO_APPROVE_ENABLED),
             ),
             auto_approve_threshold_gb=await self._provider.get_int(
-                "auto_approve_threshold_gb", 100
+                ConfigKey.AUTO_APPROVE_THRESHOLD_GB,
+                ConfigRegistry.get_default(ConfigKey.AUTO_APPROVE_THRESHOLD_GB),
             ),
         )
 
-    async def get_announcement_config(self) -> AnnouncementConfig:
-        """Get announcement configuration as typed object."""
-        raw_type = await self._provider.get("system_announcement_type", "info")
-        announcement_type: Literal["info", "warning", "urgent"] = (
-            raw_type if raw_type in ("info", "warning", "urgent") else "info"
+    async def get_task_control_config(self) -> TaskControlConfig:
+        return TaskControlConfig(
+            max_per_user=await self._provider.get_int(
+                ConfigKey.TASK_MAX_PER_USER,
+                ConfigRegistry.get_default(ConfigKey.TASK_MAX_PER_USER),
+            ),
         )
-        return AnnouncementConfig(
-            content=await self._provider.get("system_announcement", ""),
-            announcement_type=announcement_type,
-            is_active=await self._provider.get_bool("system_announcement_active", True),
-        )
+

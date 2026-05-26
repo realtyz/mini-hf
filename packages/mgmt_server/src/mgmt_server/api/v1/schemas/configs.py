@@ -10,7 +10,6 @@ from pydantic import BaseModel, ConfigDict, Field
 from database.db_models.system_config import SystemConfig
 from services.config import (
     HFEndpointConfig,
-    AnnouncementConfig,
     NotificationConfig,
     SMTPConfig,
 )
@@ -234,33 +233,9 @@ class NotificationSaveRequest(BaseModel):
 
 
 class AnnouncementConfigResponse(BaseModel):
-    """[DEPRECATED] Use AnnouncementResponse from system endpoint instead.
-
-    Announcement configuration response schema.
-    """
+    """Public announcement response for /health/announcement endpoint."""
 
     content: str = Field(..., description="System announcement content")
-    announcement_type: Literal["info", "warning", "urgent"] = Field(
-        default="info", description="Announcement type"
-    )
-    is_active: bool = Field(
-        default=True, description="Whether the announcement is active"
-    )
-
-    @classmethod
-    def from_model(cls, config: AnnouncementConfig) -> AnnouncementConfigResponse:
-        """Create from AnnouncementConfig dataclass."""
-        return cls(
-            content=config.content,
-            announcement_type=config.announcement_type,
-            is_active=config.is_active,
-        )
-
-
-class AnnouncementSaveRequest(BaseModel):
-    """Announcement configuration save request schema."""
-
-    content: str = Field(default="", description="System announcement content")
     announcement_type: Literal["info", "warning", "urgent"] = Field(
         default="info", description="Announcement type"
     )

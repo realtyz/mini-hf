@@ -72,15 +72,21 @@ export const ConfigFormEngine = memo(function ConfigFormEngine({ category, actio
   }, [])
 
   const save = useCallback(async () => {
-    await batchUpdate.mutateAsync({
-      configs: category.fields.map((field) => ({
-        key: field.key,
-        value: serializeValue(form[field.key], field),
-        category: category.id,
-      })),
-    })
-    setOriginalForm(form)
-    toast.success('配置已保存')
+    try {
+      await batchUpdate.mutateAsync({
+        configs: category.fields.map((field) => ({
+          key: field.key,
+          value: serializeValue(form[field.key], field),
+          category: category.id,
+        })),
+      })
+      setOriginalForm(form)
+      toast.success('配置已保存')
+    } catch (err: unknown) {
+      const message =
+        (err as { message?: string })?.message ?? '保存失败，请稍后再试'
+      toast.error(message)
+    }
   }, [batchUpdate, category.fields, category.id, form])
 
   const reset = useCallback(() => {

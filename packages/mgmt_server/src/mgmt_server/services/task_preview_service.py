@@ -94,6 +94,7 @@ class TaskPreviewService:
         allow_patterns: list[str] | None,
         ignore_patterns: list[str] | None,
         hf_endpoint: str | None,
+        user: User,
     ) -> tuple[AsyncPreviewTaskResponse, TaskPreviewService.BackgroundCallback | None]:
         """Validate and prepare an async preview task.
 
@@ -131,6 +132,16 @@ class TaskPreviewService:
                 f"Task ID: {existing.id}, Status: {existing.status}. "
                 "Please wait for it to complete or cancel it before creating a new task."
             )
+
+        task_control = await self._config_service.get_task_control_config()
+        if task_control.max_per_user > 0:
+            active_count = await self._task_service.count_active_tasks_by_user(user.id)
+            if active_count >= task_control.max_per_user:
+                raise ConflictError(
+                    f"You have reached the maximum number of active tasks "
+                    f"({active_count}/{task_control.max_per_user}). "
+                    "Please wait for existing tasks to complete before submitting a new one."
+                )
 
         actual_endpoint = await self._get_hf_endpoint(hf_endpoint)
 
@@ -418,6 +429,16 @@ class TaskPreviewService:
     ) -> TaskDetailResponse:
         """Create a download task from cached preview data."""
         task_data = await self._validate_and_decode_preview_data(cache_key)
+
+        task_control = await self._config_service.get_task_control_config()
+        if task_control.max_per_user > 0:
+            active_count = await self._task_service.count_active_tasks_by_user(user.id)
+            if active_count >= task_control.max_per_user:
+                raise ConflictError(
+                    f"You have reached the maximum number of active tasks "
+                    f"({active_count}/{task_control.max_per_user}). "
+                    "Please wait for existing tasks to complete before submitting a new one."
+                )
 
         if selected_files is not None:
             selected_set = set(selected_files)

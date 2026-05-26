@@ -39,6 +39,13 @@ class ConfigProvider:
     - Type conversion helpers (int, bool)
     - Prefix-based batch retrieval
 
+    Cache semantics:
+        The cache (``_cache``) is **process-level shared** via ClassVar —
+        every ConfigProvider instance within the same process reads from
+        and writes to the same cache. It is NOT scoped to a session or
+        request. Use ``invalidate()`` to force a refresh when the DB is
+        updated externally.
+
     Note:
         This class provides low-level primitives for configuration storage.
         For business logic, use `ConfigService` which provides typed

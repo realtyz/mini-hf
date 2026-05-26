@@ -452,6 +452,10 @@ class TaskService:
 
         return await self._repo.get_by_id(task_id)
 
+    async def count_active_tasks_by_user(self, user_id: int) -> int:
+        """Count active (non-terminal) tasks for a given user."""
+        return await self._repo.count_active_tasks_by_user(user_id)
+
     async def unpin_task(self, task_id: int) -> Task | None:
         """Unpin a pinned task.
 

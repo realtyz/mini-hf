@@ -19,6 +19,7 @@ class ConfigKey(StrEnum):
     NOTIFICATION_TASK_APPROVAL = "notification_task_approval"
     AUTO_APPROVE_ENABLED = "auto_approve_enabled"
     AUTO_APPROVE_THRESHOLD_GB = "auto_approve_threshold_gb"
+    TASK_MAX_PER_USER = "task_max_per_user"
 
 
 class ConfigValueType(StrEnum):
@@ -35,6 +36,7 @@ class ConfigCategory(StrEnum):
     EMAIL = "email"
     HUGGINGFACE = "huggingface"
     NOTIFICATION = "notification"
+    TASK_CONTROL = "task_control"
 
 
 @dataclass(frozen=True)
@@ -120,6 +122,12 @@ class ConfigRegistry:
             description="告警与推送设置",
             visual="notification",
         ),
+        ConfigCategory.TASK_CONTROL: ConfigCategoryMetadata(
+            id=ConfigCategory.TASK_CONTROL,
+            label="任务控制",
+            description="任务提交与并发限制",
+            visual="task",
+        ),
     }
 
     @classmethod
@@ -154,6 +162,34 @@ class ConfigRegistry:
     @classmethod
     def category_metadata(cls, category: ConfigCategory | str) -> ConfigCategoryMetadata:
         return cls._categories[ConfigCategory(category)]
+
+    @classmethod
+    def get_default(cls, key: ConfigKey) -> Any:
+        """Return the registered default value for a key."""
+        return cls.get(key).default
+
+    @classmethod
+    def build_save_dicts(cls, values: dict[ConfigKey, Any]) -> list[dict[str, object]]:
+        """Build a list of bulk_set dicts from a ConfigKey→value mapping.
+
+        Each dict derives category, description, and is_sensitive from the
+        corresponding ConfigEntry, and normalizes the value through
+        normalize_value.
+        """
+        items: list[dict[str, object]] = []
+        for key, value in values.items():
+            entry = cls.get(key)
+            normalized = cls.normalize_value(key, value)
+            items.append(
+                {
+                    "key": entry.key.value,
+                    "value": normalized,
+                    "category": entry.category.value,
+                    "description": entry.description,
+                    "is_sensitive": entry.sensitive,
+                }
+            )
+        return items
 
     @classmethod
     def defaults_dict(cls) -> list[dict[str, object]]:
@@ -392,5 +428,22 @@ ConfigRegistry.register(
         label="自动审批阈值 (GB)",
         description="任务空间小于此值时自动审批",
         min_value=0,
+    )
+)
+
+# ═══════════════════════════════════════════════════════════════════
+# Task Control
+# ═══════════════════════════════════════════════════════════════════
+
+ConfigRegistry.register(
+    ConfigEntry(
+        key=ConfigKey.TASK_MAX_PER_USER,
+        type=ConfigValueType.INT,
+        default=0,
+        category=ConfigCategory.TASK_CONTROL,
+        label="单账户最大任务数",
+        description="单个账户可同时提交的最大活跃任务数，0 表示不限制",
+        min_value=0,
+        ui=UIMetadata(widget="number", helper_text="0 表示不限制"),
     )
 )
