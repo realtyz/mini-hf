@@ -72,6 +72,22 @@ export interface VerifyEmailResponse {
   email: string
 }
 
+// ==================== 密码重置 ====================
+
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+export interface ForgotPasswordResponse {
+  resend_after: number
+}
+
+export interface ResetPasswordRequest {
+  email: string
+  code: string
+  new_password: string
+}
+
 export interface RegisterWithCodeRequest {
   email: string
   code: string

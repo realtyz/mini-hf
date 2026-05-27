@@ -57,6 +57,10 @@ export const routes: RouteObject[] = [
     element: <AuthPage />,
   },
   {
+    path: '/forgot-password',
+    element: <AuthPage />,
+  },
+  {
     path: '/console',
     element: (
       <ProtectedRoute>

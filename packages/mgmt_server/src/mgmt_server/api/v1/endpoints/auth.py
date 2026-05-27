@@ -18,9 +18,13 @@ from mgmt_server.api.deps import (
     VerifyCodeServiceDep,
 )
 from mgmt_server.api.v1.schemas.auth import (
+    ForgotPasswordData,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
     LoginResponse,
     LogoutRequest,
     RefreshTokenResponse,
+    ResetPasswordRequest,
     TokenData,
     RegisterWithCodeRequest,
     SendVerifyCodeData,
@@ -251,6 +255,61 @@ async def register_with_code(
         email=request.email,
         password=request.password,
         user_service=user_service,
+    )
+
+
+# --- Password reset ---
+
+
+@router.post("/forgot-password", response_model=ForgotPasswordResponse)
+async def forgot_password(
+    request: ForgotPasswordRequest,
+    verify_code_service: VerifyCodeServiceDep,
+) -> ForgotPasswordResponse:
+    """Send password reset code via email.
+
+    Always returns a uniform response to prevent user enumeration.
+    """
+    success, message, resend_after = await verify_code_service.send_reset_code(
+        email=request.email,
+    )
+
+    if not success:
+        raise ValidationError(message)
+
+    return ForgotPasswordResponse(
+        data=ForgotPasswordData(resend_after=resend_after),
+    )
+
+
+@router.post("/reset-password", response_model=ForgotPasswordResponse)
+async def reset_password(
+    request: ResetPasswordRequest,
+    user_service: UserServiceDep,
+    verify_code_service: VerifyCodeServiceDep,
+) -> ForgotPasswordResponse:
+    """Reset password using verification code.
+
+    Verifies the code then updates the user's password. User must exist
+    and be active.
+    """
+    # Verify the reset code
+    success, message = await verify_code_service.verify_reset_code(
+        email=request.email,
+        code=request.code,
+    )
+
+    if not success:
+        raise ValidationError(message)
+
+    # Find user and update password
+    await user_service.reset_password_by_email(
+        email=request.email,
+        new_password=request.new_password,
+    )
+
+    return ForgotPasswordResponse(
+        data=ForgotPasswordData(resend_after=0),
     )
 
 

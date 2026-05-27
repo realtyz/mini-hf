@@ -12,6 +12,8 @@ const endpoints = {
     verify: '/auth/verify',
     refresh: '/auth/refresh',
     logout: '/auth/logout',
+    forgotPassword: '/auth/forgot-password',
+    resetPassword: '/auth/reset-password',
   },
 
   user: {

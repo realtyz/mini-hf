@@ -192,6 +192,103 @@ class VerifyCodeService:
         return True, "验证成功"
 
 
+    # --- Password reset code methods ---
+
+    def _get_reset_key(self, email: str) -> str:
+        """Build Redis key for password reset code."""
+        from cache.keys import CacheKeys
+
+        return CacheKeys.password_reset.key(email.lower())
+
+    async def _rate_limit_check(self, key: str) -> tuple[bool, int]:
+        """Check if a code can be sent based on rate limiting.
+
+        Returns:
+            Tuple of (can_send, remaining_wait_seconds)
+        """
+        from cache import cache_service
+
+        data = await cache_service.get(key)
+        if not data:
+            return True, 0
+
+        created_at = data.get("created_at", 0)
+        elapsed = time.time() - created_at
+        remaining = max(0, self.RESEND_INTERVAL - int(elapsed))
+        return remaining == 0, remaining
+
+    async def send_reset_code(self, email: str) -> tuple[bool, str, int]:
+        """Send password reset verification code to email.
+
+        Always returns a uniform response even if the email doesn't exist,
+        to prevent user enumeration.
+
+        Returns:
+            Tuple of (success, message, retry_after_seconds)
+        """
+        from cache import cache_service
+
+        key = self._get_reset_key(email)
+        can_send, remaining = await self._rate_limit_check(key)
+        if not can_send:
+            return False, f"请等待 {remaining} 秒后再试", remaining
+
+        code = self._generate_code()
+        data = {"code": code, "created_at": time.time()}
+        await cache_service.set(key, data, ttl=self.CODE_TTL)
+
+        try:
+            config = await self._config.get_smtp_config()
+            if not config.is_configured:
+                logger.warning(
+                    "SMTP not configured, skipping password reset email. "
+                    f"Reset code for {email}: {code}"
+                )
+                return (
+                    True,
+                    "验证码已发送（邮件服务未配置，请查看日志）",
+                    self.RESEND_INTERVAL,
+                )
+
+            client = EmailClient(config, template_dir=TEMPLATE_DIR)
+            await client.send_template_email(
+                to=email,
+                subject="[Mini-HF] 密码重置",
+                template_name="reset_password.html",
+                context={"code": code, "year": datetime.now().year},
+            )
+            logger.info(f"Password reset code sent to {email}")
+            return True, "验证码已发送", self.RESEND_INTERVAL
+
+        except EmailError as e:
+            logger.error(f"Failed to send password reset code to {email}: {e}")
+            return False, f"发送失败: {e}", 0
+
+    async def verify_reset_code(
+        self, email: str, code: str
+    ) -> tuple[bool, str]:
+        """Verify password reset code. Deletes code on success.
+
+        Returns:
+            Tuple of (success, message)
+        """
+        from cache import cache_service
+
+        key = self._get_reset_key(email)
+        data = await cache_service.get(key)
+
+        if not data:
+            return False, "验证码已过期或不存在"
+
+        stored_code = data.get("code")
+        if stored_code != code:
+            return False, "验证码错误"
+
+        await cache_service.delete(key)
+        logger.info(f"Password reset code verified for {email}")
+        return True, "验证成功"
+
+
 class TaskNotificationService:
     """Task status notification email service.
 

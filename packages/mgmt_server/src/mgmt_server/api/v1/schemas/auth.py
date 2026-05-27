@@ -80,6 +80,37 @@ class LogoutRequest(BaseModel):
     access_token: str = Field(..., description="Current access token to revoke")
 
 
+# --- Password reset ---
+
+
+class ForgotPasswordRequest(BaseModel):
+    """Request to send password reset code."""
+
+    email: EmailStr = Field(..., description="Email address")
+
+
+class ForgotPasswordData(BaseModel):
+    """Forgot password response data."""
+
+    resend_after: int = Field(60, description="Seconds until next code can be sent")
+
+
+class ForgotPasswordResponse(BaseResponse[ForgotPasswordData]):
+    """Forgot password response."""
+
+
+class ResetPasswordRequest(BaseModel):
+    """Reset password with verification code."""
+
+    email: EmailStr = Field(..., description="Email address")
+    code: str = Field(
+        ..., min_length=6, max_length=6, description="6-digit verification code"
+    )
+    new_password: str = Field(
+        ..., min_length=6, max_length=64, description="New password (min 6 characters)"
+    )
+
+
 class RegisterWithCodeRequest(BaseModel):
     """Register with verification code request."""
 

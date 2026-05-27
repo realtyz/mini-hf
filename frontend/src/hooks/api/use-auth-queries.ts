@@ -8,10 +8,13 @@ import endpoints from '@/lib/api/endpoints'
 import { useAuthStore } from '@/stores/auth-store'
 import type {
   ApiResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
   LoginRequest,
   LoginResponse,
   RegisterRequest,
   RegisterWithCodeRequest,
+  ResetPasswordRequest,
   SendVerifyCodeRequest,
   SendVerifyCodeResponse,
   TokenVerifyResponse,
@@ -129,6 +132,36 @@ export function useVerifyToken() {
     retry: false,
     // 需要认证，未登录时不执行
     enabled: !!useAuthStore.getState().token,
+  })
+}
+
+/**
+ * 忘记密码 - 发送重置验证码
+ */
+export function useForgotPassword() {
+  return useMutation({
+    mutationFn: async (data: ForgotPasswordRequest) => {
+      const response = await api.post<ApiResponse<ForgotPasswordResponse>>(
+        endpoints.auth.forgotPassword,
+        data
+      )
+      return response.data
+    },
+  })
+}
+
+/**
+ * 重置密码 - 使用验证码设置新密码
+ */
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: async (data: ResetPasswordRequest) => {
+      const response = await api.post<ApiResponse<ForgotPasswordResponse>>(
+        endpoints.auth.resetPassword,
+        data
+      )
+      return response.data
+    },
   })
 }
 

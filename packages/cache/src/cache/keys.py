@@ -59,6 +59,7 @@ class CacheKeys:
     preview_result: CacheNamespace
     preview_task: CacheNamespace
     email_verify: CacheNamespace
+    password_reset: CacheNamespace
 
     _NAMESPACES: dict[str, CacheNamespace] = {
         # Infrastructure
@@ -107,6 +108,11 @@ class CacheKeys:
             f"{_PREFIX}:email_verify",
             ttl=300,
             description="Email verification codes",
+        ),
+        "password_reset": CacheNamespace(
+            f"{_PREFIX}:password_reset",
+            ttl=300,
+            description="Password reset codes",
         ),
     }
 

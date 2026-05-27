@@ -177,6 +177,24 @@ class UserService:
         await self._update_password(user, new_password)
         logger.info("Password changed successfully for user {}", user_id)
 
+    async def reset_password_by_email(self, email: str, new_password: str) -> None:
+        """Reset user password by email (forgot-password flow).
+
+        Raises:
+            NotFoundError: If user not found
+            ValidationError: If user is inactive
+        """
+        logger.info("Resetting password for user {}", _mask_email(email))
+
+        user = await self._repo.get_by_email(email)
+        if not user:
+            raise NotFoundError("User not found")
+        if not user.is_active:
+            raise ValidationError("User is inactive")
+
+        await self._update_password(user, new_password)
+        logger.info("Password reset successfully for user {}", _mask_email(email))
+
     async def admin_reset_password(self, user_id: int, new_password: str) -> None:
         """Reset user password (admin only, no current password required).
 
