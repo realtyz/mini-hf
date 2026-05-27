@@ -132,7 +132,7 @@ api.interceptors.response.use(
       const originalRequest = error.config
 
       // 如果不是刷新请求且没有重试过，尝试刷新 token
-      if (!config?.skipAuthRefresh && !originalRequest._retry) {
+      if (originalRequest && !config?.skipAuthRefresh && !originalRequest._retry) {
         originalRequest._retry = true
 
         if (!refreshPromise) {

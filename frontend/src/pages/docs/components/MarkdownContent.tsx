@@ -106,11 +106,11 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
               {children}
             </blockquote>
           ),
-          code: ({ className, children, inline, ...props }) => {
+          code: ({ className, children, ...props }) => {
             const match = /language-(\w+)/.exec(className || '')
             const language = match ? match[1] : ''
 
-            if (inline || !language) {
+            if (!language) {
               return (
                 <code
                   className="rounded bg-muted px-1.5 py-0.5 font-mono text-sm"

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import type { RepoScanItem, ScanCategory, ScanResultResponse } from "@/lib/api/types";
+import type { RepoScanItem, ScanCategory, ScanResultData } from "@/lib/api/types";
 
 interface UseCacheScanFiltersReturn {
   search: string;
@@ -17,7 +17,7 @@ interface UseCacheScanFiltersReturn {
 }
 
 export function useCacheScanFilters(
-  result: ScanResultResponse | null,
+  result: ScanResultData | null,
 ): UseCacheScanFiltersReturn {
   const [thresholdDays, setThresholdDays] = useState(15);
   const [customDays, setCustomDays] = useState("");
