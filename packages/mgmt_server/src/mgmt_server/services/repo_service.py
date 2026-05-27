@@ -153,13 +153,8 @@ class RepoService:
     async def delete_repo(
         self,
         repo_id: str,
-        hard: bool = False,
     ) -> DeleteRepoResult:
-        """Delete an entire cached repository with all pre-checks.
-
-        Args:
-            repo_id: Repository ID
-            hard: If true, hard delete (remove all records). If false, soft delete.
+        """Delete an entire cached repository with all database records and S3 blobs.
 
         Raises:
             NotFoundError: If repo not found
@@ -184,28 +179,22 @@ class RepoService:
                 "Please wait for downloads to complete before deleting."
             )
 
-        if hard:
-            result = await self._delete_repository(repo_id, repo_type, hard=True)
-        else:
-            result = await self._delete_repository(repo_id, repo_type)
-
-        return result
+        return await self._delete_repository(repo_id, repo_type)
 
     # ------------------------------------------------------------------
-    # Internal delete implementations
+    # Internal delete implementation
     # ------------------------------------------------------------------
 
     async def _delete_repository(
         self,
         repo_id: str,
         repo_type: str,
-        hard: bool = False,
     ) -> DeleteRepoResult:
         """Delete repository core logic.
 
         Deletes DB records first, then S3 blobs. If S3 deletion partially
         fails the DB state is still consistent — the profile is already
-        deleted/soft-deleted and the orphaned blobs can be cleaned up later.
+        deleted and the orphaned blobs can be cleaned up later.
         """
         await self._profile_repo.set_profile_status(
             repo_id, repo_type, RepoStatus.CLEANING
@@ -214,32 +203,21 @@ class RepoService:
         snapshots = await self._snapshot_repo.get_all_snapshots(repo_id)
 
         if not snapshots:
-            if hard:
-                profile_deleted = await self._profile_repo.delete_profile(
-                    repo_id, repo_type
-                )
-                return DeleteRepoResult(
-                    deleted=True,
-                    repo_id=repo_id,
-                    snapshots_deleted=0,
-                    tree_items_deleted=0,
-                    blobs_deleted=0,
-                    blobs_failed=0,
-                    profile_deleted=profile_deleted,
-                )
-            await self._profile_repo.soft_delete_profile(repo_id, repo_type)
+            profile_deleted = await self._profile_repo.delete_profile(
+                repo_id, repo_type
+            )
             return DeleteRepoResult(
                 deleted=True,
                 repo_id=repo_id,
                 snapshots_deleted=0,
+                tree_items_deleted=0,
                 blobs_deleted=0,
                 blobs_failed=0,
-                message=f"No snapshots found for {repo_id}, profile marked as cleaned",
+                profile_deleted=profile_deleted,
             )
 
         logger.info(
-            "{} {} snapshots for {}",
-            "Hard deleting" if hard else "Deleting",
+            "Deleting {} snapshots for {}",
             len(snapshots),
             repo_id,
         )
@@ -254,43 +232,32 @@ class RepoService:
 
         # Delete DB records first
         tree_items_deleted = 0
-        if hard:
-            for snapshot in snapshots:
-                count = await self._tree_repo.delete_items_by_snapshot(
-                    snapshot.commit_hash
-                )
-                tree_items_deleted += count
+        for snapshot in snapshots:
+            count = await self._tree_repo.delete_items_by_snapshot(
+                snapshot.commit_hash
+            )
+            tree_items_deleted += count
 
         for snapshot in snapshots:
             await self._snapshot_repo.delete_snapshot(snapshot.commit_hash)
 
-        if hard:
-            profile_deleted = await self._profile_repo.delete_profile(
-                repo_id, repo_type
-            )
-        else:
-            await self._profile_repo.soft_delete_profile(repo_id, repo_type)
+        profile_deleted = await self._profile_repo.delete_profile(
+            repo_id, repo_type
+        )
 
         # Now delete S3 blobs (DB is already consistent)
         deleted_blobs, failed_blobs = await self._delete_blobs_from_ids(
             repo_id, repo_type, all_blob_ids
         )
 
-        hard_extras = (
-            {
-                "tree_items_deleted": tree_items_deleted,
-                "profile_deleted": profile_deleted,
-            }
-            if hard
-            else {}
-        )
         return DeleteRepoResult(
             deleted=True,
             repo_id=repo_id,
             snapshots_deleted=len(snapshots),
+            tree_items_deleted=tree_items_deleted,
             blobs_deleted=deleted_blobs,
             blobs_failed=failed_blobs,
-            **hard_extras,
+            profile_deleted=profile_deleted,
         )
 
     async def _delete_blobs_from_ids(

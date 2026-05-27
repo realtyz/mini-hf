@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.db_models import HfRepoProfile, HfRepoSnapshot, RepoStatus, SnapshotStatus
@@ -172,38 +172,6 @@ class HfRepoProfileRepository:
         profile.cache_updated_at = datetime.now()
         await self._session.flush()
         return True
-
-    async def soft_delete_profile(
-        self,
-        repo_id: str,
-        repo_type: str,
-    ) -> bool:
-        """Soft delete repository profile: set CLEANED status, clear cached_commits.
-
-        Preserves downloads, first_cached_at, cache_updated_at for historical tracking.
-
-        Args:
-            repo_id: Repository ID
-            repo_type: Repository type (model/dataset)
-
-        Returns:
-            True if profile was found and updated, False otherwise
-        """
-        stmt = (
-            update(HfRepoProfile)
-            .where(
-                HfRepoProfile.repo_id == repo_id,
-                HfRepoProfile.repo_type == repo_type,
-            )
-            .values(
-                status=RepoStatus.CLEANED,
-                cached_commits=0,
-                # downloads, first_cached_at, cache_updated_at are preserved
-            )
-        )
-        result = await self._session.execute(stmt)
-        await self._session.flush()
-        return result.rowcount > 0  # type: ignore[attr-defined]
 
     async def delete_profile(
         self,

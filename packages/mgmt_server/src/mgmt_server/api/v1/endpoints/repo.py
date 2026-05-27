@@ -196,15 +196,9 @@ async def delete_repository(
     repo_id: RepoId,
     admin_user: AdminUserDep,
     repo_service: RepoServiceDep,
-    hard: Annotated[
-        bool,
-        Query(
-            description="Hard delete: remove all database records including profile. Default is soft delete (preserve profile)."
-        ),
-    ] = False,
 ) -> DeleteRepoResponse:
-    """Delete an entire cached repository."""
-    result = await repo_service.delete_repo(repo_id, hard=hard)
+    """Delete an entire cached repository and all associated records."""
+    result = await repo_service.delete_repo(repo_id)
     return DeleteRepoResponse(data=result)
 
 

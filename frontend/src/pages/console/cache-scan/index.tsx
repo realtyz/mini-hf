@@ -117,7 +117,6 @@ export function CacheScan() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
-  const [hardDelete, setHardDelete] = useState(false);
   const queryClient = useQueryClient();
   const deleteRepo = useDeleteRepo();
 
@@ -157,10 +156,10 @@ export function CacheScan() {
   const handleConfirmDelete = () => {
     if (!deletingRepoId) return;
     deleteRepo.mutate(
-      { repoId: deletingRepoId, hard: hardDelete },
+      deletingRepoId,
       {
         onSuccess: () => {
-          toast.success(hardDelete ? STRINGS.cacheScanHardDeleteSuccess : STRINGS.cacheScanColdDeleteSuccess);
+          toast.success(STRINGS.cacheScanDeleteSuccess);
           queryClient.invalidateQueries({ queryKey: queryKeys.cacheScan.result() });
           setDeleteDialogOpen(false);
           setDeletingRepoId(null);
@@ -305,8 +304,6 @@ export function CacheScan() {
         onOpenChange={setDeleteDialogOpen}
         repoId={deletingRepoId}
         isDeleting={deleteRepo.isPending}
-        hardDelete={hardDelete}
-        onHardDeleteChange={setHardDelete}
         onConfirm={handleConfirmDelete}
       />
     </motion.div>

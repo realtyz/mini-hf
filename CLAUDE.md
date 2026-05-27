@@ -40,7 +40,7 @@ Import via `from core.settings import settings` (module-level singleton).
 
 **Repositories**: `packages/database/src/database/db_repositories/` — Data access classes that encapsulate SQL queries. Each entity has a dedicated repository (e.g., `TaskRepository`, `HfRepoProfileRepository`).
 
-**Session management** (`packages/database/src/database/db_models/core.py`):
+**Session management** (`packages/database/src/database/core.py`):
 
 - `unit_of_work()` — **Preferred** FastAPI dependency. Commits on success, rolls back on exception, always closes. Use via `Depends(unit_of_work)`.
 - `new_session()` — Creates a session; caller manages commit/rollback/close manually. Use in non-FastAPI contexts (worker, scripts).
@@ -72,6 +72,8 @@ Key worker modules:
 
 ### Key Domain Concepts
 
+**RepoStatus** (`packages/database/src/database/db_models/enums.py`): `ACTIVE` (normal), `INACTIVE` (disabled), `UPDATING` (worker downloading), `CLEANING` (cache scan in progress), `CLEANED` (deletion done).
+
 **SnapshotStatus** (`packages/database/src/database/db_models/enums.py`):
 - `INACTIVE`: New snapshot, files not fully downloaded
 - `ACTIVE`: Current commit for a revision (latest), files complete
@@ -79,7 +81,33 @@ Key worker modules:
 
 **Multi-Version Management**: Each revision only keeps one `ACTIVE` snapshot. Old commits are marked `ARCHIVED` to avoid storage redundancy.
 
-**Task Lifecycle**: `PENDING_APPROVAL → PENDING → RUNNING → COMPLETED/FAILED/CANCELLED`
+**Task Lifecycle**: `PENDING_APPROVAL → PENDING → RUNNING → COMPLETED / FAILED / CANCELLED` (with intermediate states `CANCELING`, `PAUSING`, `PAUSED`)
+
+### Auth System
+
+JWT-based authentication with access/refresh token pairs. Key files:
+- `packages/mgmt_server/src/mgmt_server/api/deps.py` — All FastAPI dependencies (`get_current_user`, `TokenServiceDep`, `UserServiceDep`, `RequireAdmin`, `VerifyCodeServiceDep`, etc.)
+- `packages/mgmt_server/src/mgmt_server/api/deps_rate_limit.py` — Rate-limiting dependency for auth endpoints (login, register, send-code)
+
+Auth flows: login (JWT), register with email verification code, forgot/reset password, token refresh, logout. The `get_current_user` dependency validates the JWT and returns the user, used by all protected endpoints. Admin-only routes additionally require `RequireAdmin`.
+
+### Services Layer (`packages/services`)
+
+Service classes encapsulate business logic and external API calls:
+
+| Service | Module | Purpose |
+|---------|--------|---------|
+| HuggingFace | `services.huggingface.service` | HF Hub API client for resolving commits, listing files, downloading |
+| Task | `services.task.service` | Task creation, approval, cancellation, retry logic |
+| Config | `services.config.service` | Config value CRUD with encryption for sensitive keys |
+| Email | `services.email.services` | SMTP email sending (verification codes, notifications) |
+| ConfigProvider | `services.config._provider` | Typed accessors for individual config keys (e.g., `get_hf_endpoints`) |
+
+Config values marked `sensitive: True` in the registry are AES-encrypted at rest in the database. The `ConfigService` handles encryption/decryption transparently using `CONFIG_ENCRYPTION_KEY` (falls back to `JWT_SECRET_KEY`).
+
+### Config Registry (`packages/services/src/services/config/registry.py`)
+
+The `ConfigKey` enum and `ConfigEntry` dataclasses define every system config key with metadata: type, default, category, validation bounds, and UI widget hints. The `/config/schema` endpoint reads from this registry to dynamically generate the settings UI form. New config keys must be registered here — it is the single source of truth. Categories: `EMAIL`, `HUGGINGFACE`, `NOTIFICATION`, `TASK_CONTROL`.
 
 ### Frontend
 
@@ -94,6 +122,7 @@ Summary: React 19 + React Router 7 + TanStack Query 5 + Tailwind CSS 4 + shadcn/
 - Database session: `packages/database/src/database/core.py`
 - Database models: `packages/database/src/database/db_models/`
 - Database repositories: `packages/database/src/database/db_repositories/`
+- Auth dependencies: `packages/mgmt_server/src/mgmt_server/api/deps.py` (all FastAPI dependencies)
 - API routes (mgmt): `packages/mgmt_server/src/mgmt_server/api/v1/endpoints/`
 - API routes (HF): `packages/hf_server/src/hf_server/api/endpoints/`
 - Worker base handler: `packages/worker/src/worker/handlers/base_handler.py`

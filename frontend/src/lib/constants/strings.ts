@@ -51,8 +51,7 @@ export const STRINGS = {
   cacheScanLoadFailedDesc: '请检查网络连接后重试',
   cacheScanAllClear: '暂无冷数据仓库或孤儿存储',
   cacheScanAllClearDesc: '所有仓库均处于活跃下载状态，无孤儿存储',
-  cacheScanColdDeleteSuccess: '仓库已删除',
-  cacheScanHardDeleteSuccess: '仓库已彻底删除',
+  cacheScanDeleteSuccess: '仓库已彻底删除',
   cacheScanCopySuccess: '已复制仓库 ID',
 
   // Repository

@@ -4,9 +4,9 @@ import endpoints from '@/lib/api/endpoints'
 
 export function useDeleteRepo() {
   return useMutation({
-    mutationFn: async ({ repoId, hard }: { repoId: string; hard: boolean }) => {
+    mutationFn: async (repoId: string) => {
       const endpoint = endpoints.repo.hfDetail(repoId)
-      return api.delete(endpoint, { params: { hard } })
+      return api.delete(endpoint, { timeout: 60000 })
     },
   })
 }
