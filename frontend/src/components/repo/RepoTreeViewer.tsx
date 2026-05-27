@@ -62,6 +62,12 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
     });
   }, [currentChildren]);
 
+  const repoFileStats = useMemo(() => {
+    const files = allItems.filter((i) => i.type === "file");
+    const cached = files.filter((i) => i.is_cached).length;
+    return { total: files.length, cached };
+  }, [allItems]);
+
   const breadcrumbParts = useMemo(() => {
     if (!currentPath) return [];
     return currentPath.split("/");
@@ -355,33 +361,21 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
 
       {/* 底部统计 */}
       <div className="bg-muted/40 px-3 py-2 border-t border-border/50 flex items-center justify-between shrink-0 select-none">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <div className="size-5 rounded bg-amber-500/10 flex items-center justify-center">
-              <Folder className="h-3 w-3 text-amber-500/70" />
-            </div>
-            <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
-              {sortedChildren.filter((i) => i.type === "directory").length}
-            </span>
+        <div className="flex items-center gap-1.5">
+          <div className="size-5 rounded bg-amber-500/10 flex items-center justify-center">
+            <Folder className="h-3 w-3 text-amber-500/70" />
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="size-5 rounded bg-muted flex items-center justify-center">
-              <File className="h-3 w-3 text-muted-foreground/60" />
-            </div>
-            <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
-              {sortedChildren.filter((i) => i.type === "file").length}
-            </span>
-          </div>
+          <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
+            {sortedChildren.filter((i) => i.type === "directory").length}
+          </span>
         </div>
         <div className="flex items-center gap-1.5">
           <CheckCircle2 className="h-3 w-3 text-emerald-500/70" />
           <span className="text-[11px] font-medium text-muted-foreground tabular-nums">
-            {
-              sortedChildren.filter((i) => i.type === "file" && i.is_cached)
-                .length
-            }
+            {repoFileStats.cached}
+            <span className="text-muted-foreground/40"> / {repoFileStats.total}</span>
           </span>
-          <span className="text-[11px] text-muted-foreground/60">已缓存</span>
+          <span className="text-[11px] text-muted-foreground/60">文件已缓存</span>
         </div>
       </div>
     </div>

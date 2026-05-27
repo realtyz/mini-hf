@@ -56,7 +56,7 @@ const STATUS_CONFIG: {
     },
     {
       value: "inactive",
-      label: "非活跃",
+      label: "不完整",
       colorClass: "bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-400 border-slate-200 dark:border-slate-700",
       dotColor: "bg-slate-400",
     },

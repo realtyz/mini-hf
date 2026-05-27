@@ -80,6 +80,29 @@ services:
     deploy:
       replicas: 1
 
+  worker-small:
+    image: mini-hf/backend:${VERSION:-latest}
+    command: ["uv", "run", "python", "-m", "worker.main"]
+    env_file:
+      - .env
+    environment:
+      - PG_HOST=postgres
+      - PG_PORT=5432
+      - REDIS_URL=redis://redis:6379
+      - INCOMPLETE_FILE_PATH=/tmp/mini-hf
+      - WORKER_MAX_REPO_STORAGE_GB=50
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+    volumes:
+      - /data/mini-hf:/tmp/mini-hf
+    deploy:
+      replicas: 1
+
   frontend:
     build:
       context: ./frontend

@@ -83,18 +83,24 @@ class TaskService:
         self._logger.debug("Created task {}: {} ({})", task.id, repo_id, source)
         return task
 
-    async def get_next_task(self, batch_size: int = 1) -> List[Task]:
+    async def get_next_task(
+        self, batch_size: int = 1, max_storage: int = -1
+    ) -> List[Task]:
         """Dequeue pending tasks for worker processing.
 
         Uses FOR UPDATE SKIP LOCKED for concurrent safety.
 
         Args:
             batch_size: Number of tasks to fetch
+            max_storage: Maximum required_storage in bytes to accept.
+                -1 means no limit.
 
         Returns:
             List of tasks with status updated to RUNNING
         """
-        tasks = await self._repo.get_next_for_worker(batch_size)
+        tasks = await self._repo.get_next_for_worker(
+            batch_size, max_storage=max_storage
+        )
         if tasks:
             self._logger.debug("Worker picked up tasks: {}", [t.id for t in tasks])
         return tasks

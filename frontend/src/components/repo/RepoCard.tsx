@@ -43,7 +43,7 @@ const statusTheme: Record<
   },
   inactive: {
     color: 'slate',
-    label: '非活跃',
+    label: '不完整',
     badgeClass:
       'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300',
     dotClass: 'bg-slate-400',

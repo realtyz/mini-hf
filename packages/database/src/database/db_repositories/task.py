@@ -84,7 +84,9 @@ class TaskRepository:
         """
         return await self.session.get(Task, task_id)
 
-    async def get_next_for_worker(self, batch_size: int = 1) -> List[Task]:
+    async def get_next_for_worker(
+        self, batch_size: int = 1, max_storage: int = -1
+    ) -> List[Task]:
         """Fetch pending tasks using FOR UPDATE SKIP LOCKED.
 
         This method safely fetches tasks concurrently from multiple workers
@@ -92,15 +94,24 @@ class TaskRepository:
 
         Args:
             batch_size: Number of tasks to fetch
+            max_storage: Maximum required_storage in bytes to accept.
+                -1 means no limit. Tasks exceeding this are skipped.
 
         Returns:
             List of tasks with status updated to RUNNING
         """
         # Step 1: Select and lock pending tasks using SKIP LOCKED
         # Order by: pinned tasks first (LIFO), then by reviewed_at (FIFO)
+        conditions = [
+            Task.status == TaskStatus.PENDING,
+            Task.reviewed_at.isnot(None),
+        ]
+        if max_storage >= 0:
+            conditions.append(Task.required_storage <= max_storage)
+
         stmt = (
             select(Task)
-            .where(Task.status == TaskStatus.PENDING, Task.reviewed_at.isnot(None))
+            .where(*conditions)
             .order_by(Task.pinned_at.desc().nulls_last(), Task.reviewed_at.asc())
             .limit(batch_size)
             .with_for_update(skip_locked=True)

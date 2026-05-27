@@ -13,7 +13,7 @@ export const REPO_STATUS_CONFIG: Record<RepoStatus, RepoStatusConfig> = {
     badgeVariant: 'success',
   },
   inactive: {
-    label: '非活跃',
+    label: '不完整',
     dotClass: 'bg-slate-400',
     badgeVariant: 'neutral',
   },

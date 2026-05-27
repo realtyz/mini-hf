@@ -42,6 +42,7 @@ class Worker:
         poll_interval: float | None = None,
         max_concurrent: int | None = None,
         cancel_check_interval: float | None = None,
+        max_repo_storage_gb: float | None = None,
     ):
         """Initialize the worker.
 
@@ -49,12 +50,20 @@ class Worker:
             poll_interval: Seconds between polling when no tasks
             max_concurrent: Maximum concurrent tasks to process
             cancel_check_interval: Seconds between checking for cancellation
+            max_repo_storage_gb: Maximum required_storage in GB to accept.
+                -1 means no limit. Tasks exceeding this are skipped.
         """
         self.poll_interval = poll_interval or settings.WORKER_POLL_INTERVAL
         self.max_concurrent = max_concurrent or settings.WORKER_MAX_CONCURRENT
         self.cancel_check_interval = (
             cancel_check_interval or settings.WORKER_CANCEL_CHECK_INTERVAL
         )
+        gb = (
+            max_repo_storage_gb
+            if max_repo_storage_gb is not None
+            else settings.WORKER_MAX_REPO_STORAGE_GB
+        )
+        self.max_repo_storage = int(gb * 1024**3) if gb >= 0 else -1
         self._handlers: dict[str, HandlerFunc] = {}
         self._profile_recoveries: dict[str, ProfileRecoveryFunc] = {}
         self._startup_recoveries: list[StartupRecoveryFunc] = []
@@ -103,6 +112,11 @@ class Worker:
         self._running = True
         logger.info("Started, polling every {}s", self.poll_interval)
         logger.info("Max concurrent tasks: {}", self.max_concurrent)
+        if self.max_repo_storage >= 0:
+            logger.info(
+                "Repo storage limit: {} GB",
+                self.max_repo_storage / (1024**3),
+            )
         logger.info("Press Ctrl+C to stop")
 
         # Startup recovery: stale files, orphaned tasks, stuck profiles
@@ -141,7 +155,8 @@ class Worker:
                     async with new_session() as session:
                         task_service = TaskService(session)
                         tasks = await task_service.get_next_task(
-                            batch_size=_TASK_FETCH_BATCH_SIZE
+                            batch_size=_TASK_FETCH_BATCH_SIZE,
+                            max_storage=self.max_repo_storage,
                         )
                         await session.commit()
 

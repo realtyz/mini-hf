@@ -125,23 +125,27 @@ async def download_and_upload_files(
         if ctx.infra.shared_client is not None:
             await ctx.infra.shared_client.aclose()
 
-    # Step 2: Categorize results
+    # Step 2: Categorize results — collect ALL results before deciding to raise,
+    # so successful files that happen to appear after a cancelled/failed file in
+    # the zip order are not lost.
     successful_results: list[FileProcessResult] = []
     failures: list[tuple[str, Exception]] = []
     paused_count = 0
+    cancelled_error: DownloadCancelledError | None = None
 
     for src_file, result in zip(files, results):
         if isinstance(result, DownloadPausedError):
             paused_count += 1
             logger.debug("File {} paused before starting", src_file.path)
         elif isinstance(result, DownloadCancelledError):
+            if cancelled_error is None:
+                cancelled_error = result
             logger.info("Download cancelled for {}: {}", src_file.path, result)
-            result.successful_paths = [r.path for r in successful_results]
-            raise result
+            if ctx.progress_tracker:
+                await ctx.progress_tracker.fail_file(src_file.path, str(result))
         elif isinstance(result, Exception):
             failures.append((src_file.path, result))
             logger.error("Failed to process {}: {}", src_file.path, result)
-            # Mark file as failed
             if ctx.progress_tracker:
                 await ctx.progress_tracker.fail_file(src_file.path, str(result))
         elif isinstance(result, FileProcessResult):
@@ -152,14 +156,19 @@ async def download_and_upload_files(
             )
 
     logger.info(
-        "  -> Downloaded and uploaded {}/{} files successfully ({} paused)",
+        "  -> Downloaded and uploaded {}/{} files successfully ({} paused, {} cancelled)",
         len(successful_results),
         len(files),
         paused_count,
+        1 if cancelled_error else 0,
     )
 
-    # Step 3: Handle failures or pause
+    # Step 3: Raise with complete successful_paths (order-independent)
     successful_paths = [r.path for r in successful_results]
+
+    if cancelled_error is not None:
+        cancelled_error.successful_paths = successful_paths
+        raise cancelled_error
 
     if failures:
         failed_paths = [f[0] for f in failures]

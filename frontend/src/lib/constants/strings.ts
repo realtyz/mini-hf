@@ -67,7 +67,7 @@ export const STRINGS = {
   statusActive: '活跃',
   statusUpdating: '更新中',
   statusCleaning: '清理中',
-  statusInactive: '非活跃',
+  statusInactive: '不完整',
   statusCleaned: '已清理',
   statusAll: '全部状态',
   statusPendingApproval: '等待审批',
