@@ -17,6 +17,7 @@ interface CleanupConfirmDialogProps {
   repoId: string | null;
   isDeleting: boolean;
   onConfirm: () => void;
+  count?: number;
 }
 
 export function CleanupConfirmDialog({
@@ -25,16 +26,31 @@ export function CleanupConfirmDialog({
   repoId,
   isDeleting,
   onConfirm,
+  count = 1,
 }: CleanupConfirmDialogProps) {
+  const isBatch = count > 1;
+
   return (
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent className="sm:max-w-106.25">
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-left">确认删除仓库</AlertDialogTitle>
+          <AlertDialogTitle className="text-left">
+            {isBatch ? '确认批量删除仓库' : '确认删除仓库'}
+          </AlertDialogTitle>
           <AlertDialogDescription className="text-left">
-            您即将删除仓库{" "}
-            <span className="font-semibold text-foreground">{repoId}</span>
-            。此操作将删除所有缓存的文件、版本数据和数据库记录，所有数据将永久丢失！
+            {isBatch ? (
+              <>
+                您即将删除{" "}
+                <span className="font-semibold text-foreground">{count} 个仓库</span>
+                。此操作将删除所有缓存的文件、版本数据和数据库记录，所有数据将永久丢失！
+              </>
+            ) : (
+              <>
+                您即将删除仓库{" "}
+                <span className="font-semibold text-foreground">{repoId}</span>
+                。此操作将删除所有缓存的文件、版本数据和数据库记录，所有数据将永久丢失！
+              </>
+            )}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter className="flex-row gap-3 sm:justify-end">

@@ -55,6 +55,8 @@ const endpoints = {
       `/hf_repo/${encodeURIComponent(repoId)}/tree/${encodeURIComponent(commitHash)}`,
     fileUrl: (repoId: string, commitHash: string, path: string) =>
       `/hf_repo/${encodeURIComponent(repoId)}/file?commit_hash=${encodeURIComponent(commitHash)}&path=${encodeURIComponent(path)}`,
+    batchDelete: '/hf_repo/batch-delete',
+    batchDeleteStatus: (operationId: string) => `/hf_repo/batch-delete/${operationId}/status`,
   },
 
   dashboard: {

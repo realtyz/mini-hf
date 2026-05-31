@@ -39,6 +39,7 @@ export const queryKeys = {
   cacheScan: {
     all: ['cache-scan'] as const,
     result: () => [...queryKeys.cacheScan.all, 'result'] as const,
+    batchDeleteStatus: (operationId: string) => [...queryKeys.cacheScan.all, 'batch-delete-status', operationId] as const,
   },
   configs: {
     all: ['configs'] as const,

@@ -53,6 +53,11 @@ export const STRINGS = {
   cacheScanAllClearDesc: '所有仓库均处于活跃下载状态，无孤儿存储',
   cacheScanDeleteSuccess: '仓库已彻底删除',
   cacheScanCopySuccess: '已复制仓库 ID',
+  cacheScanBatchDelete: '批量删除',
+  cacheScanBatchDeleteSelected: (n: number) => `批量删除 (${n})`,
+  cacheScanBatchDeleteConfirmTitle: '确认批量删除仓库',
+  cacheScanBatchDeleteStarted: (n: number) => `批量删除已启动，正在删除 ${n} 个仓库...`,
+  cacheScanBatchDeleteCompleted: (deleted: number, failed: number) => `批量删除完成：${deleted} 个成功，${failed} 个失败`,
 
   // Repository
   repoList: '仓库管理',

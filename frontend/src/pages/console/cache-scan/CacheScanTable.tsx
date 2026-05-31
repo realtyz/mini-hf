@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -63,6 +64,9 @@ interface CacheScanTableProps {
   onDelete: (repoId: string) => void;
   onClearFilters: () => void;
   search: string;
+  selectedIds: Set<string>;
+  onToggleSelect: (repoId: string) => void;
+  onToggleSelectAll: () => void;
 }
 
 export function CacheScanTable({
@@ -73,7 +77,12 @@ export function CacheScanTable({
   onDelete,
   onClearFilters,
   search,
+  selectedIds,
+  onToggleSelect,
+  onToggleSelectAll,
 }: CacheScanTableProps) {
+  const allSelected = repos.length > 0 && repos.every((r) => selectedIds.has(r.repo_id));
+  const someSelected = repos.some((r) => selectedIds.has(r.repo_id)) && !allSelected;
   return (
     <motion.div
       className="rounded-xl border bg-card overflow-hidden"
@@ -124,6 +133,14 @@ export function CacheScanTable({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 hover:bg-muted/50 border-b border-border/50">
+              <TableHead className="w-12 pl-4">
+                <Checkbox
+                  checked={allSelected}
+                  data-state={someSelected ? "indeterminate" : undefined}
+                  onCheckedChange={() => onToggleSelectAll()}
+                  aria-label="全选"
+                />
+              </TableHead>
               <TableHead className="w-75 pl-4 font-semibold text-xs">
                 仓库 ID
               </TableHead>
@@ -155,8 +172,18 @@ export function CacheScanTable({
             {repos.map((repo: RepoScanItem) => (
               <TableRow
                 key={repo.repo_id}
-                className="group border-b border-border/40 last:border-0 hover:bg-muted/30 transition-colors"
+                className={cn(
+                  "group border-b border-border/40 last:border-0 hover:bg-muted/30 transition-colors",
+                  selectedIds.has(repo.repo_id) && "bg-primary/5 hover:bg-primary/10",
+                )}
               >
+                <TableCell className="py-2.5 pl-4">
+                  <Checkbox
+                    checked={selectedIds.has(repo.repo_id)}
+                    onCheckedChange={() => onToggleSelect(repo.repo_id)}
+                    aria-label={`选择 ${repo.repo_id}`}
+                  />
+                </TableCell>
                 <TableCell className="text-[13px] py-2.5 pl-4">
                   <TooltipProvider delayDuration={300}>
                     <Tooltip>

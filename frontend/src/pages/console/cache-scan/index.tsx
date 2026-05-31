@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { containerVariants, itemVariants } from "@/lib/animations/motion-config";
 import {
@@ -12,11 +12,12 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth-store";
-import { useCacheScanResult, useTriggerCacheScan, useDeleteRepo } from "@/hooks/api";
+import { useCacheScanResult, useTriggerCacheScan, useDeleteRepo, useBatchDeleteRepos, useBatchDeleteStatus } from "@/hooks/api";
 import { queryKeys } from "@/lib/query/keys";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { STRINGS } from "@/lib/constants/strings";
+import type { ScanCategory } from "@/lib/api/types";
 
 import { useCacheScanFilters } from "./use-cache-scan-filters";
 import { CacheScanStats } from "./CacheScanStats";
@@ -117,8 +118,29 @@ export function CacheScan() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [batchOperationId, setBatchOperationId] = useState<string | null>(null);
+  const completedOpRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
   const deleteRepo = useDeleteRepo();
+  const batchDeleteRepos = useBatchDeleteRepos();
+  const batchDeleteStatus = useBatchDeleteStatus(batchOperationId);
+
+  // Filter setters that also clear selection
+  const handleSetSearch = (v: string) => { setSearch(v); setSelectedIds(new Set()); };
+  const handleSetTypeFilter = (v: string) => { setTypeFilter(v); setSelectedIds(new Set()); };
+  const handleSetCategoryFilter = (v: "all" | ScanCategory) => { setCategoryFilter(v); setSelectedIds(new Set()); };
+
+  useEffect(() => {
+    const data = batchDeleteStatus.data?.data;
+    if (!data || data.status !== 'completed') return;
+    if (data.operation_id === completedOpRef.current) return;
+    completedOpRef.current = data.operation_id;
+    toast.success(STRINGS.cacheScanBatchDeleteCompleted(data.total_deleted, data.total_failed));
+    queryClient.invalidateQueries({ queryKey: queryKeys.cacheScan.result() });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBatchOperationId(null);
+  }, [batchDeleteStatus.data, queryClient]);
 
   const handleTrigger = () => {
     triggerScan.mutate(actualThreshold, {
@@ -144,13 +166,50 @@ export function CacheScan() {
   const handleDeleteClick = (repoId: string) => {
     setDeletingRepoId(repoId);
     setDeleteDialogOpen(true);
-    setHardDelete(false);
   };
 
   const handleClearFilters = () => {
     setSearch("");
     setTypeFilter("all");
     setCategoryFilter("all");
+    setSelectedIds(new Set());
+  };
+
+  const handleToggleSelect = (repoId: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(repoId)) {
+        next.delete(repoId);
+      } else {
+        next.add(repoId);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    const allFilteredIds = filteredRepos.map((r) => r.repo_id);
+    const allSelected = allFilteredIds.every((id) => selectedIds.has(id));
+    if (allSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(allFilteredIds));
+    }
+  };
+
+  const handleBatchDelete = () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    batchDeleteRepos.mutate(ids, {
+      onSuccess: (data) => {
+        setBatchOperationId(data.operation_id);
+        setSelectedIds(new Set());
+        toast.success(STRINGS.cacheScanBatchDeleteStarted(ids.length));
+      },
+      onError: () => {
+        toast.error("批量删除启动失败，请重试");
+      },
+    });
   };
 
   const handleConfirmDelete = () => {
@@ -191,13 +250,16 @@ export function CacheScan() {
         onTrigger={handleTrigger}
         onRefresh={() => refetch()}
         typeFilter={typeFilter}
-        setTypeFilter={setTypeFilter}
+        setTypeFilter={handleSetTypeFilter}
         categoryFilter={categoryFilter}
-        setCategoryFilter={setCategoryFilter}
+        setCategoryFilter={handleSetCategoryFilter}
         search={search}
-        setSearch={setSearch}
+        setSearch={handleSetSearch}
         filteredCount={filteredRepos.length}
         totalCount={result?.repos.length ?? 0}
+        selectedCount={selectedIds.size}
+        onBatchDelete={handleBatchDelete}
+        isBatchDeleting={batchDeleteRepos.isPending}
       />
 
       <AnimatePresence mode="wait">
@@ -293,6 +355,9 @@ export function CacheScan() {
                 onDelete={handleDeleteClick}
                 onClearFilters={handleClearFilters}
                 search={search}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
+                onToggleSelectAll={handleToggleSelectAll}
               />
             )}
           </motion.div>

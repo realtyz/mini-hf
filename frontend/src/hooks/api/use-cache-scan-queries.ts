@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/keys";
 import { STALE_TIMES } from "@/lib/query/client";
-import type { ScanResultResponse } from "@/lib/api/types";
+import type { ScanResultResponse, BatchDeleteRepoResponse, BatchDeleteStatusResponse } from "@/lib/api/types";
 import api from "@/lib/api/client";
 import endpoints from "@/lib/api/endpoints";
 
@@ -35,4 +35,21 @@ export function useTriggerCacheScan() {
   });
 
   return mutation;
+}
+
+export function useBatchDeleteRepos() {
+  return useMutation({
+    mutationFn: (repoIds: string[]) =>
+      api.post<BatchDeleteRepoResponse>(endpoints.repo.batchDelete, { repo_ids: repoIds }),
+  });
+}
+
+export function useBatchDeleteStatus(operationId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.cacheScan.batchDeleteStatus(operationId ?? ''),
+    queryFn: () => api.get<BatchDeleteStatusResponse>(endpoints.repo.batchDeleteStatus(operationId!)),
+    enabled: !!operationId,
+    refetchInterval: (query) =>
+      query.state.data?.data?.status === 'completed' ? false : 1000,
+  });
 }

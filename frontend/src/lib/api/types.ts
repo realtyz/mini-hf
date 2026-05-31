@@ -701,3 +701,43 @@ export interface AsyncPreviewTaskStatusData {
 }
 
 export type AsyncPreviewTaskStatusResponse = ApiResponse<AsyncPreviewTaskStatusData>
+
+// ==================== 批量删除 ====================
+
+export interface BatchDeleteRepoRequest {
+  repo_ids: string[]
+}
+
+export interface BatchDeleteRepoItem {
+  repo_id: string
+  deleted: boolean
+  error?: string | null
+  snapshots_deleted: number
+  tree_items_deleted: number
+  blobs_deleted: number
+  blobs_failed: number
+  profile_deleted: boolean
+}
+
+export interface BatchDeleteRepoResponse {
+  code: number
+  message: string
+  data: BatchDeleteRepoItem[]
+  operation_id: string
+  total_requested: number
+  total_deleted: number
+  total_failed: number
+}
+
+export interface BatchDeleteOperationState {
+  operation_id: string
+  status: 'processing' | 'completed'
+  total_requested: number
+  total_deleted: number
+  total_failed: number
+  results: BatchDeleteRepoItem[]
+  created_at: string
+  updated_at: string
+}
+
+export type BatchDeleteStatusResponse = ApiResponse<BatchDeleteOperationState>

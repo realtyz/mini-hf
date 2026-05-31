@@ -6,6 +6,7 @@ import {
   Search,
   X,
   Filter,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +52,9 @@ interface CacheScanToolbarProps {
   setSearch: (v: string) => void;
   filteredCount: number;
   totalCount: number;
+  selectedCount: number;
+  onBatchDelete: () => void;
+  isBatchDeleting: boolean;
 }
 
 export function CacheScanToolbar({
@@ -71,6 +75,9 @@ export function CacheScanToolbar({
   setSearch,
   filteredCount,
   totalCount,
+  selectedCount,
+  onBatchDelete,
+  isBatchDeleting,
 }: CacheScanToolbarProps) {
   return (
     <>
@@ -162,6 +169,45 @@ export function CacheScanToolbar({
                 </AlertDialogContent>
               </AlertDialog>
             </>
+          )}
+          {selectedCount > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isBatchDeleting}
+                    className="gap-2 cursor-pointer text-[13px] h-8 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/50"
+                  >
+                    <Trash2 className="size-3.5" />
+                    批量删除 ({selectedCount})
+                  </Button>
+                </motion.div>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>确认批量删除仓库</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    您即将删除{" "}
+                    <span className="font-semibold text-foreground">
+                      {selectedCount} 个仓库
+                    </span>
+                    。此操作将删除所有缓存文件、版本数据和数据库记录，所有数据将永久丢失！
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isBatchDeleting}>取消</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onBatchDelete}
+                    disabled={isBatchDeleting}
+                    className="border border-red-300 bg-transparent text-red-600 hover:bg-red-50 hover:border-red-400 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/50"
+                  >
+                    确认删除
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
             <Button
