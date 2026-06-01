@@ -180,3 +180,54 @@ class DeleteRepoResult(BaseModel):
 
 class DeleteRepoResponse(BaseResponse[DeleteRepoResult]):
     """Repository deletion response wrapped in BaseResponse."""
+
+
+class BatchDeleteRepoRequest(BaseModel):
+    """Request body for batch repository deletion."""
+
+    repo_ids: list[RepoId] = Field(
+        ..., min_length=1, max_length=50, description="List of repo_ids to delete"
+    )
+
+
+class BatchDeleteRepoItem(BaseModel):
+    """Per-repository result in a batch delete operation."""
+
+    repo_id: RepoId
+    deleted: bool
+    error: str | None = None
+    snapshots_deleted: int = 0
+    tree_items_deleted: int = 0
+    blobs_deleted: int = 0
+    blobs_failed: int = 0
+    profile_deleted: bool = False
+
+
+class BatchDeleteRepoResponse(BaseResponse[list[BatchDeleteRepoItem]]):
+    """Response returned immediately when starting a batch delete operation.
+
+    The operation runs in the background. Poll the status endpoint
+    with operation_id to track progress.
+    """
+
+    operation_id: str
+    total_requested: int
+    total_deleted: int
+    total_failed: int
+
+
+class BatchDeleteOperationState(BaseModel):
+    """Full state of a batch delete operation stored in Redis."""
+
+    operation_id: str
+    status: Literal["processing", "completed"]
+    total_requested: int
+    total_deleted: int
+    total_failed: int
+    results: list[BatchDeleteRepoItem]
+    created_at: datetime
+    updated_at: datetime
+
+
+class BatchDeleteStatusResponse(BaseResponse[BatchDeleteOperationState]):
+    """Response for batch delete status query."""

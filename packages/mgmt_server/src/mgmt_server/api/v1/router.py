@@ -4,6 +4,7 @@ from fastapi import APIRouter
 
 from mgmt_server.api.v1.endpoints import (
     auth,
+    batch,
     cache_scan,
     config,
     dashboard,
@@ -18,6 +19,7 @@ from mgmt_server.api.v1.endpoints import (
 api_router = APIRouter()
 
 api_router.include_router(auth.router, prefix="/auth", tags=["Auth"])
+api_router.include_router(batch.router, prefix="/batch", tags=["Batch Operations"])
 api_router.include_router(config.router, prefix="/config", tags=["Config Management"])
 api_router.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
 api_router.include_router(health.router, prefix="/health", tags=["Health"])

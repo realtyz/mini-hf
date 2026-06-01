@@ -16,7 +16,7 @@ from services.task import TaskService
 from sqlalchemy.ext.asyncio import AsyncSession
 from storage import build_blob_key, s3_client
 
-from mgmt_server.api.v1.schemas import DeleteRepoResult
+from mgmt_server.api.v1.schemas import BatchDeleteRepoItem, DeleteRepoResult
 from mgmt_server.core.exceptions import (
     ConflictError,
     NotFoundError,
@@ -180,6 +180,54 @@ class RepoService:
             )
 
         return await self._delete_repository(repo_id, repo_type)
+
+    async def batch_delete_repos(
+        self,
+        repo_ids: list[str],
+    ) -> list[BatchDeleteRepoItem]:
+        """Delete multiple repositories, collecting per-repo results.
+
+        Processes each repo_id independently — failures in one do not
+        prevent deletion of the others.
+        """
+        # Deduplicate while preserving order
+        seen: set[str] = set()
+        unique_ids: list[str] = []
+        for rid in repo_ids:
+            if rid not in seen:
+                seen.add(rid)
+                unique_ids.append(rid)
+
+        results: list[BatchDeleteRepoItem] = []
+        for repo_id in unique_ids:
+            try:
+                result = await self.delete_repo(repo_id)
+                results.append(
+                    BatchDeleteRepoItem(
+                        repo_id=result.repo_id,
+                        deleted=result.deleted,
+                        snapshots_deleted=result.snapshots_deleted,
+                        tree_items_deleted=result.tree_items_deleted,
+                        blobs_deleted=result.blobs_deleted,
+                        blobs_failed=result.blobs_failed,
+                        profile_deleted=result.profile_deleted,
+                    )
+                )
+            except (NotFoundError, ConflictError) as e:
+                results.append(
+                    BatchDeleteRepoItem(repo_id=repo_id, deleted=False, error=e.message)
+                )
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.exception("Unexpected error deleting {}", repo_id)
+                results.append(
+                    BatchDeleteRepoItem(
+                        repo_id=repo_id, deleted=False, error=str(e)
+                    )
+                )
+
+        return results
 
     # ------------------------------------------------------------------
     # Internal delete implementation

@@ -23,6 +23,7 @@ from mgmt_server.services.dashboard_service import DashboardService
 from mgmt_server.services.task_preview_service import TaskPreviewService
 from mgmt_server.services.cache_scan_service import CacheScanService
 from mgmt_server.services.repo_service import RepoService
+from mgmt_server.services.batch_delete_service import BatchDeleteService
 from mgmt_server.services.task_lifecycle_service import TaskLifecycleService
 from mgmt_server.services.token_service import TokenService
 from mgmt_server.services.user_service import UserService
@@ -145,6 +146,13 @@ async def get_cache_scan_service(
     return CacheScanService(db, cache=cache)
 
 
+async def get_batch_delete_service(
+    cache: Annotated[CacheService, Depends(get_cache_service)],
+) -> BatchDeleteService:
+    """Get batch delete service dependency."""
+    return BatchDeleteService(cache=cache)
+
+
 async def get_verify_code_service(
     config_service: Annotated[ConfigService, Depends(get_config_service)],
 ) -> VerifyCodeService:
@@ -175,6 +183,7 @@ TaskPreviewServiceDep = Annotated[TaskPreviewService, Depends(get_task_preview_s
 UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 ConfigServiceDep = Annotated[ConfigService, Depends(get_config_service)]
 CacheScanServiceDep = Annotated[CacheScanService, Depends(get_cache_scan_service)]
+BatchDeleteServiceDep = Annotated[BatchDeleteService, Depends(get_batch_delete_service)]
 ConfigManagementServiceDep = Annotated[
     ConfigManagementService, Depends(get_config_management_service)
 ]

@@ -39,6 +39,11 @@ from mgmt_server.api.v1.schemas.progress import (
     TaskProgressResponse,
 )
 from mgmt_server.api.v1.schemas.repos import (
+    BatchDeleteOperationState,
+    BatchDeleteRepoItem,
+    BatchDeleteRepoRequest,
+    BatchDeleteRepoResponse,
+    BatchDeleteStatusResponse,
     CreateTaskFromCacheRequest,
     CreateTaskFromPreviewRequest,
     DashboardStatsResponse,
@@ -81,6 +86,11 @@ __all__ = [
     "VerifyEmailRequest",
     "VerifyEmailResponse",
     # repos
+    "BatchDeleteOperationState",
+    "BatchDeleteRepoItem",
+    "BatchDeleteRepoRequest",
+    "BatchDeleteRepoResponse",
+    "BatchDeleteStatusResponse",
     "CreateTaskFromCacheRequest",
     "CreateTaskFromPreviewRequest",
     "DashboardStatsResponse",

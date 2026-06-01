@@ -54,19 +54,32 @@ class TaskProgressTracker:
         safe_path = file_path.replace(":", "_").replace(" ", "_")
         return f"{self._files_key}:{safe_path}"
 
-    async def _update_file_data(self, file_path: str, **updates) -> dict | None:
+    async def _update_file_data(self, file_path: str, **updates) -> dict:
         """Read-modify-write a file progress entry.
 
-        Returns the existing data if found (after writing), or None if the key
-        doesn't exist. For methods that need computed fields based on existing
-        data (e.g. downloaded_bytes = total_bytes), use the returned dict.
+        If the key doesn't exist yet (e.g. progress callback fired before
+        batch_start_files completed, or Redis evicted the key), creates a
+        fresh entry with sensible defaults merged with the updates.
         """
         file_key = self._file_key(file_path)
         existing = await self._cache.get(file_key)
         if existing is None:
-            logger.warning("File progress not found: {}", file_path)
-            return None
-        data = {**existing, **updates}
+            logger.debug("File progress key not found, creating: {}", file_path)
+            now = datetime.now(timezone.utc).isoformat()
+            data = {
+                "path": file_path,
+                "status": "pending",
+                "downloaded_bytes": 0,
+                "total_bytes": 0,
+                "progress_percent": 0.0,
+                "speed_bytes_per_sec": 0.0,
+                "started_at": now,
+                "completed_at": None,
+                "error_message": None,
+                **updates,
+            }
+        else:
+            data = {**existing, **updates}
         await self._cache.set(file_key, data, ttl=self.DEFAULT_TTL)
         return data
 
@@ -214,26 +227,23 @@ class TaskProgressTracker:
         )
 
     async def complete_file(self, file_path: str, total_bytes: int) -> None:
-        """Mark a file as completed.
+        """Mark a file download as completed.
 
         Args:
             file_path: Path of the completed file
             total_bytes: Total file size in bytes
         """
         now = datetime.now(timezone.utc).isoformat()
-        file_key = self._file_key(file_path)
-        data = {
-            "path": file_path,
-            "status": "completed",
-            "downloaded_bytes": total_bytes,
-            "total_bytes": total_bytes,
-            "progress_percent": 100.0,
-            "speed_bytes_per_sec": 0.0,
-            "started_at": now,
-            "completed_at": now,
-            "error_message": None,
-        }
-        await self._cache.set(file_key, data, ttl=self.DEFAULT_TTL)
+        await self._update_file_data(
+            file_path,
+            status="completed",
+            downloaded_bytes=total_bytes,
+            total_bytes=total_bytes,
+            progress_percent=100.0,
+            speed_bytes_per_sec=0.0,
+            completed_at=now,
+            error_message=None,
+        )
         await self._cache.increment(self._completed_count_key, 1)
         await self._cache.increment(self._downloaded_bytes_key, total_bytes)
         logger.debug("Completed file: {}", file_path)
@@ -285,19 +295,16 @@ class TaskProgressTracker:
             total_bytes: Total file size in bytes
         """
         now = datetime.now(timezone.utc).isoformat()
-        file_key = self._file_key(file_path)
-        data = {
-            "path": file_path,
-            "status": "completed",
-            "downloaded_bytes": total_bytes,
-            "total_bytes": total_bytes,
-            "progress_percent": 100.0,
-            "speed_bytes_per_sec": 0.0,
-            "started_at": now,
-            "completed_at": now,
-            "error_message": None,
-        }
-        await self._cache.set(file_key, data, ttl=self.DEFAULT_TTL)
+        await self._update_file_data(
+            file_path,
+            status="completed",
+            downloaded_bytes=total_bytes,
+            total_bytes=total_bytes,
+            progress_percent=100.0,
+            speed_bytes_per_sec=0.0,
+            completed_at=now,
+            error_message=None,
+        )
         logger.debug("Completed upload for file: {}", file_path)
 
     async def fail_file_upload(self, file_path: str, error_message: str) -> None:
