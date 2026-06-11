@@ -91,10 +91,9 @@ export function RepositoriesConsole() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(repoListState.search);
-      setRepoListState((prev) => ({ ...prev, page: 1 }));
     }, 300);
     return () => clearTimeout(timer);
-  }, [repoListState.search, setRepoListState]);
+  }, [repoListState.search]);
 
   const { data, isLoading, error, refetch } = useRepoList({
     repoType: repoListState.repoType,
@@ -162,7 +161,7 @@ export function RepositoriesConsole() {
               placeholder="搜索仓库名称..."
               className="pl-9 h-9 bg-muted/30 border-transparent focus:border-primary/30 focus:bg-background"
               value={repoListState.search}
-              onChange={(e) => setRepoListState((prev) => ({ ...prev, search: e.target.value }))}
+              onChange={(e) => setRepoListState((prev) => ({ ...prev, search: e.target.value, page: 1 }))}
             />
           </div>
 
