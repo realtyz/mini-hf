@@ -348,24 +348,30 @@ class RepoService:
         repo_id: str,
         repo_type: str,
         revision: str,
+        commit_hash: str,
         required_file_paths: set[str],
     ) -> tuple[bool, str | None, set[str]]:
         """Check if all required files are already cached for a repository revision.
 
+        Looks up the snapshot by commit_hash regardless of its status
+        (ACTIVE, ARCHIVED, or INACTIVE), so that files from archived
+        snapshots can still be reused.
+
         Returns (all_cached, commit_hash, cached_paths).
         """
-        active_snapshot = await self._snapshot_repo.get_active_snapshot(
+        snapshot = await self._snapshot_repo.get_snapshot_by_repo(
             repo_id=repo_id,
             repo_type=repo_type,
             revision=revision,
+            commit_hash=commit_hash,
         )
 
-        if not active_snapshot:
+        if not snapshot:
             return False, None, set()
 
         cached_paths = await self._tree_repo.get_cached_paths(
-            active_snapshot.commit_hash
+            snapshot.commit_hash
         )
 
         all_cached = required_file_paths.issubset(cached_paths)
-        return all_cached, active_snapshot.commit_hash, cached_paths
+        return all_cached, snapshot.commit_hash, cached_paths

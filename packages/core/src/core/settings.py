@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     HF_SERVER_URL: str
 
     # Redis settings (for worker)
-    REDIS_URL: str
+    REDIS_URL: str = ""
 
     # Admin user settings (for auto-creation on first startup)
     DEFAULT_ADMIN_EMAIL: str = "admin@example.com"

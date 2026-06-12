@@ -333,7 +333,9 @@ class HfDownloadHandler(BaseDownloadHandler):
         """Mark successfully downloaded tree items as cached after a failure.
 
         Called instead of cleanup_new_snapshot on task failure so the
-        partial snapshot and its S3 blobs can be reused on retry.
+        partial snapshot and its S3 blobs can be reused. The snapshot
+        itself is activated by restore_profile so that successfully
+        downloaded files are immediately accessible.
         """
         if not self._successful_paths:
             return
@@ -362,7 +364,15 @@ class HfDownloadHandler(BaseDownloadHandler):
     async def restore_profile(
         self, *, keep_active_on_commit_mismatch: bool = False
     ) -> None:
-        """Restore profile status after a non-successful handler exit."""
+        """Restore profile status after a non-successful handler exit.
+
+        On failure (keep_active_on_commit_mismatch=True): activate the
+        partial snapshot and set profile ACTIVE so that successfully
+        downloaded files are immediately accessible.
+
+        On cancel/pause (keep_active_on_commit_mismatch=False): revert
+        to the old snapshot if one exists, otherwise mark INACTIVE.
+        """
         try:
             async with new_session() as session:
                 profile_repo = HfRepoProfileRepository(session)
@@ -372,33 +382,76 @@ class HfDownloadHandler(BaseDownloadHandler):
                     self.ctx.repo_id, self.ctx.repo_type, self.ctx.revision
                 )
 
-                if existing_snapshot:
+                if keep_active_on_commit_mismatch:
+                    # ── Failure: mark profile & new snapshot ACTIVE ──
                     if (
-                        keep_active_on_commit_mismatch
+                        existing_snapshot
                         and existing_snapshot.commit_hash != self.ctx.new_commit_hash
                     ):
-                        logger.info(
-                            "  -> Old snapshot still active for {}@{}, "
-                            "keeping profile ACTIVE",
-                            self.ctx.repo_id,
-                            self.ctx.revision,
+                        # Archive the old snapshot and activate the new
+                        # (partial) one so downloaded files are accessible.
+                        await snapshot_repo.archive_snapshot(
+                            repo_id=self.ctx.repo_id,
+                            repo_type=self.ctx.repo_type,
+                            revision=self.ctx.revision,
+                            archive_commit_hash=existing_snapshot.commit_hash,
                         )
-                        return
-                    status = RepoStatus.ACTIVE
-                else:
-                    status = RepoStatus.INACTIVE
+                        await snapshot_repo.activate_snapshot(
+                            repo_id=self.ctx.repo_id,
+                            repo_type=self.ctx.repo_type,
+                            revision=self.ctx.revision,
+                            commit_hash=self.ctx.new_commit_hash,
+                        )
+                        logger.info(
+                            "  -> Activated partial snapshot {}@{} on failure, "
+                            "archived old {}",
+                            self.ctx.repo_id,
+                            self.ctx.new_commit_hash[:8],
+                            existing_snapshot.commit_hash[:8],
+                        )
+                    elif existing_snapshot is None:
+                        # First download failed: activate the partial snapshot.
+                        await snapshot_repo.activate_snapshot(
+                            repo_id=self.ctx.repo_id,
+                            repo_type=self.ctx.repo_type,
+                            revision=self.ctx.revision,
+                            commit_hash=self.ctx.new_commit_hash,
+                        )
+                        logger.info(
+                            "  -> Activated partial snapshot {}@{} on failure "
+                            "(first download)",
+                            self.ctx.repo_id,
+                            self.ctx.new_commit_hash[:8],
+                        )
 
-                await profile_repo.set_profile_status(
-                    repo_id=self.ctx.repo_id,
-                    repo_type=self.ctx.repo_type,
-                    status=status,
-                )
-                await session.commit()
-                logger.info(
-                    "  -> Profile status set to {} for {}",
-                    status.value,
-                    self.ctx.repo_id,
-                )
+                    await profile_repo.set_profile_status(
+                        repo_id=self.ctx.repo_id,
+                        repo_type=self.ctx.repo_type,
+                        status=RepoStatus.ACTIVE,
+                    )
+                    await session.commit()
+                    logger.info(
+                        "  -> Profile status set to ACTIVE for {} (failure recovery)",
+                        self.ctx.repo_id,
+                    )
+                else:
+                    # ── Cancel / Pause: revert to old state ──
+                    if existing_snapshot:
+                        status = RepoStatus.ACTIVE
+                    else:
+                        status = RepoStatus.INACTIVE
+
+                    await profile_repo.set_profile_status(
+                        repo_id=self.ctx.repo_id,
+                        repo_type=self.ctx.repo_type,
+                        status=status,
+                    )
+                    await session.commit()
+                    logger.info(
+                        "  -> Profile status set to {} for {}",
+                        status.value,
+                        self.ctx.repo_id,
+                    )
         except Exception as e:
             logger.error("  -> Failed to restore profile status: {}", e)
 

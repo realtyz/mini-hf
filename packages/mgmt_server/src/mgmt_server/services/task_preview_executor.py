@@ -156,6 +156,7 @@ async def check_cache_status_with_fresh_session(
     repo_id: str,
     repo_type: str,
     revision: str,
+    commit_hash: str,
     required_file_paths: set[str],
     task_logger: Any,
 ) -> tuple[bool, str | None, set[str]]:
@@ -168,14 +169,15 @@ async def check_cache_status_with_fresh_session(
     try:
         async with new_session() as session:
             repo_service = RepoService(session, task_service=TaskService(session))
-            all_cached, commit_hash, cached_paths = await repo_service.check_cached_status(
+            all_cached, cached_commit_hash, cached_paths = await repo_service.check_cached_status(
                 repo_id=repo_id,
                 repo_type=repo_type,
                 revision=revision,
+                commit_hash=commit_hash,
                 required_file_paths=required_file_paths,
             )
             await session.commit()
-            return all_cached, commit_hash, cached_paths
+            return all_cached, cached_commit_hash, cached_paths
     except (ConnectionError, OSError, TimeoutError, DatabaseError) as e:
         task_logger.warning("Failed to check cache status: {}", e)
         return False, None, set()
@@ -264,7 +266,7 @@ async def _process_files(
 def _build_result_payloads(
     result: PreviewResult,
     cache_key: str,
-    encoded_token: str,
+    encoded_token: str | None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Build (cache_data, task_result) dicts from PreviewResult.
 
@@ -406,6 +408,7 @@ async def execute_preview_task(
             config.repo_id,
             config.repo_type,
             config.revision,
+            commit_hash,
             processed.required_file_paths,
             task_logger,
         )

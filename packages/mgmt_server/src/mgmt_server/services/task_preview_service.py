@@ -155,23 +155,24 @@ class TaskPreviewService:
         if not is_valid:
             raise ValidationError(error_message)
 
-        # Try local snapshot fast path
+        # Try local snapshot fast path — match by commit_hash regardless of status
         if upstream_sha:
             snapshot_repo = HfRepoSnapshotRepository(self._session)
-            local_active = await snapshot_repo.get_active_snapshot(
-                repo_id=repo_id, repo_type=repo_type, revision=revision
+            local_snapshot = await snapshot_repo.get_snapshot_by_repo(
+                repo_id=repo_id, repo_type=repo_type, revision=revision,
+                commit_hash=upstream_sha,
             )
 
-            if local_active and local_active.commit_hash == upstream_sha:
+            if local_snapshot:
                 tree_repo = HfRepoTreeRepository(self._session)
-                tree_items = await tree_repo.get_file_tree(local_active.commit_hash)
+                tree_items = await tree_repo.get_file_tree(local_snapshot.commit_hash)
 
                 # Guard: fall back to HF API if tree is empty
                 if not tree_items:
                     logger.debug(
                         "[PreviewTask] Local snapshot {} has empty tree_items, "
                         "falling back to HF API",
-                        local_active.commit_hash,
+                        local_snapshot.commit_hash,
                     )
                 else:
                     # Build preview items from local DB
@@ -248,7 +249,7 @@ class TaskPreviewService:
                         access_token=access_token,
                         preview_items=preview_items,
                         all_required_cached=all_required_cached,
-                        cached_commit_hash=local_active.commit_hash
+                        cached_commit_hash=local_snapshot.commit_hash
                         if all_required_cached else None,
                         total_storage=total_storage,
                         total_file_count=total_file_count,

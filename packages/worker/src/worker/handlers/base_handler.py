@@ -309,8 +309,6 @@ class BaseDownloadHandler(
             total_bytes=total_bytes,
         )
 
-        download_paths = {f.path for f in diff.download} if diff else set()
-
         process_ctx = FileProcessContext(
             repo_id=self.ctx.repo_id,
             repo_type=self.ctx.repo_type,
@@ -328,7 +326,6 @@ class BaseDownloadHandler(
                 cancel_event=self._task_control.cancel_event,
                 pause_event=self._task_control.pause_event,
             ),
-            skip_s3_check_paths=download_paths,
         )
         try:
             return await download_and_upload_files(

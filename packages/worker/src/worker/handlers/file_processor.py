@@ -63,7 +63,6 @@ class FileProcessContext:
     url_builder: UrlBuilder
     auth_header_builder: AuthHeaderBuilder
     infra: FileProcessInfrastructure
-    skip_s3_check_paths: set[str] = None  # type: ignore[assignment]
 
 
 async def download_and_upload_files(
@@ -204,22 +203,18 @@ async def _process_single_file(
     s3_key = build_blob_key(ctx.repo_id, ctx.repo_type, blob_id)
 
     # Check if already in S3 (throttled).
-    # Skip for new-download files where the blob is almost certainly absent;
-    # the upload-phase check still guards against duplicate uploads.
-    skip_paths = ctx.skip_s3_check_paths or set()
-    if src_file.path not in skip_paths:
-        async with ctx.infra.check_semaphore:
-            if await ctx.infra.s3.file_exists(s3_key):
-                if ctx.progress_tracker:
-                    await ctx.progress_tracker.complete_file(
-                        src_file.path, src_file.size
-                    )
-                return FileProcessResult(
-                    status="exists",
-                    path=src_file.path,
-                    blob_id=blob_id,
-                    size=src_file.size,
+    async with ctx.infra.check_semaphore:
+        if await ctx.infra.s3.file_exists(s3_key):
+            if ctx.progress_tracker:
+                await ctx.progress_tracker.complete_file(
+                    src_file.path, src_file.size
                 )
+            return FileProcessResult(
+                status="exists",
+                path=src_file.path,
+                blob_id=blob_id,
+                size=src_file.size,
+            )
 
     # Empty files: skip download, upload a zero-byte object
     if src_file.size == 0:
