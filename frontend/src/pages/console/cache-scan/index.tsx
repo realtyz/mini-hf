@@ -28,46 +28,60 @@ import { BatchDeleteResultDialog } from "./BatchDeleteResultDialog";
 import type { BatchDeleteOperationState } from "@/lib/api/types";
 
 // =============================================================================
-// Sub-Components
+// Skeleton — loading state matching the instrument panel layout
 // =============================================================================
 
 function CacheScanSkeleton() {
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-8">
-        {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3">
-            <Skeleton className="size-10 rounded-xl" />
-            <div className="space-y-1.5">
-              <Skeleton className="h-3 w-16" />
-              <Skeleton className="h-5 w-28" />
-              <Skeleton className="h-3 w-20" />
+      {/* Stats skeleton */}
+      <div className="flex items-stretch gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-2xl border border-border/40 bg-card p-5"
+          >
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2.5">
+                <Skeleton className="size-9 rounded-xl" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-3.5 w-28" />
+              <Skeleton className="h-0.5 w-full" />
             </div>
           </div>
         ))}
       </div>
-      <div className="rounded-xl border bg-card p-4">
+
+      {/* Toolbar skeleton */}
+      <div className="rounded-2xl border border-border/40 bg-card p-5">
         <div className="flex items-center gap-3">
           <Skeleton className="h-9 w-36" />
+          <Skeleton className="h-9 w-52" />
           <Skeleton className="h-9 flex-1 max-w-sm" />
           <Skeleton className="h-4 w-20 ml-auto" />
         </div>
       </div>
-      <div className="rounded-xl border bg-card overflow-hidden">
-        <div className="px-6 py-4">
+
+      {/* Table skeleton */}
+      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden">
+        <div className="px-5 py-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <div
               key={i}
-              className="flex items-center gap-4 py-3 border-b border-border/40 last:border-0"
+              className="flex items-center gap-4 py-3.5 border-b border-border/30 last:border-0"
             >
-              <Skeleton className="h-4 w-56" />
-              <Skeleton className="h-5 w-12 rounded-full" />
+              <Skeleton className="size-4 rounded" />
+              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-5 w-12 rounded-lg" />
+              <Skeleton className="h-5 w-10 rounded-lg" />
+              <Skeleton className="h-4 w-12" />
+              <Skeleton className="h-4 w-8" />
               <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-4 w-16 ml-auto" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-4 w-36" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-7 ml-auto" />
             </div>
           ))}
         </div>
@@ -76,6 +90,10 @@ function CacheScanSkeleton() {
   );
 }
 
+// =============================================================================
+// All-Clear State — displayed when scan is complete but no repos found
+// =============================================================================
+
 function AllClearState() {
   return (
     <motion.div
@@ -83,14 +101,16 @@ function AllClearState() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div className="rounded-xl border bg-card overflow-hidden">
-        <div className="flex items-center gap-3 p-4">
-          <div className="size-9 rounded-lg bg-emerald-500/15 flex items-center justify-center">
-            <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+      <div className="relative rounded-2xl border border-emerald-200/60 dark:border-emerald-800/30 bg-emerald-50/30 dark:bg-emerald-950/10 overflow-hidden">
+        {/* Top accent line */}
+        <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-emerald-300/40 to-transparent" />
+        <div className="flex items-center gap-4 p-5">
+          <div className="size-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+            <ShieldCheck className="size-4.5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-sm font-medium">{STRINGS.cacheScanAllClear}</p>
-            <p className="text-xs text-muted-foreground/70">{STRINGS.cacheScanAllClearDesc}</p>
+            <p className="text-sm font-semibold text-foreground">{STRINGS.cacheScanAllClear}</p>
+            <p className="text-[12.5px] text-muted-foreground/60 mt-0.5">{STRINGS.cacheScanAllClearDesc}</p>
           </div>
         </div>
       </div>
@@ -114,6 +134,9 @@ export function CacheScan() {
     thresholdDays, setThresholdDays,
     customDays, setCustomDays,
     actualThreshold,
+    sortField,
+    sortDirection,
+    setSort,
     filteredRepos,
   } = useCacheScanFilters(result);
 
@@ -142,12 +165,12 @@ export function CacheScan() {
 
     if (data.total_failed > 0) {
       toast.warning(STRINGS.cacheScanBatchDeleteCompletedWithFailures(data.total_deleted, data.total_failed));
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setBatchDeleteResult(data);
     } else {
       toast.success(STRINGS.cacheScanBatchDeleteCompleted(data.total_deleted));
     }
     queryClient.invalidateQueries({ queryKey: queryKeys.cacheScan.result() });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBatchOperationId(null);
   }, [batchDeleteStatus.data, queryClient]);
 
@@ -155,7 +178,7 @@ export function CacheScan() {
     triggerScan.mutate(actualThreshold, {
       onSuccess: (data) => {
         toast.success(
-          `扫描完成：发现 ${data.data?.total_cold_repos ?? 0} 个冷仓库，${data.data?.total_orphan_repos ?? 0} 个孤儿仓库，${data.data?.total_untracked_repos ?? 0} 个未追踪仓库`,
+          `扫描完成：发现 ${data.data?.total_tracked_repos ?? 0} 个已追踪仓库，${data.data?.total_untracked_repos ?? 0} 个未追踪仓库`,
         );
       },
       onError: () => {
@@ -249,15 +272,27 @@ export function CacheScan() {
     );
   };
 
-  const hasResults = result && (result.total_cold_repos > 0 || result.total_orphan_repos > 0);
+  const hasResults = result && result.repos.length > 0;
 
   return (
     <motion.div
-      className="flex flex-1 flex-col gap-8"
+      className="relative flex flex-1 flex-col gap-6"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
+      {/* Page background texture — subtle grid */}
+      <div
+        className="pointer-events-none fixed inset-0 -z-10 opacity-[0.015] dark:opacity-[0.03]"
+        style={{
+          backgroundImage:
+            "linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)",
+          backgroundSize: "32px 32px",
+          maskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 30%, transparent 70%)",
+          WebkitMaskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 30%, transparent 70%)",
+        }}
+      />
+
       <CacheScanToolbar
         isAdmin={isAdmin}
         isPending={triggerScan.isPending}
@@ -337,7 +372,7 @@ export function CacheScan() {
                     size="sm"
                     onClick={handleTrigger}
                     disabled={triggerScan.isPending}
-                    className="gap-2 cursor-pointer"
+                    className="gap-2 cursor-pointer rounded-xl"
                   >
                     <RefreshCw className={cn("size-4", triggerScan.isPending && "animate-spin")} />
                     {triggerScan.isPending ? STRINGS.cacheScanScanning : STRINGS.cacheScanTrigger}
@@ -358,8 +393,7 @@ export function CacheScan() {
           >
             <CacheScanStats
               scannedAt={result.scanned_at}
-              totalColdRepos={result.total_cold_repos}
-              totalOrphanRepos={result.total_orphan_repos}
+              totalTrackedRepos={result.total_tracked_repos}
               totalUntrackedRepos={result.total_untracked_repos}
               totalWastedBytes={result.total_wasted_bytes}
             />
@@ -378,6 +412,9 @@ export function CacheScan() {
                 selectedIds={selectedIds}
                 onToggleSelect={handleToggleSelect}
                 onToggleSelectAll={handleToggleSelectAll}
+                sortField={sortField}
+                sortDirection={sortDirection}
+                onSort={setSort}
               />
             )}
           </motion.div>

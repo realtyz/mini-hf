@@ -332,7 +332,13 @@ async def _download_phase(
             temp_dir=settings.INCOMPLETE_FILE_PATH,
             progress_callback=progress_callback,
             progress_interval=settings.WORKER_PROGRESS_INTERVAL,
+            max_retries=settings.WORKER_MAX_RETRIES,
+            retry_base_delay=settings.WORKER_RETRY_BASE_DELAY,
+            retry_max_delay=settings.WORKER_RETRY_MAX_DELAY,
             client=ctx.infra.shared_client,
+            head_check=settings.WORKER_HEAD_CHECK_ENABLED,
+            head_check_timeout=settings.WORKER_HEAD_CHECK_TIMEOUT,
+            disk_space_check=settings.WORKER_DISK_SPACE_CHECK_ENABLED,
         ) as downloader:
             url = ctx.url_builder(
                 repo_id=ctx.repo_id,

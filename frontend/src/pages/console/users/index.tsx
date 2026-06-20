@@ -702,7 +702,7 @@ export function Users() {
 
   return (
     <motion.div
-      className="flex flex-1 flex-col"
+      className="flex flex-1 flex-col gap-6"
       variants={containerVariants}
       initial="hidden"
       animate="visible"

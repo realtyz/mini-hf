@@ -142,7 +142,7 @@ export interface UserPasswordUpdateRequest {
 
 // ==================== Cache Scan ====================
 
-export type ScanCategory = 'cold' | 'orphan' | 'untracked'
+export type ScanCategory = 'tracked' | 'untracked'
 
 export interface RepoScanItem {
   category: ScanCategory
@@ -160,8 +160,7 @@ export interface RepoScanItem {
 export interface ScanResultData {
   scanned_at: string
   threshold_days: number
-  total_cold_repos: number
-  total_orphan_repos: number
+  total_tracked_repos: number
   total_untracked_repos: number
   total_wasted_bytes: number
   repos: RepoScanItem[]

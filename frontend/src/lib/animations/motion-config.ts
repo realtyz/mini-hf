@@ -96,3 +96,26 @@ export const staggerItem: Variants = {
     transition: { duration: prefersReducedMotion ? 0 : 0.2, ease: [0.16, 1, 0.3, 1] },
   },
 }
+
+// ── Instrument panel (cache-scan stats) ──────────────────────────────
+
+export const instrumentContainer: Variants = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: prefersReducedMotion ? 0 : 0.06,
+      delayChildren: prefersReducedMotion ? 0 : 0.1,
+    },
+  },
+}
+
+export const instrumentItem: Variants = {
+  hidden: { opacity: 0, y: prefersReducedMotion ? 0 : 4, scale: 0.99 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: prefersReducedMotion ? 0 : 0.35, ease: [0.25, 0.46, 0.45, 0.94] },
+  },
+}

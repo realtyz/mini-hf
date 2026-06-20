@@ -134,7 +134,7 @@ export function RepositoriesConsole() {
   };
 
   return (
-    <div className="flex flex-1 flex-col animate-fade-in-up">
+    <div className="flex flex-1 flex-col gap-6 animate-fade-in-up">
       <PageHeader
         icon={Database}
         title="仓库管理"

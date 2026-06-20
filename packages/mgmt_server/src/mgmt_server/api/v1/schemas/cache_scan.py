@@ -9,8 +9,7 @@ from mgmt_server.api.v1.schemas.base import BaseResponse
 
 
 class ScanCategory(str, Enum):
-    cold = "cold"
-    orphan = "orphan"
+    tracked = "tracked"
     untracked = "untracked"
 
 
@@ -34,8 +33,7 @@ class ScanResultData(BaseModel):
 
     scanned_at: datetime
     threshold_days: int
-    total_cold_repos: int
-    total_orphan_repos: int = 0
+    total_tracked_repos: int
     total_untracked_repos: int = 0
     total_wasted_bytes: int
     repos: list[RepoScanItem]

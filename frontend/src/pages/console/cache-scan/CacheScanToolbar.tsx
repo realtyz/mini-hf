@@ -7,10 +7,11 @@ import {
   X,
   Filter,
   Trash2,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { PageHeader } from "@/components/shared/PageHeader";
 import {
   Select,
   SelectContent,
@@ -41,7 +42,6 @@ interface CacheScanToolbarProps {
   setThresholdDays: (v: number) => void;
   customDays: string;
   setCustomDays: (v: string) => void;
-  actualThreshold: number;
   onTrigger: () => void;
   onRefresh: () => void;
   typeFilter: string;
@@ -64,7 +64,6 @@ export function CacheScanToolbar({
   setThresholdDays,
   customDays,
   setCustomDays,
-  actualThreshold,
   onTrigger,
   onRefresh,
   typeFilter,
@@ -81,163 +80,154 @@ export function CacheScanToolbar({
 }: CacheScanToolbarProps) {
   return (
     <>
-      {/* Header */}
-      <motion.div
-        variants={itemVariants}
-        className="flex items-center justify-between"
-      >
-        <div className="flex items-center gap-3">
-          <div className="size-10 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-center">
-            <ScanSearch className="size-5 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight">缓存扫描</h1>
-            <p className="text-[13px] text-muted-foreground mt-0.5">
-              检测冷数据仓库和孤儿存储，优化存储空间
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {isAdmin && (
+      {/* Header — powered by shared PageHeader with actions slot */}
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          icon={ScanSearch}
+          title="缓存扫描"
+          subtitle="检测已追踪和未追踪仓库，精准掌握缓存空间使用情况"
+          actions={
             <>
-              <ToggleGroup
-                type="single"
-                value={customDays ? "" : String(thresholdDays)}
-                onValueChange={(v) => {
-                  if (v) {
-                    setCustomDays("");
-                    setThresholdDays(Number(v));
-                  }
-                }}
-                variant="outline"
-                size="sm"
-                spacing={0}
-              >
-                {THRESHOLD_PRESETS.map((d) => (
-                  <ToggleGroupItem
-                    key={d}
-                    value={String(d)}
-                    className="h-8 px-2.5 text-[12px]"
-                  >
-                    {d}天
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-              <Input
-                type="number"
-                min={1}
-                max={365}
-                placeholder="自定义"
-                value={customDays}
-                onChange={(e) => setCustomDays(e.target.value)}
-                className="w-18 h-8 text-[12px]"
-              />
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      disabled={isPending}
-                      className="gap-2 cursor-pointer text-[13px] h-8"
-                    >
-                      <RefreshCw
-                        className={cn("size-3.5", isPending && "animate-spin")}
-                      />
-                      {isPending ? "扫描中..." : "触发扫描"}
-                    </Button>
-                  </motion.div>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>确认触发扫描</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      使用{" "}
-                      <span className="font-semibold text-foreground">
-                        {actualThreshold} 天
-                      </span>{" "}
-                      作为冷数据阈值进行全量扫描，同时检测孤儿存储。此操作可能需要几分钟。
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>取消</AlertDialogCancel>
-                    <AlertDialogAction onClick={onTrigger}>
-                      {isPending ? "扫描中..." : "开始扫描"}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              {isAdmin && (
+                <>
+                  <div className="flex items-center rounded-xl border border-border/60 bg-muted/30 p-1 gap-0.5">
+                    {THRESHOLD_PRESETS.map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => {
+                          setCustomDays("");
+                          setThresholdDays(d);
+                        }}
+                        className={cn(
+                          "px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
+                          thresholdDays === d && !customDays
+                            ? "bg-background text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground",
+                        )}
+                      >
+                        {d}<span className="text-[10px] text-muted-foreground/60 ml-0.5">天</span>
+                      </button>
+                    ))}
+                  </div>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={365}
+                    placeholder="自定义"
+                    value={customDays}
+                    onChange={(e) => setCustomDays(e.target.value)}
+                    className="w-18 h-9 text-[12px] rounded-xl border-border/60"
+                  />
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          disabled={isPending}
+                          className="gap-1.5 cursor-pointer text-[13px] h-9 px-4 rounded-xl font-medium shadow-sm"
+                        >
+                          {isPending ? (
+                            <RefreshCw className="size-3.5 animate-spin" />
+                          ) : (
+                            <Zap className="size-3.5" />
+                          )}
+                          {isPending ? "扫描中..." : "触发扫描"}
+                        </Button>
+                      </motion.div>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>确认触发扫描</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          对 S3 存储进行全量扫描，按仓库归类并标记追踪状态。此操作可能需要几分钟。
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>取消</AlertDialogCancel>
+                        <AlertDialogAction onClick={onTrigger}>
+                          {isPending ? "扫描中..." : "开始扫描"}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
+              )}
+              {selectedCount > 0 && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isBatchDeleting}
+                        className="gap-1.5 cursor-pointer text-[13px] h-9 px-4 rounded-xl font-medium border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/50"
+                      >
+                        <Trash2 className="size-3.5" />
+                        批量删除
+                        <span className="tabular-nums ml-0.5">({selectedCount})</span>
+                      </Button>
+                    </motion.div>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>确认批量删除仓库</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        您即将删除{" "}
+                        <span className="font-semibold text-foreground">
+                          {selectedCount} 个仓库
+                        </span>
+                        。此操作将删除所有缓存文件、版本数据和数据库记录，所有数据将永久丢失！
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel disabled={isBatchDeleting}>取消</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={onBatchDelete}
+                        disabled={isBatchDeleting}
+                        className="border border-red-300 bg-transparent text-red-600 hover:bg-red-50 hover:border-red-400 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/50"
+                      >
+                        确认删除
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onRefresh}
+                  className="gap-1.5 cursor-pointer text-[13px] h-9 px-4 rounded-xl font-medium"
+                >
+                  <RefreshCw className="size-3.5" />
+                  刷新
+                </Button>
+              </motion.div>
             </>
-          )}
-          {selectedCount > 0 && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isBatchDeleting}
-                    className="gap-2 cursor-pointer text-[13px] h-8 border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/50"
-                  >
-                    <Trash2 className="size-3.5" />
-                    批量删除 ({selectedCount})
-                  </Button>
-                </motion.div>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>确认批量删除仓库</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    您即将删除{" "}
-                    <span className="font-semibold text-foreground">
-                      {selectedCount} 个仓库
-                    </span>
-                    。此操作将删除所有缓存文件、版本数据和数据库记录，所有数据将永久丢失！
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isBatchDeleting}>取消</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={onBatchDelete}
-                    disabled={isBatchDeleting}
-                    className="border border-red-300 bg-transparent text-red-600 hover:bg-red-50 hover:border-red-400 dark:border-red-800/60 dark:text-red-400 dark:hover:bg-red-950/50"
-                  >
-                    确认删除
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              className="gap-2 w-24 cursor-pointer text-[13px] h-8"
-            >
-              <RefreshCw className="size-3.5" />
-              刷新
-            </Button>
-          </motion.div>
-        </div>
+          }
+        />
       </motion.div>
 
       {/* Filter Bar */}
       <motion.div
-        className="rounded-xl border bg-card p-4"
+        className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
         variants={itemVariants}
         whileHover={{
-          boxShadow: "0 4px 20px -4px rgba(0, 0, 0, 0.08)",
+          boxShadow: "0 4px 24px -6px rgba(0, 0, 0, 0.06)",
         }}
-        transition={{ duration: 0.2 }}
+        transition={{ duration: 0.25 }}
       >
-        <div className="flex flex-wrap items-center gap-3">
-          <motion.div whileHover={{ scale: 1.01 }} className="relative">
+        {/* Subtle top accent line */}
+        <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
+
+        <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+          <motion.div whileHover={{ scale: 1.01 }}>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-36 h-9">
+              <SelectTrigger className="w-36 h-9 rounded-xl border-border/60 text-[13px]">
                 <div className="flex items-center gap-2">
-                  <Filter className="size-3.5 text-muted-foreground" />
+                  <Filter className="size-3.5 text-muted-foreground/60" />
                   <SelectValue placeholder="类型" />
                 </div>
               </SelectTrigger>
@@ -249,44 +239,59 @@ export function CacheScanToolbar({
             </Select>
           </motion.div>
 
-          <ToggleGroup
-            type="single"
-            value={categoryFilter}
-            onValueChange={(v) => {
-              if (v) setCategoryFilter(v as "all" | ScanCategory);
-            }}
-            variant="outline"
-            size="sm"
-            spacing={0}
-          >
-            <ToggleGroupItem value="all" className="h-8 px-2.5 text-[12px]">
+          <div className="flex items-center rounded-xl border border-border/60 bg-muted/30 p-1 gap-0.5">
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("all")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
+                categoryFilter === "all"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
               全部
-            </ToggleGroupItem>
-            <ToggleGroupItem value="cold" className="h-8 px-2.5 text-[12px]">
-              冷仓库
-            </ToggleGroupItem>
-            <ToggleGroupItem value="orphan" className="h-8 px-2.5 text-[12px]">
-              孤儿
-            </ToggleGroupItem>
-            <ToggleGroupItem value="untracked" className="h-8 px-2.5 text-[12px]">
+            </button>
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("tracked")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
+                categoryFilter === "tracked"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              已追踪
+            </button>
+            <button
+              type="button"
+              onClick={() => setCategoryFilter("untracked")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
+                categoryFilter === "untracked"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
               未追踪
-            </ToggleGroupItem>
-          </ToggleGroup>
+            </button>
+          </div>
 
           <div className="relative flex-1 min-w-50 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
             <Input
               type="search"
               placeholder="搜索仓库 ID 或标签..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+              className="pl-9.5 h-9 rounded-xl border-border/60 text-[13px] transition-all duration-200 focus:ring-2 focus:ring-primary/15"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground hover:text-foreground transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer"
               >
                 <X className="size-3.5" />
               </button>
@@ -299,19 +304,18 @@ export function CacheScanToolbar({
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className="ml-auto text-sm text-muted-foreground"
+              transition={{ duration: 0.15 }}
+              className="ml-auto flex items-center gap-1.5 text-[13px] text-muted-foreground/60"
             >
-              共{" "}
-              <span className="font-medium text-foreground">
-                {(filteredCount).toLocaleString()}
-              </span>{" "}
+              <span className="font-mono font-medium tabular-nums text-foreground/80">
+                {filteredCount.toLocaleString()}
+              </span>
               个仓库
               {filteredCount !== totalCount && (
                 <>
-                  {" "}
-                  /{" "}
-                  <span className="font-medium text-foreground">
-                    {(totalCount).toLocaleString()}
+                  <span className="text-muted-foreground/30">/</span>
+                  <span className="font-mono tabular-nums text-muted-foreground/40">
+                    {totalCount.toLocaleString()}
                   </span>
                 </>
               )}

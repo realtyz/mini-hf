@@ -30,7 +30,7 @@ async def get_trending(cache: CacheServiceDep) -> TrendingListResponse:
         return TrendingListResponse(**cached)
 
     try:
-        async with AsyncClient() as client:
+        async with AsyncClient(follow_redirects=True) as client:
             response = await client.get(HF_TRENDING_URL, params=HF_TRENDING_PARAMS)
             response.raise_for_status()
             raw = response.json()
