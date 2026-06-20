@@ -22,6 +22,7 @@ from mgmt_server.services.config_management_service import ConfigManagementServi
 from mgmt_server.services.dashboard_service import DashboardService
 from mgmt_server.services.task_preview_service import TaskPreviewService
 from mgmt_server.services.cache_scan_service import CacheScanService
+from mgmt_server.services.repair_service import RepairService
 from mgmt_server.services.repo_service import RepoService
 from mgmt_server.services.batch_delete_service import BatchDeleteService
 from mgmt_server.services.task_lifecycle_service import TaskLifecycleService
@@ -154,6 +155,13 @@ async def get_batch_delete_service(
     return BatchDeleteService(cache=cache)
 
 
+async def get_repair_service(
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
+) -> RepairService:
+    """Get repair service dependency (admin-only)."""
+    return RepairService(db)
+
+
 async def get_verify_code_service(
     config_service: Annotated[ConfigService, Depends(get_config_service)],
 ) -> VerifyCodeService:
@@ -185,6 +193,7 @@ UserServiceDep = Annotated[UserService, Depends(get_user_service)]
 ConfigServiceDep = Annotated[ConfigService, Depends(get_config_service)]
 CacheScanServiceDep = Annotated[CacheScanService, Depends(get_cache_scan_service)]
 BatchDeleteServiceDep = Annotated[BatchDeleteService, Depends(get_batch_delete_service)]
+RepairServiceDep = Annotated[RepairService, Depends(get_repair_service)]
 ConfigManagementServiceDep = Annotated[
     ConfigManagementService, Depends(get_config_management_service)
 ]

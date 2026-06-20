@@ -13,10 +13,13 @@ import { toast } from 'sonner'
 import { cn, formatCompactNumber } from '@/lib/utils'
 import { StatCard } from '@/components/shared/StatCard'
 import { getRepoStatusLabel, getRepoStatusDotClass, REPO_STATUS_CONFIG } from '@/lib/constants/repo'
-import type { RepoStatus } from '@/lib/api/types'
 import { DeleteRepoDialog } from './DeleteRepoDialog'
 import { SnapshotList } from './SnapshotList'
 import { RepositoryDetailSkeleton } from './RepositoryDetailSkeleton'
+import { StatusEditDialog } from '@/components/shared/StatusEditDialog'
+import { useSetProfileStatus } from '@/hooks/api/use-repair-mutations'
+import { useAuthStore } from '@/stores/auth-store'
+import type { RepoStatus } from '@/lib/api/types'
 
 async function fetchRepoDetail(repoId: string, repoType: string): Promise<RepoDetailResponse> {
   const endpoint = repoType === 'model'
@@ -30,10 +33,20 @@ interface RepositoryDetailProps {
   showActions?: boolean
 }
 
+const PROFILE_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'active', label: '活跃' },
+  { value: 'inactive', label: '不完整' },
+  { value: 'updating', label: '更新中' },
+  { value: 'cleaning', label: '清理中' },
+  { value: 'cleaned', label: '已清理' },
+]
+
 export function RepositoryDetail({ backPath = '/console/repositories', showActions = true }: RepositoryDetailProps) {
   const [searchParams] = useSearchParams()
   const repoId = searchParams.get('repoId') || ''
   const repoType = searchParams.get('type') || 'model'
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.role === 'admin'
 
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.repos.detail(repoId),
@@ -43,6 +56,8 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
 
   const repo = data?.data.profile
   const snapshots = data?.data.snapshots || []
+
+  const setProfileStatus = useSetProfileStatus()
 
   const navigate = useNavigate()
   const [isLeaving, setIsLeaving] = useState(false)
@@ -145,6 +160,21 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
                   <span className={cn("size-1.5 rounded-full mr-1 shrink-0", getRepoStatusDotClass(repo.status as RepoStatus))} />
                   {getRepoStatusLabel(repo.status as RepoStatus)}
                 </Badge>
+                {isAdmin && (
+                  <StatusEditDialog
+                    currentStatus={repo.status}
+                    options={PROFILE_STATUS_OPTIONS}
+                    entityLabel="仓库状态"
+                    isPending={setProfileStatus.isPending}
+                    onConfirm={(newStatus) =>
+                      setProfileStatus.mutate({
+                        repoId,
+                        repo_type: repo.repo_type as 'model' | 'dataset',
+                        status: newStatus as RepoStatus,
+                      })
+                    }
+                  />
+                )}
               </div>
             </div>
           </div>

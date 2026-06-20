@@ -6,15 +6,27 @@ import { RepoTreeViewer } from '@/components/repo/RepoTreeViewer'
 import { formatBytes } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { SNAPSHOT_STATUS_CONFIG, type SnapshotStatusType } from '@/lib/constants/repo'
-import type { RepoDetailResponse } from '@/lib/api/types'
+import type { RepoDetailResponse, SnapshotStatus } from '@/lib/api/types'
+import { StatusEditDialog } from '@/components/shared/StatusEditDialog'
+import { useSetSnapshotStatus } from '@/hooks/api/use-repair-mutations'
+import { useAuthStore } from '@/stores/auth-store'
 
 interface SnapshotListProps {
   snapshots: RepoDetailResponse['data']['snapshots']
   repoId: string
 }
 
+const SNAPSHOT_STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: 'active', label: '活跃' },
+  { value: 'inactive', label: '未完成' },
+  { value: 'archived', label: '已归档' },
+]
+
 export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
   const [expandedSnapshots, setExpandedSnapshots] = useState<Set<number>>(new Set())
+  const user = useAuthStore((s) => s.user)
+  const isAdmin = user?.role === 'admin'
+  const setSnapshotStatus = useSetSnapshotStatus()
 
   const toggleSnapshot = (snapshotId: number) => {
     setExpandedSnapshots((prev) => {
@@ -87,6 +99,21 @@ export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
                       <Badge className={statusConfig.className}>
                         {statusConfig.label}
                       </Badge>
+                      {isAdmin && (
+                        <StatusEditDialog
+                          currentStatus={snapshot.status}
+                          options={SNAPSHOT_STATUS_OPTIONS}
+                          entityLabel="版本状态"
+                          isPending={setSnapshotStatus.isPending}
+                          onConfirm={(newStatus) =>
+                            setSnapshotStatus.mutate({
+                              snapshotId: snapshot.id,
+                              repoId,
+                              status: newStatus as SnapshotStatus,
+                            })
+                          }
+                        />
+                      )}
                     </div>
                   </div>
                   {isExpanded && (

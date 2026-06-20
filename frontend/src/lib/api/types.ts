@@ -331,7 +331,7 @@ export interface RepoListParams {
 
 // ==================== 仓库详情 ====================
 
-export type SnapshotStatus = 'active' | 'archived'
+export type SnapshotStatus = 'active' | 'inactive' | 'archived'
 
 export interface RepoSnapshot {
   id: number
@@ -744,3 +744,27 @@ export interface BatchDeleteOperationState {
 }
 
 export type BatchDeleteStatusResponse = ApiResponse<BatchDeleteOperationState>
+
+// ==================== Admin Repair ====================
+
+export interface SetProfileStatusRequest {
+  repo_type: 'model' | 'dataset'
+  status: RepoStatus
+}
+
+export interface SetSnapshotStatusRequest {
+  status: SnapshotStatus
+}
+
+export interface RepairResultData {
+  repo_id?: string | null
+  repo_type?: string | null
+  snapshot_id?: number | null
+  revision?: string | null
+  commit_hash?: string | null
+  previous_status: string
+  new_status: string
+  auto_archived_snapshot_id?: number | null
+}
+
+export type RepairResponse = ApiResponse<RepairResultData>

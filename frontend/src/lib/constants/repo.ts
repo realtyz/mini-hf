@@ -47,6 +47,10 @@ export const SNAPSHOT_STATUS_CONFIG = {
     label: '活跃',
     className: 'bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300',
   },
+  inactive: {
+    label: '未完成',
+    className: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
+  },
   archived: {
     label: '已归档',
     className: 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400',

@@ -91,6 +91,11 @@ const endpoints = {
     announcements: '/system/announcements',
     announcementsAdmin: '/system/announcements/admin',
   },
+
+  adminRepair: {
+    profileStatus: (repoId: string) => `/admin/repair/profile/${encodeURIComponent(repoId)}/status`,
+    snapshotStatus: (snapshotId: number) => `/admin/repair/snapshot/${snapshotId}/status`,
+  },
 } as const
 
 export default endpoints

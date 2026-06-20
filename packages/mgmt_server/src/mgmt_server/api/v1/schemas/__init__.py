@@ -33,6 +33,12 @@ from mgmt_server.api.v1.schemas.configs import (
     SMTPTestRequest,
     SMTPTestResponse,
 )
+from mgmt_server.api.v1.schemas.repair import (
+    RepairResponse,
+    RepairResultData,
+    SetProfileStatusRequest,
+    SetSnapshotStatusRequest,
+)
 from mgmt_server.api.v1.schemas.progress import (
     FileProgressItem,
     TaskProgressData,
@@ -123,6 +129,11 @@ __all__ = [
     "SMTPSaveRequest",
     "SMTPTestRequest",
     "SMTPTestResponse",
+    # repair
+    "RepairResponse",
+    "RepairResultData",
+    "SetProfileStatusRequest",
+    "SetSnapshotStatusRequest",
     # progress
     "FileProgressItem",
     "TaskProgressData",
