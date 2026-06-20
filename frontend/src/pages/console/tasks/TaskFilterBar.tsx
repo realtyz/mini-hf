@@ -1,4 +1,4 @@
-import { Search, Filter } from "lucide-react";
+import { Search, X, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -50,20 +50,25 @@ export function TaskFilterBar({
 }: TaskFilterBarProps) {
   return (
     <motion.div
-      className="rounded-xl border bg-card p-4 mb-6"
+      className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
       variants={itemVariants}
-      whileHover={{ boxShadow: "0 4px 20px -4px rgba(0, 0, 0, 0.08)" }}
-      transition={{ duration: 0.2 }}
+      whileHover={{
+        boxShadow: "0 4px 24px -6px rgba(0, 0, 0, 0.06)",
+      }}
+      transition={{ duration: 0.25 }}
     >
-      <div className="flex flex-wrap items-center gap-3">
-        <motion.div whileHover={{ scale: 1.01 }} className="relative">
+      {/* Subtle top accent line */}
+      <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
+
+      <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+        <motion.div whileHover={{ scale: 1.01 }}>
           <Select
             value={status}
             onValueChange={(v) => onStatusChange(v as TaskStatus | "all")}
           >
-            <SelectTrigger className="w-36 h-9">
+            <SelectTrigger className="w-36 h-9 rounded-xl border-border/60 text-[13px]">
               <div className="flex items-center gap-2">
-                <Filter className="size-3.5 text-muted-foreground" />
+                <Filter className="size-3.5 text-muted-foreground/60" />
                 <SelectValue placeholder="状态筛选" />
               </div>
             </SelectTrigger>
@@ -88,14 +93,23 @@ export function TaskFilterBar({
         </motion.div>
 
         <div className="relative flex-1 min-w-50 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
           <Input
             type="search"
             placeholder="搜索仓库名称..."
-            className="pl-9 h-9 transition-all duration-200 focus:ring-2 focus:ring-primary/20"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
+            className="pl-9.5 h-9 rounded-xl border-border/60 text-[13px] transition-all duration-200 focus:ring-2 focus:ring-primary/15"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => onSearchChange("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer"
+            >
+              <X className="size-3.5" />
+            </button>
+          )}
         </div>
 
         <AnimatePresence mode="wait">
@@ -105,9 +119,12 @@ export function TaskFilterBar({
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
-              className="ml-auto text-sm text-muted-foreground"
+              transition={{ duration: 0.15 }}
+              className="ml-auto flex items-center gap-1.5 text-[13px] text-muted-foreground/60"
             >
-              共 <span className="font-medium text-foreground">{total}</span>{" "}
+              <span className="font-mono font-medium tabular-nums text-foreground/80">
+                {total.toLocaleString()}
+              </span>
               个任务
             </motion.div>
           )}

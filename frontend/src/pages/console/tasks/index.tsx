@@ -169,9 +169,12 @@ export function Tasks() {
       />
 
       <motion.div
-        className="rounded-xl border bg-card overflow-hidden"
+        className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
         variants={itemVariants}
       >
+        {/* Subtle top accent line */}
+        <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
+
         <AnimatePresence mode="wait">
           {isLoading ? (
             <motion.div
@@ -216,30 +219,46 @@ export function Tasks() {
             >
               <Table>
                 <TableHeader>
-                  <TableRow className="bg-muted/50 hover:bg-muted/50 border-b border-border/50">
-                    <TableHead className="w-12 pl-4 text-center font-semibold text-xs">
-                      ID
+                  <TableRow className="bg-muted/30 hover:bg-muted/30 border-b border-border/50">
+                    <TableHead className="w-12 pl-5 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        ID
+                      </span>
                     </TableHead>
-                    <TableHead className="w-80 font-semibold text-xs">
-                      仓库
+                    <TableHead className="w-80 pl-4">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        仓库
+                      </span>
                     </TableHead>
-                    <TableHead className="w-24 text-center font-semibold text-xs">
-                      版本
+                    <TableHead className="w-24 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        版本
+                      </span>
                     </TableHead>
-                    <TableHead className="w-24 text-center font-semibold text-xs">
-                      类型
+                    <TableHead className="w-24 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        类型
+                      </span>
                     </TableHead>
-                    <TableHead className="w-28 text-center font-semibold text-xs">
-                      状态
+                    <TableHead className="w-28 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        状态
+                      </span>
                     </TableHead>
-                    <TableHead className="w-40 text-center font-semibold text-xs">
-                      需求大小 / 总大小
+                    <TableHead className="w-40 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        需求大小 / 总大小
+                      </span>
                     </TableHead>
-                    <TableHead className="w-36 text-center font-semibold text-xs">
-                      创建时间
+                    <TableHead className="w-36 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        创建时间
+                      </span>
                     </TableHead>
-                    <TableHead className="w-16 pr-4 text-center font-semibold text-xs">
-                      操作
+                    <TableHead className="w-16 pr-5 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        操作
+                      </span>
                     </TableHead>
                   </TableRow>
                 </TableHeader>

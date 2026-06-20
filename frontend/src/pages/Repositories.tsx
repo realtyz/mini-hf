@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search,
+  X,
   RefreshCw,
   Smile,
   Globe,
@@ -32,6 +33,8 @@ import type {
 } from "@/lib/api/types";
 import { RepoGrid } from "@/components/repo";
 import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
+import { motion } from "framer-motion";
+import { itemVariants } from "@/lib/animations/motion-config";
 
 const PAGE_SIZE = 16;
 
@@ -170,40 +173,69 @@ export function Repositories() {
         </Tabs>
 
         {/* 搜索和筛选 */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-50 max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="搜索仓库名称..."
-              className="pl-8"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+        <motion.div
+          className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
+          variants={itemVariants}
+          whileHover={{
+            boxShadow: "0 4px 24px -6px rgba(0, 0, 0, 0.06)",
+          }}
+          transition={{ duration: 0.25 }}
+        >
+          {/* Subtle top accent line */}
+          <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
+
+          <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+            <div className="relative flex-1 min-w-50 max-w-sm">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
+              <Input
+                type="search"
+                placeholder="搜索仓库名称..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="pl-9.5 h-9 rounded-xl border-border/60 text-[13px] transition-all duration-200 focus:ring-2 focus:ring-primary/15"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer"
+                >
+                  <X className="size-3.5" />
+                </button>
+              )}
+            </div>
+
+            <Select value={repoType} onValueChange={handleRepoTypeChange}>
+              <SelectTrigger className="w-30 h-9 rounded-xl border-border/60 text-[13px]">
+                <SelectValue placeholder="类型筛选" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">全部类型</SelectItem>
+                <SelectItem value="model">模型</SelectItem>
+                <SelectItem value="dataset">数据集</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+              <SelectTrigger className="w-30 h-9 rounded-xl border-border/60 text-[13px]">
+                <SelectValue placeholder="状态筛选" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">活跃</SelectItem>
+                <SelectItem value="inactive">不完整</SelectItem>
+                <SelectItem value="updating">更新中</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Count */}
+            <div className="ml-auto flex items-center gap-1.5 text-[13px] text-muted-foreground/60">
+              <span className="font-mono font-medium tabular-nums text-foreground/80">
+                {total.toLocaleString()}
+              </span>
+              个仓库
+            </div>
           </div>
-
-          <Select value={repoType} onValueChange={handleRepoTypeChange}>
-            <SelectTrigger className="w-30">
-              <SelectValue placeholder="类型筛选" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">全部类型</SelectItem>
-              <SelectItem value="model">模型</SelectItem>
-              <SelectItem value="dataset">数据集</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
-            <SelectTrigger className="w-30">
-              <SelectValue placeholder="状态筛选" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">活跃</SelectItem>
-              <SelectItem value="inactive">不完整</SelectItem>
-              <SelectItem value="updating">更新中</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        </motion.div>
       </div>
 
       {/* 卡片列表 */}

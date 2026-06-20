@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { TaskResponse } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { useNavigate } from "react-router";
@@ -85,29 +86,31 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="rounded-xl border bg-card shadow-sm overflow-hidden"
+      className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
     >
+      {/* Subtle top accent line */}
+      <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
+
       {/* Search bar */}
-      <div className="border-b px-4 py-3 bg-muted/20">
+      <div className="border-b border-border/30 px-5 py-3 bg-muted/20">
         <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
           <Input
             type="search"
             placeholder="搜索仓库名称..."
-            className="pl-9 pr-9 h-9 bg-background transition-colors focus-visible:ring-2"
+            className="pl-9.5 pr-9 h-9 rounded-xl border-border/60 text-[13px] bg-background transition-all duration-200 focus:ring-2 focus:ring-primary/15"
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
           />
           {search && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 p-0 hover:bg-muted"
+            <button
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer"
               onClick={() => handleSearch("")}
               aria-label="清除搜索"
             >
-              <X className="h-3.5 w-3.5" />
-            </Button>
+              <X className="size-3.5" />
+            </button>
           )}
         </div>
       </div>
@@ -146,15 +149,47 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
           >
             <Table>
               <TableHeader>
-                <TableRow className="hover:bg-transparent bg-muted/30">
-                  <TableHead className="w-64 font-semibold text-xs">仓库</TableHead>
-                  <TableHead className="w-28 text-center font-semibold text-xs">来源</TableHead>
-                  <TableHead className="w-24 text-center font-semibold text-xs">类型</TableHead>
-                  <TableHead className="w-28 text-center font-semibold text-xs">版本</TableHead>
-                  <TableHead className="w-24 text-center font-semibold text-xs">状态</TableHead>
-                  <TableHead className="w-24 text-center font-semibold text-xs">耗时</TableHead>
-                  <TableHead className="w-32 text-center font-semibold text-xs">完成时间</TableHead>
-                  <TableHead className="w-16 text-center font-semibold text-xs">操作</TableHead>
+                <TableRow className="bg-muted/30 hover:bg-muted/30 border-b border-border/50">
+                  <TableHead className="w-64 pl-5">
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                      仓库
+                    </span>
+                  </TableHead>
+                  <TableHead className="w-28 text-center">
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                      来源
+                    </span>
+                  </TableHead>
+                  <TableHead className="w-24 text-center">
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                      类型
+                    </span>
+                  </TableHead>
+                  <TableHead className="w-28 text-center">
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                      版本
+                    </span>
+                  </TableHead>
+                  <TableHead className="w-24 text-center">
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                      状态
+                    </span>
+                  </TableHead>
+                  <TableHead className="w-24 text-center">
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                      耗时
+                    </span>
+                  </TableHead>
+                  <TableHead className="w-36 text-center">
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                      完成时间
+                    </span>
+                  </TableHead>
+                  <TableHead className="w-16 pr-5 text-center">
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                      操作
+                    </span>
+                  </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -164,70 +199,75 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.2, delay: index * 0.02 }}
-                    className="h-12 hover:bg-muted/40 transition-colors duration-150 group border-b last:border-b-0"
+                    className="hover:bg-muted/20 transition-all duration-150 group border-b border-border/30 last:border-0"
                   >
-                    <TableCell>
+                    <TableCell className="py-3 pl-5">
                       <span
-                        className="truncate max-w-50 block group-hover:text-primary transition-colors"
+                        className="truncate max-w-60 block text-[13px] font-medium text-foreground/80 group-hover:text-primary transition-colors"
                         title={task.repo_id}
                       >
                         {task.repo_id}
                       </span>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="py-3 text-center">
                       {task.source === "huggingface" ? (
-                        <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-5">
+                        <Badge variant="warning" className="text-[11px] font-medium rounded-lg px-2.5 py-0.5">
                           <Smile className="mr-1 h-3 w-3" />
                           HuggingFace
                         </Badge>
                       ) : (
-                        <Badge variant="info" className="text-[10px] px-1.5 py-0 h-5">
+                        <Badge variant="info" className="text-[11px] font-medium rounded-lg px-2.5 py-0.5">
                           <Globe className="mr-1 h-3 w-3" />
                           ModelScope
                         </Badge>
                       )}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="py-3 text-center">
                       <Badge
                         variant={task.repo_type === "model" ? "default" : "secondary"}
-                        className="w-18 text-[10px] px-1.5 py-0 h-5 justify-center"
+                        className={cn(
+                          "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
+                          task.repo_type === "model"
+                            ? "bg-slate-100 text-slate-600 border-slate-200/50 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700/50"
+                            : "bg-amber-50 text-amber-700 border-amber-200/50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800/40",
+                        )}
                       >
                         {task.repo_type === "model" ? (
-                          <Box className="mr-0.5 h-2.5 w-2.5" />
+                          <Box className="mr-1 h-2.5 w-2.5" />
                         ) : (
-                          <Database className="mr-0.5 h-2.5 w-2.5" />
+                          <Database className="mr-1 h-2.5 w-2.5" />
                         )}
                         {task.repo_type === "model" ? "模型" : "数据集"}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <span className="font-mono text-xs">{task.revision}</span>
+                    <TableCell className="py-3 text-center">
+                      <span className="font-mono text-[12.5px] text-muted-foreground">{task.revision}</span>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="py-3 text-center">
                       <TaskStatusBadge status={task.status} />
                     </TableCell>
-                    <TableCell className="text-center text-xs text-muted-foreground tabular-nums">
+                    <TableCell className="py-3 text-center text-[13px] text-muted-foreground tabular-nums">
                       {task.started_at && task.completed_at
                         ? formatDuration(task.started_at, task.completed_at)
                         : "-"}
                     </TableCell>
-                    <TableCell className="text-center text-xs text-muted-foreground tabular-nums">
+                    <TableCell className="py-3 text-center text-[13px] text-muted-foreground/60 tabular-nums">
                       {task.completed_at
                         ? format(new Date(task.completed_at), "MM-dd HH:mm", {
                           locale: zhCN,
                         })
                         : "-"}
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="py-3 pr-5 text-center">
                       {task.status === "failed" || task.status === "cancelled" ? (
                         <Button
                           variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 p-0"
+                          size="icon"
+                          className="size-7 opacity-0 group-hover:opacity-100 transition-all duration-150 rounded-lg"
                           onClick={() => setRetryTask(task)}
                           title="重试任务"
                         >
-                          <RotateCcw className="h-3.5 w-3.5" />
+                          <RotateCcw className="size-3.5 text-muted-foreground/60" />
                         </Button>
                       ) : null}
                     </TableCell>
@@ -241,11 +281,11 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
 
       {/* Footer: Pagination + Stats */}
       {(totalPages > 1 || filteredTasks.length > 0) && (
-        <div className="flex items-center justify-between border-t px-4 py-3 bg-muted/20">
-          <p className="text-xs text-muted-foreground">
-            共 <span className="font-medium text-foreground">{filteredTasks.length}</span> 个任务
+        <div className="flex items-center justify-between border-t border-border/30 px-5 py-3 bg-muted/20">
+          <p className="text-[13px] text-muted-foreground/60">
+            共 <span className="font-mono font-medium tabular-nums text-foreground/80">{filteredTasks.length}</span> 个任务
             {search && tasks.length !== filteredTasks.length && (
-              <span className="text-muted-foreground">（共 {tasks.length} 个）</span>
+              <span className="text-muted-foreground/40">（共 {tasks.length} 个）</span>
             )}
           </p>
           {totalPages > 1 && (

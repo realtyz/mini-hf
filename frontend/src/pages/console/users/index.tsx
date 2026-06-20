@@ -5,11 +5,12 @@ import { debounce } from "lodash-es";
 import {
   RefreshCw,
   Plus,
-  MoreHorizontal,
+  GripHorizontal,
   Pencil,
   KeyRound,
   Trash2,
   Search,
+  X,
   Users2,
   Shield,
   User,
@@ -67,7 +68,9 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { ErrorState } from "@/components/shared/ErrorState";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   useUsers,
   useCreateUser,
@@ -78,17 +81,6 @@ import {
 import type { UserResponse, UserRole } from "@/lib/api/types";
 
 const PAGE_SIZE = 10;
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Animation Variants
-// ═══════════════════════════════════════════════════════════════════════════════
-
-
-const tableRowVariants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: 20 },
-};
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Helpers
@@ -133,19 +125,38 @@ function avatarColor(id: number) {
 // Loading Skeleton Component
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function TableSkeleton() {
+function UsersTableSkeleton() {
   return (
-    <div className="space-y-3">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <div key={i} className="flex items-center gap-4 p-3">
-          <Skeleton className="h-8 w-8 rounded-full" />
-          <Skeleton className="h-4 w-24" />
-          <Skeleton className="h-4 w-40" />
-          <Skeleton className="h-4 w-20" />
-          <Skeleton className="h-4 w-16" />
-          <Skeleton className="h-4 w-28" />
+    <div className="space-y-6">
+      {/* Search bar skeleton */}
+      <div className="rounded-2xl border border-border/40 bg-card p-5">
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-9 flex-1 max-w-sm" />
+          <Skeleton className="h-4 w-20 ml-auto" />
         </div>
-      ))}
+      </div>
+
+      {/* Table skeleton */}
+      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden">
+        <div className="px-5 py-4">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-4 py-3.5 border-b border-border/30 last:border-0"
+            >
+              <Skeleton className="h-4 w-8" />
+              <Skeleton className="size-9 rounded-full shrink-0" />
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-5 w-14 rounded-lg" />
+              <Skeleton className="h-5 w-10 rounded-lg" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="size-7 ml-auto" />
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -612,30 +623,56 @@ function EmptyState({
   onCreate: () => void;
 }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.3 }}
-      className="flex h-80 flex-col items-center justify-center rounded-2xl border border-dashed bg-muted/20"
-    >
-      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
-        <Users2 className="h-8 w-8 text-muted-foreground/50" />
+    <div className="relative rounded-2xl border border-border/60 bg-card overflow-hidden">
+      {/* Top accent line */}
+      <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
+      <div className="flex h-72 items-center justify-center">
+        <div className="text-center">
+          <motion.div
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+            className="relative mx-auto w-fit mb-5"
+          >
+            <div className="size-16 rounded-2xl bg-muted/50 flex items-center justify-center">
+              <Users2 className="size-6 text-muted-foreground/30" />
+            </div>
+          </motion.div>
+          <motion.p
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.15 }}
+            className="text-sm font-medium"
+          >
+            {search ? "未找到匹配用户" : "暂无用户"}
+          </motion.p>
+          <motion.p
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-sm text-muted-foreground/70 mt-1"
+          >
+            {search
+              ? "尝试使用其他关键词搜索，或清除搜索条件查看全部用户"
+              : "开始添加第一个用户来管理系统访问权限"}
+          </motion.p>
+          {!search && (
+            <motion.div
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Button size="sm" className="mt-4 rounded-xl gap-2" onClick={onCreate}>
+                <Plus className="size-3.5" />
+                新建用户
+              </Button>
+            </motion.div>
+          )}
+        </div>
       </div>
-      <h3 className="mt-4 text-lg font-medium">
-        {search ? "未找到匹配用户" : "暂无用户"}
-      </h3>
-      <p className="mt-1 max-w-xs text-center text-sm text-muted-foreground">
-        {search
-          ? "尝试使用其他关键词搜索，或清除搜索条件查看全部用户"
-          : "开始添加第一个用户来管理系统访问权限"}
-      </p>
-      {!search && (
-        <Button size="sm" className="mt-4" onClick={onCreate}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          新建用户
-        </Button>
-      )}
-    </motion.div>
+    </div>
   );
 }
 
@@ -739,214 +776,285 @@ export function Users() {
       </motion.div>
 
       {/* Search Bar */}
-      <motion.div variants={itemVariants} className="mb-6">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="搜索姓名或邮箱..."
-            className="pl-10"
-            value={search}
-            onChange={(e) => handleSearch(e.target.value)}
-          />
-          {search && (
-            <motion.button
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.8 }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              onClick={() => handleSearch("")}
+      <motion.div
+        className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
+        variants={itemVariants}
+      >
+        {/* Top accent line */}
+        <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
+        <div className="flex items-center gap-3 px-5 py-4">
+          <div className="relative flex-1 min-w-50 max-w-sm">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
+            <Input
+              type="search"
+              placeholder="搜索姓名或邮箱..."
+              value={search}
+              onChange={(e) => handleSearch(e.target.value)}
+              className="pl-9.5 h-9 rounded-xl border-border/60 text-[13px] transition-all duration-200 focus:ring-2 focus:ring-primary/15"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => handleSearch("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={`${totalItems}-${emailSearch}`}
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              transition={{ duration: 0.15 }}
+              className="ml-auto flex items-center gap-1.5 text-[13px] text-muted-foreground/60"
             >
-              <AlertCircle className="h-4 w-4" />
-            </motion.button>
-          )}
+              <span className="font-mono font-medium tabular-nums text-foreground/80">
+                {totalItems.toLocaleString()}
+              </span>
+              个用户
+            </motion.div>
+          </AnimatePresence>
         </div>
       </motion.div>
 
       {/* User List */}
-      <motion.div
-        variants={itemVariants}
-        className="flex-1 rounded-2xl border bg-card shadow-sm"
-      >
-        {isLoading ? (
-          <div className="p-4">
-            <TableSkeleton />
-          </div>
-        ) : error ? (
-          <div className="flex h-80 items-center justify-center">
-            <div className="text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-destructive/10 mx-auto">
-                <AlertCircle className="h-8 w-8 text-destructive" />
-              </div>
-              <p className="mt-4 text-sm font-medium">加载失败</p>
-              <p className="text-sm text-muted-foreground">
-                无法获取用户列表，请稍后重试
-              </p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => refetch()}
-              >
-                <RefreshCw className="mr-2 h-4 w-4" />
-                重试
-              </Button>
-            </div>
-          </div>
-        ) : users.length === 0 ? (
-          <EmptyState search={search} onCreate={() => setCreateOpen(true)} />
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
-                  <TableHead className="w-12 pl-4 text-center font-semibold">
-                    ID
-                  </TableHead>
-                  <TableHead className="font-semibold">用户名</TableHead>
-                  <TableHead className="font-semibold">邮箱</TableHead>
-                  <TableHead className="w-24 text-center font-semibold">
-                    角色
-                  </TableHead>
-                  <TableHead className="w-24 text-center font-semibold">
-                    状态
-                  </TableHead>
-                  <TableHead className="w-36 text-center font-semibold">
-                    <div className="flex items-center justify-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" />
-                      创建时间
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-36 text-center font-semibold">
-                    <div className="flex items-center justify-center gap-1">
-                      <Calendar className="h-3.5 w-3.5" />
-                      更新时间
-                    </div>
-                  </TableHead>
-                  <TableHead className="w-16 pr-4 text-center font-semibold">
-                    操作
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <AnimatePresence mode="popLayout">
-                  {users.map((user, index) => (
-                    <motion.tr
+      <AnimatePresence mode="wait">
+        {isLoading && (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <UsersTableSkeleton />
+          </motion.div>
+        )}
+
+        {error && !isLoading && (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ErrorState
+              message="加载失败"
+              description="无法获取用户列表，请稍后重试"
+              onRetry={() => refetch()}
+            />
+          </motion.div>
+        )}
+
+        {!isLoading && !error && users.length === 0 && (
+          <motion.div
+            key="empty"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+          >
+            <EmptyState search={search} onCreate={() => setCreateOpen(true)} />
+          </motion.div>
+        )}
+
+        {!isLoading && !error && users.length > 0 && (
+          <motion.div
+            key="table"
+            className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
+            variants={itemVariants}
+            initial="hidden"
+            animate="visible"
+          >
+            {/* Subtle top accent line */}
+            <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
+
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/30 hover:bg-muted/30 border-b border-border/50">
+                    <TableHead className="w-14 pl-5 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        ID
+                      </span>
+                    </TableHead>
+                    <TableHead className="pl-4">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        用户名
+                      </span>
+                    </TableHead>
+                    <TableHead>
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        邮箱
+                      </span>
+                    </TableHead>
+                    <TableHead className="w-22.5 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        角色
+                      </span>
+                    </TableHead>
+                    <TableHead className="w-20 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        状态
+                      </span>
+                    </TableHead>
+                    <TableHead className="w-37.5 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="size-3" />
+                          创建时间
+                        </span>
+                      </span>
+                    </TableHead>
+                    <TableHead className="w-37.5 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="size-3" />
+                          更新时间
+                        </span>
+                      </span>
+                    </TableHead>
+                    <TableHead className="w-10 pr-5" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((user, i) => (
+                    <TableRow
                       key={user.id}
-                      variants={tableRowVariants}
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
-                      transition={{
-                        delay: index * 0.03,
-                        type: "spring",
-                        stiffness: 100,
-                        damping: 20,
+                      className="group border-b border-border/30 last:border-0 transition-all duration-150 hover:bg-muted/20"
+                      style={{
+                        animationDelay: `${i * 0.02}s`,
                       }}
-                      className="group border-b transition-colors hover:bg-muted/30"
                     >
-                      <TableCell className="pl-4 text-center">
-                        <span className="font-mono text-xs text-muted-foreground">
+                      <TableCell className="py-3 pl-5 text-center">
+                        <span className="font-mono text-[12px] text-muted-foreground/60 tabular-nums">
                           {user.id}
                         </span>
                       </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <Avatar className="h-9 w-9 shrink-0 border-2 border-background shadow-sm">
+                      <TableCell className="text-[13px] py-3 pl-4">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="size-8 shrink-0 border-2 border-background shadow-sm">
                             <AvatarFallback
-                              className={`text-xs font-medium text-white ${avatarColor(user.id)}`}
+                              className={cn(
+                                "text-[10px] font-medium text-white",
+                                avatarColor(user.id),
+                              )}
                             >
                               {getInitials(user.name)}
                             </AvatarFallback>
                           </Avatar>
-                          <span className="font-medium">{user.name}</span>
+                          <span className="font-medium text-foreground/80">
+                            {user.name}
+                          </span>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-[13px] py-3 text-muted-foreground/70">
                         {user.email}
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="py-3 text-center">
                         <Badge
-                          variant={user.role === "admin" ? "default" : "secondary"}
-                          className={`${user.role === "admin"
-                              ? "bg-violet-100 text-violet-700 hover:bg-violet-100 dark:bg-violet-950 dark:text-violet-300"
-                              : "bg-slate-100 text-slate-700 hover:bg-slate-100 dark:bg-slate-900 dark:text-slate-300"
-                            }`}
+                          variant={user.role === "admin" ? "secondary" : "outline"}
+                          className={cn(
+                            "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
+                            user.role === "admin"
+                              ? "bg-violet-50 text-violet-700 border-violet-200/50 dark:bg-violet-950/30 dark:text-violet-300 dark:border-violet-800/40"
+                              : "bg-slate-100 text-slate-600 border-slate-200/50 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700/50",
+                          )}
                         >
                           {user.role === "admin" ? "管理员" : "普通用户"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="py-3 text-center">
                         {user.is_active ? (
-                          <Badge className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          <Badge
+                            className={cn(
+                              "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
+                              "bg-emerald-50 text-emerald-700 border-emerald-200/50 dark:bg-emerald-950/30 dark:text-emerald-300 dark:border-emerald-800/40",
+                            )}
+                          >
+                            <span className="mr-1.5 size-1.5 rounded-full bg-emerald-500 inline-block" />
                             激活
                           </Badge>
                         ) : (
-                          <Badge className="bg-slate-50 text-slate-600 dark:bg-slate-950 dark:text-slate-400">
-                            <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-slate-400" />
+                          <Badge
+                            className={cn(
+                              "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
+                              "bg-slate-100 text-slate-500 border-slate-200/50 dark:bg-slate-800/40 dark:text-slate-400 dark:border-slate-700/40",
+                            )}
+                          >
+                            <span className="mr-1.5 size-1.5 rounded-full bg-slate-400 inline-block" />
                             停用
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-center text-xs text-muted-foreground">
+                      <TableCell className="text-[13px] text-muted-foreground/60 py-3 text-center tabular-nums">
                         {formatDateTime(user.created_at)}
                       </TableCell>
-                      <TableCell className="text-center text-xs text-muted-foreground">
+                      <TableCell className="text-[13px] text-muted-foreground/60 py-3 text-center tabular-nums">
                         {formatDateTime(user.updated_at)}
                       </TableCell>
-                      <TableCell className="pr-4 text-center">
+                      <TableCell className="py-3 pr-5">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
+                              className="size-7 opacity-0 group-hover:opacity-100 transition-all duration-150 rounded-lg"
                             >
-                              <MoreHorizontal className="h-4 w-4" />
+                              <GripHorizontal className="size-3.5 text-muted-foreground/60" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem onClick={() => handleEdit(user)}>
-                              <Pencil className="mr-2 h-4 w-4 text-muted-foreground" />
+                          <DropdownMenuContent align="end" className="w-40 rounded-xl" sideOffset={4}>
+                            <DropdownMenuItem onClick={() => handleEdit(user)} className="text-[13px] cursor-pointer rounded-lg">
+                              <Pencil className="size-3.5 mr-2.5" />
                               编辑
                             </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleResetPassword(user)}
-                            >
-                              <KeyRound className="mr-2 h-4 w-4 text-muted-foreground" />
+                            <DropdownMenuItem onClick={() => handleResetPassword(user)} className="text-[13px] cursor-pointer rounded-lg">
+                              <KeyRound className="size-3.5 mr-2.5" />
                               重置密码
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => handleDelete(user)}
-                              className="text-destructive focus:text-destructive"
+                              className="text-[13px] cursor-pointer text-destructive focus:text-destructive rounded-lg"
                             >
-                              <Trash2 className="mr-2 h-4 w-4" />
+                              <Trash2 className="size-3.5 mr-2.5" />
                               删除
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
-                    </motion.tr>
+                    </TableRow>
                   ))}
-                </AnimatePresence>
-              </TableBody>
-            </Table>
-          </div>
+                </TableBody>
+              </Table>
+            </div>
+          </motion.div>
         )}
-      </motion.div>
+      </AnimatePresence>
 
       {/* Footer: Stats + Pagination */}
       {!isLoading && !error && users.length > 0 && (
         <motion.div
           variants={itemVariants}
-          className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
         >
-          <p className="text-sm text-muted-foreground">
-            显示 {(page - 1) * PAGE_SIZE + 1} -{" "}
-            {Math.min(page * PAGE_SIZE, totalItems)} 条，共{" "}
-            {totalItems} 个用户
-            {search && `（当前页筛选中）`}
+          <p className="text-[13px] text-muted-foreground/60">
+            <span className="font-mono tabular-nums text-foreground/70">
+              {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, totalItems)}
+            </span>
+            {" "}/{" "}
+            <span className="font-mono tabular-nums text-foreground/70">
+              {totalItems.toLocaleString()}
+            </span>
+            {" "}个用户
+            {search && (
+              <span className="text-muted-foreground/40">（筛选中）</span>
+            )}
           </p>
           {totalPages > 1 && (
             <PaginatedNavigation

@@ -39,16 +39,15 @@ function CacheScanSkeleton() {
         {Array.from({ length: 4 }).map((_, i) => (
           <div
             key={i}
-            className="flex-1 rounded-2xl border border-border/40 bg-card p-5"
+            className="flex-1 rounded-xl border border-border/50 bg-card px-5 py-4"
           >
-            <div className="flex flex-col gap-3">
-              <div className="flex items-center gap-2.5">
-                <Skeleton className="size-9 rounded-xl" />
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <Skeleton className="size-4" />
                 <Skeleton className="h-3 w-20" />
               </div>
-              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-7 w-24" />
               <Skeleton className="h-3.5 w-28" />
-              <Skeleton className="h-0.5 w-full" />
             </div>
           </div>
         ))}

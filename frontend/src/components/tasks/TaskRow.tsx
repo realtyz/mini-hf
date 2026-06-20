@@ -217,13 +217,12 @@ export const TaskRow = memo(function TaskRow({
         ease: [0.16, 1, 0.3, 1],
       }}
       className={cn(
-        "h-14 transition-all duration-200",
-        "hover:bg-muted/70",
-        "group border-b border-border/50 last:border-b-0",
+        "group border-b border-border/30 last:border-0 transition-all duration-150",
+        "hover:bg-muted/20",
         isRunning && "animate-pulse-bg"
       )}
     >
-      <TableCell className="pl-4 text-center">
+      <TableCell className="py-3 pl-5 text-center">
         <div className="flex items-center justify-center gap-1.5">
           {isPinned && (
             <motion.div
@@ -234,67 +233,54 @@ export const TaskRow = memo(function TaskRow({
               <Pin className="size-3.5 text-amber-500 fill-amber-500" />
             </motion.div>
           )}
-          <motion.span
-            className="font-mono text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded"
-            whileHover={{ scale: 1.05 }}
-            transition={{ duration: 0.15 }}
-          >
+          <span className="font-mono text-[12.5px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded-md">
             #{task.id}
-          </motion.span>
+          </span>
         </div>
       </TableCell>
-      <TableCell className="font-medium max-w-0" title={task.repo_id}>
-        <span className="block truncate text-sm">
+      <TableCell className="py-3 pl-4" title={task.repo_id}>
+        <span className="block truncate max-w-70 text-[13px] font-medium text-foreground/80 group-hover:text-primary transition-colors">
           {task.repo_id}
         </span>
       </TableCell>
-      <TableCell className="text-center">
-        <code className="text-xs bg-muted/80 px-1.5 py-0.5 rounded font-mono text-muted-foreground transition-colors duration-200 group-hover:bg-muted group-hover:text-foreground">
+      <TableCell className="py-3 text-center">
+        <code className="text-[12.5px] bg-muted/50 px-1.5 py-0.5 rounded-md font-mono text-muted-foreground">
           {task.revision}
         </code>
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="py-3 text-center">
         <Badge
           variant={task.repo_type === "model" ? "default" : "secondary"}
           className={cn(
-            "w-20 text-xs justify-center gap-1.5 transition-all duration-200",
-            "group-hover:shadow-sm"
+            "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
+            task.repo_type === "model"
+              ? "bg-slate-100 text-slate-600 border-slate-200/50 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700/50"
+              : "bg-amber-50 text-amber-700 border-amber-200/50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800/40",
           )}
         >
-          <motion.span
-            initial={{ scale: 1 }}
-            whileHover={{ scale: 1.15, rotate: task.repo_type === "model" ? 12 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            {task.repo_type === "model" ? (
-              <Box className="size-3" />
-            ) : (
-              <Database className="size-3" />
-            )}
-          </motion.span>
+          {task.repo_type === "model" ? (
+            <Box className="size-3 mr-1" />
+          ) : (
+            <Database className="size-3 mr-1" />
+          )}
           {task.repo_type === "model" ? "模型" : "数据集"}
         </Badge>
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="py-3 text-center">
         <TaskStatusBadge status={task.status} />
       </TableCell>
-      <TableCell className="text-center">
+      <TableCell className="py-3 text-center">
         <div className="flex flex-col items-center gap-0.5">
-          <motion.span
-            className="text-xs font-medium tabular-nums"
-            initial={{ opacity: 0.8 }}
-            whileHover={{ opacity: 1, scale: 1.02 }}
-            transition={{ duration: 0.15 }}
-          >
+          <span className="text-[13px] font-medium tabular-nums text-foreground/80">
             {formatBytes(task.required_storage)}
-          </motion.span>
-          <span className="text-[10px] text-muted-foreground tabular-nums">
+          </span>
+          <span className="text-[11px] text-muted-foreground/60 tabular-nums">
             / {formatBytes(task.total_storage)}
           </span>
         </div>
       </TableCell>
-      <TableCell className="text-center">
-        <span className="text-xs text-muted-foreground transition-colors duration-200 group-hover:text-foreground/70">
+      <TableCell className="py-3 text-center">
+        <span className="text-[13px] text-muted-foreground/60 tabular-nums">
           {new Date(task.created_at).toLocaleDateString("zh-CN", {
             month: "short",
             day: "numeric",
@@ -303,26 +289,27 @@ export const TaskRow = memo(function TaskRow({
           })}
         </span>
       </TableCell>
-      <TableCell className="pr-4 text-center">
+      <TableCell className="py-3 pr-5 text-center">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
               size="icon"
-              className="size-8 opacity-0 transition-opacity group-hover:opacity-100 data-[state=open]:opacity-100"
+              className="size-7 opacity-0 group-hover:opacity-100 transition-all duration-150 rounded-lg data-[state=open]:opacity-100"
               onClick={(e) => e.stopPropagation()}
             >
-              <MoreHorizontal className="size-4" />
+              <MoreHorizontal className="size-3.5 text-muted-foreground/60" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuContent align="end" className="w-40 rounded-xl" sideOffset={4}>
             <DropdownMenuItem
               onClick={(e) => {
                 e.stopPropagation()
                 onViewDetail(task)
               }}
+              className="text-[13px] cursor-pointer rounded-lg"
             >
-              <Eye className="mr-2 h-4 w-4 text-muted-foreground" />
+              <Eye className="mr-2.5 h-3.5 w-3.5 text-muted-foreground" />
               查看详情
             </DropdownMenuItem>
 
@@ -335,8 +322,9 @@ export const TaskRow = memo(function TaskRow({
                     setDialogType('approve')
                   }}
                   disabled={isApproving}
+                  className="text-[13px] cursor-pointer rounded-lg"
                 >
-                  <Check className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <Check className="mr-2.5 h-3.5 w-3.5 text-muted-foreground" />
                   批准
                 </DropdownMenuItem>
                 <DropdownMenuItem
@@ -345,9 +333,9 @@ export const TaskRow = memo(function TaskRow({
                     setDialogType('reject')
                   }}
                   disabled={isRejecting}
-                  className="text-destructive focus:text-destructive"
+                  className="text-[13px] cursor-pointer text-destructive focus:text-destructive rounded-lg"
                 >
-                  <X className="mr-2 h-4 w-4" />
+                  <X className="mr-2.5 h-3.5 w-3.5" />
                   拒绝
                 </DropdownMenuItem>
               </>
@@ -363,8 +351,9 @@ export const TaskRow = memo(function TaskRow({
                       onPin?.(task)
                     }}
                     disabled={isPinning}
+                    className="text-[13px] cursor-pointer rounded-lg"
                   >
-                    <Pin className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <Pin className="mr-2.5 h-3.5 w-3.5 text-muted-foreground" />
                     置顶
                   </DropdownMenuItem>
                 )}
@@ -375,8 +364,9 @@ export const TaskRow = memo(function TaskRow({
                       onUnpin?.(task)
                     }}
                     disabled={isUnpinning}
+                    className="text-[13px] cursor-pointer rounded-lg"
                   >
-                    <PinOff className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <PinOff className="mr-2.5 h-3.5 w-3.5 text-muted-foreground" />
                     取消置顶
                   </DropdownMenuItem>
                 )}
@@ -392,9 +382,9 @@ export const TaskRow = memo(function TaskRow({
                     setDialogType('cancel')
                   }}
                   disabled={isCanceling}
-                  className="text-destructive focus:text-destructive"
+                  className="text-[13px] cursor-pointer text-destructive focus:text-destructive rounded-lg"
                 >
-                  <Ban className="mr-2 h-4 w-4" />
+                  <Ban className="mr-2.5 h-3.5 w-3.5" />
                   取消
                 </DropdownMenuItem>
               </>
@@ -409,8 +399,9 @@ export const TaskRow = memo(function TaskRow({
                     setDialogType('retry')
                   }}
                   disabled={isRetrying}
+                  className="text-[13px] cursor-pointer rounded-lg"
                 >
-                  <RotateCcw className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <RotateCcw className="mr-2.5 h-3.5 w-3.5 text-muted-foreground" />
                   重试
                 </DropdownMenuItem>
               </>

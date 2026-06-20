@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { RefreshCw, Search, ArrowUp, ArrowDown, Database, SlidersHorizontal, Box, FileCode2 } from "lucide-react";
+import { RefreshCw, Search, X, ArrowUp, ArrowDown, Database, SlidersHorizontal, Box, FileCode2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,6 +17,8 @@ import { useRepoList, PAGE_SIZE } from "@/hooks/use-repo-list";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import type { RepoProfile, RepoStatus } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { itemVariants } from "@/lib/animations/motion-config";
 
 const REPO_LIST_STATE_KEY = "repoListState";
 
@@ -33,39 +35,13 @@ interface RepoListState {
 const STATUS_CONFIG: {
   value: RepoStatus;
   label: string;
-  colorClass: string;
   dotColor: string;
 }[] = [
-    {
-      value: "active",
-      label: "活跃",
-      colorClass: "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800",
-      dotColor: "bg-emerald-500",
-    },
-    {
-      value: "updating",
-      label: "更新中",
-      colorClass: "bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 border-blue-200 dark:border-blue-800",
-      dotColor: "bg-blue-500",
-    },
-    {
-      value: "cleaning",
-      label: "清理中",
-      colorClass: "bg-violet-50 text-violet-700 dark:bg-violet-950 dark:text-violet-300 border-violet-200 dark:border-violet-800",
-      dotColor: "bg-violet-500",
-    },
-    {
-      value: "inactive",
-      label: "不完整",
-      colorClass: "bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-400 border-slate-200 dark:border-slate-700",
-      dotColor: "bg-slate-400",
-    },
-    {
-      value: "cleaned",
-      label: "已清理",
-      colorClass: "bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300 border-orange-200 dark:border-orange-800",
-      dotColor: "bg-orange-500",
-    },
+    { value: "active", label: "活跃", dotColor: "bg-emerald-500" },
+    { value: "updating", label: "更新中", dotColor: "bg-blue-500" },
+    { value: "cleaning", label: "清理中", dotColor: "bg-violet-500" },
+    { value: "inactive", label: "不完整", dotColor: "bg-slate-400" },
+    { value: "cleaned", label: "已清理", dotColor: "bg-orange-500" },
   ];
 
 // 默认选中的状态（不包含 inactive）
@@ -152,21 +128,41 @@ export function RepositoriesConsole() {
         }
       />
 
-      <div className="rounded-2xl border bg-card mb-6 overflow-hidden">
-        <div className="p-4 flex flex-wrap items-center gap-3">
+      <motion.div
+        className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
+        variants={itemVariants}
+        whileHover={{
+          boxShadow: "0 4px 24px -6px rgba(0, 0, 0, 0.06)",
+        }}
+        transition={{ duration: 0.25 }}
+      >
+        {/* Subtle top accent line */}
+        <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
+
+        {/* Filter row */}
+        <div className="flex flex-wrap items-center gap-3 px-5 py-4">
           <div className="relative flex-1 min-w-50 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
             <Input
               type="search"
               placeholder="搜索仓库名称..."
-              className="pl-9 h-9 bg-muted/30 border-transparent focus:border-primary/30 focus:bg-background"
               value={repoListState.search}
-              onChange={(e) => setRepoListState((prev) => ({ ...prev, search: e.target.value, page: 1 }))}
+              onChange={(e) => updateState({ search: e.target.value, page: 1 })}
+              className="pl-9.5 h-9 rounded-xl border-border/60 text-[13px] transition-all duration-200 focus:ring-2 focus:ring-primary/15"
             />
+            {repoListState.search && (
+              <button
+                type="button"
+                onClick={() => updateState({ search: "", page: 1 })}
+                className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
           </div>
 
           <Select value={repoListState.repoType} onValueChange={handleRepoTypeChange}>
-            <SelectTrigger className="w-32 h-9 bg-muted/30 border-transparent hover:border-border">
+            <SelectTrigger className="w-32 h-9 rounded-xl border-border/60 text-[13px]">
               <SelectValue placeholder="仓库类型" />
             </SelectTrigger>
             <SelectContent>
@@ -189,7 +185,7 @@ export function RepositoriesConsole() {
           </Select>
 
           <Select value={repoListState.sortBy} onValueChange={(v) => updateState({ sortBy: v })}>
-            <SelectTrigger className="w-32 h-9 bg-muted/30 border-transparent hover:border-border">
+            <SelectTrigger className="w-32 h-9 rounded-xl border-border/60 text-[13px]">
               <SelectValue placeholder="排序方式" />
             </SelectTrigger>
             <SelectContent>
@@ -202,7 +198,7 @@ export function RepositoriesConsole() {
           <Button
             variant="outline"
             size="icon"
-            className="size-9 bg-muted/30 border-transparent hover:border-border"
+            className="size-9 rounded-xl border-border/60"
             onClick={() => updateState({ sortOrder: repoListState.sortOrder === "asc" ? "desc" : "asc" })}
             title={repoListState.sortOrder === "asc" ? "升序" : "降序"}
           >
@@ -212,14 +208,23 @@ export function RepositoriesConsole() {
               <ArrowDown className="size-3.5" />
             )}
           </Button>
+
+          {/* Count */}
+          <div className="ml-auto flex items-center gap-1.5 text-[13px] text-muted-foreground/60">
+            <span className="font-mono font-medium tabular-nums text-foreground/80">
+              {total.toLocaleString()}
+            </span>
+            个仓库
+          </div>
         </div>
 
-        <div className="px-4 py-3 bg-muted/20 border-t border-border/50 flex items-center gap-3">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+        {/* Status filter row */}
+        <div className="flex items-center gap-3 px-5 py-3 border-t border-border/50">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider shrink-0">
             <SlidersHorizontal className="size-3.5" />
             状态
           </div>
-          <div className="flex flex-wrap items-center gap-1.5">
+          <div className="flex items-center rounded-xl border border-border/60 bg-muted/30 p-1 gap-0.5">
             {STATUS_CONFIG.map((config) => {
               const isActive = repoListState.statuses.includes(config.value);
               return (
@@ -228,16 +233,16 @@ export function RepositoriesConsole() {
                   type="button"
                   onClick={() => toggleStatus(config.value)}
                   className={cn(
-                    "inline-flex items-center justify-center gap-1.5 h-7 w-16 rounded-full text-xs font-medium transition-all duration-200",
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
                     isActive
-                      ? ["border shadow-sm", config.colorClass]
-                      : "bg-transparent text-muted-foreground/60 hover:text-muted-foreground hover:bg-muted/50"
+                      ? "bg-background text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground",
                   )}
                 >
                   <span
                     className={cn(
-                      "size-1.5 rounded-full transition-colors",
-                      isActive ? config.dotColor : "bg-muted-foreground/30"
+                      "size-1.5 rounded-full",
+                      isActive ? config.dotColor : "bg-muted-foreground/30",
                     )}
                   />
                   {config.label}
@@ -246,7 +251,7 @@ export function RepositoriesConsole() {
             })}
           </div>
         </div>
-      </div>
+      </motion.div>
 
       <RepoGrid
         repos={repositories}
