@@ -46,7 +46,7 @@ class CacheScanService:
     # Public API
     # ------------------------------------------------------------------
 
-    async def scan(self, threshold_days: int = 90) -> ScanResultData:
+    async def scan(self) -> ScanResultData:
         """Scan S3 storage and identify repos that can be cleaned up.
 
         Walks every object under ``hf/`` in a single pass, aggregates
@@ -71,7 +71,6 @@ class CacheScanService:
             logger.info("Cache scan: no objects found under hf/ prefix")
             result = ScanResultData(
                 scanned_at=datetime.now(),
-                threshold_days=threshold_days,
                 total_tracked_repos=0,
                 total_untracked_repos=0,
                 total_wasted_bytes=0,
@@ -153,7 +152,6 @@ class CacheScanService:
 
         result = ScanResultData(
             scanned_at=datetime.now(),
-            threshold_days=threshold_days,
             total_tracked_repos=tracked_count,
             total_untracked_repos=untracked_count,
             total_wasted_bytes=total_wasted,

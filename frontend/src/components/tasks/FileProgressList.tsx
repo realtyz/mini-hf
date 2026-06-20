@@ -235,9 +235,10 @@ export function FileProgressList({
   isRunning,
 }: FileProgressListProps) {
   const [showCompleted, setShowCompleted] = useState(false);
+  const [showFailed, setShowFailed] = useState(true);
 
-  // Sort and split files into active (non-completed) and completed
-  const { activeFiles, completedFiles } = useMemo(() => {
+  // Sort and split files into active (non-completed, non-failed), failed, and completed
+  const { activeFiles, failedFiles, completedFiles } = useMemo(() => {
     const sorted = [...files].sort((a, b) => {
       const orderDiff =
         (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
@@ -246,15 +247,18 @@ export function FileProgressList({
     });
 
     const active: FileProgressItem[] = [];
+    const failed: FileProgressItem[] = [];
     const completed: FileProgressItem[] = [];
     for (const f of sorted) {
       if (f.status === "completed") {
         completed.push(f);
+      } else if (f.status === "failed") {
+        failed.push(f);
       } else {
         active.push(f);
       }
     }
-    return { activeFiles: active, completedFiles: completed };
+    return { activeFiles: active, failedFiles: failed, completedFiles: completed };
   }, [files]);
 
   if (files.length === 0) {
@@ -280,7 +284,7 @@ export function FileProgressList({
 
   return (
     <div className="divide-y divide-border/30 w-full min-w-0 max-w-full overflow-hidden">
-      {/* Active files (downloading / uploading / pending / failed) — always visible */}
+      {/* Active files (downloading / uploading / pending) — always visible */}
       {activeFiles.map((file, index) => (
         <motion.div
           key={`${taskId}-${file.path}`}
@@ -297,6 +301,44 @@ export function FileProgressList({
           />
         </motion.div>
       ))}
+
+      {/* Failed files — collapsible, expanded by default */}
+      {failedFiles.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowFailed((v) => !v)}
+            className="flex items-center gap-2 w-full py-2 px-3 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-colors cursor-pointer hover:bg-red-50/50 dark:hover:bg-red-950/20"
+          >
+            {showFailed ? (
+              <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+            )}
+            <XCircle className="h-3.5 w-3.5 text-red-500 shrink-0" />
+            <span>失败</span>
+            <span className="tabular-nums">({failedFiles.length})</span>
+          </button>
+          <AnimatePresence initial={false}>
+            {showFailed && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                className="overflow-hidden"
+              >
+                {failedFiles.map((file) => (
+                  <FileProgressRow
+                    key={`${taskId}-${file.path}`}
+                    file={file}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
 
       {/* Completed files — collapsed by default */}
       {completedFiles.length > 0 && (

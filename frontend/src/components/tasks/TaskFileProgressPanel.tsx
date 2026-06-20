@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Box, Database, Smile, Globe, FileDown, Inbox, Loader2, Settings, HardDrive, FileText } from "lucide-react";
+import { Box, Database, Smile, Globe, FileDown, Inbox, Loader2, Settings, HardDrive, FileText, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -66,6 +66,9 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
   // 进度百分比
   const storageProgress = requiredBytes > 0 ? Math.round((downloadedBytes / requiredBytes) * 100) : 0;
   const fileProgress = requiredFiles > 0 ? Math.round((downloadedFiles / requiredFiles) * 100) : 0;
+
+  // 失败文件统计
+  const failedFileCount = files.filter((f) => f.status === "failed").length;
 
   if (!task) {
     return (
@@ -186,6 +189,12 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
                 <span className="text-muted-foreground ml-1 text-[10px]">(仓库共 {totalFiles} 个)</span>
               )}
             </div>
+            {failedFileCount > 0 && (
+              <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 mt-0.5">
+                <AlertTriangle className="h-3 w-3 shrink-0" />
+                <span className="tabular-nums">{failedFileCount} 个文件失败</span>
+              </div>
+            )}
           </div>
         </div>
       </CardHeader>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { RefreshCw, Search, X, ArrowUp, ArrowDown, Database, SlidersHorizontal, Box, FileCode2 } from "lucide-react";
+import { RefreshCw, Search, X, ArrowUp, ArrowDown, Database, Box, FileCode2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -120,7 +120,7 @@ export function RepositoriesConsole() {
             variant="outline"
             size="sm"
             onClick={() => refetch()}
-            className="w-24 cursor-pointer gap-2 text-[13px] h-8"
+            className="cursor-pointer gap-2 text-[13px] h-8"
           >
             <RefreshCw className="size-3.5" />
             刷新
@@ -128,6 +128,7 @@ export function RepositoriesConsole() {
         }
       />
 
+      {/* Filter bar */}
       <motion.div
         className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
         variants={itemVariants}
@@ -139,9 +140,10 @@ export function RepositoriesConsole() {
         {/* Subtle top accent line */}
         <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
 
-        {/* Filter row */}
-        <div className="flex flex-wrap items-center gap-3 px-5 py-4">
-          <div className="relative flex-1 min-w-50 max-w-sm">
+        {/* Row 1: Search + Type + Sort + Order + Count */}
+        <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
+          {/* Search */}
+          <div className="relative flex-1 min-w-48 max-w-sm">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
             <Input
               type="search"
@@ -161,6 +163,7 @@ export function RepositoriesConsole() {
             )}
           </div>
 
+          {/* Repo type */}
           <Select value={repoListState.repoType} onValueChange={handleRepoTypeChange}>
             <SelectTrigger className="w-32 h-9 rounded-xl border-border/60 text-[13px]">
               <SelectValue placeholder="仓库类型" />
@@ -184,6 +187,7 @@ export function RepositoriesConsole() {
             </SelectContent>
           </Select>
 
+          {/* Sort */}
           <Select value={repoListState.sortBy} onValueChange={(v) => updateState({ sortBy: v })}>
             <SelectTrigger className="w-32 h-9 rounded-xl border-border/60 text-[13px]">
               <SelectValue placeholder="排序方式" />
@@ -195,6 +199,7 @@ export function RepositoriesConsole() {
             </SelectContent>
           </Select>
 
+          {/* Sort order toggle */}
           <Button
             variant="outline"
             size="icon"
@@ -210,21 +215,20 @@ export function RepositoriesConsole() {
           </Button>
 
           {/* Count */}
-          <div className="ml-auto flex items-center gap-1.5 text-[13px] text-muted-foreground/60">
-            <span className="font-mono font-medium tabular-nums text-foreground/80">
+          <div className="ml-auto flex items-baseline gap-1.5">
+            <span className="text-sm font-semibold tabular-nums text-foreground">
               {total.toLocaleString()}
             </span>
-            个仓库
+            <span className="text-[13px] text-muted-foreground/50">个仓库</span>
           </div>
         </div>
 
-        {/* Status filter row */}
-        <div className="flex items-center gap-3 px-5 py-3 border-t border-border/50">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider shrink-0">
-            <SlidersHorizontal className="size-3.5" />
+        {/* Row 2: Status filter */}
+        <div className="flex items-center gap-3 px-5 pb-4">
+          <span className="text-[11px] font-medium text-muted-foreground/40 uppercase tracking-wider shrink-0 select-none">
             状态
-          </div>
-          <div className="flex items-center rounded-xl border border-border/60 bg-muted/30 p-1 gap-0.5">
+          </span>
+          <div className="flex items-center gap-1">
             {STATUS_CONFIG.map((config) => {
               const isActive = repoListState.statuses.includes(config.value);
               return (
@@ -233,16 +237,16 @@ export function RepositoriesConsole() {
                   type="button"
                   onClick={() => toggleStatus(config.value)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
+                    "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium transition-colors duration-150 cursor-pointer select-none",
                     isActive
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "bg-muted/60 text-foreground"
+                      : "text-muted-foreground/50 hover:text-muted-foreground hover:bg-muted/30",
                   )}
                 >
                   <span
                     className={cn(
                       "size-1.5 rounded-full",
-                      isActive ? config.dotColor : "bg-muted-foreground/30",
+                      isActive ? config.dotColor : "bg-muted-foreground/25",
                     )}
                   />
                   {config.label}
@@ -261,14 +265,13 @@ export function RepositoriesConsole() {
       />
 
       {!isLoading && totalPages > 0 && (
-        <div className="mt-6 flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            显示{" "}
-            <span className="font-medium text-foreground">
-              {Math.min((repoListState.page - 1) * PAGE_SIZE + 1, total)}-
-              {Math.min(repoListState.page * PAGE_SIZE, total)}
-            </span>{" "}
-            个，共 <span className="font-medium text-foreground">{total}</span> 个仓库
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-[13px] text-muted-foreground/60 tabular-nums">
+            <span className="font-medium text-foreground/80">
+              {Math.min((repoListState.page - 1) * PAGE_SIZE + 1, total)}–{Math.min(repoListState.page * PAGE_SIZE, total)}
+            </span>
+            <span className="mx-1 text-muted-foreground/40">/</span>
+            <span className="font-medium text-foreground/80">{total}</span>
           </p>
           {totalPages > 1 && (
             <PaginatedNavigation

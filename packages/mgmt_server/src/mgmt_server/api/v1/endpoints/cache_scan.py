@@ -1,6 +1,6 @@
 """Cache scan endpoints for detecting unused repositories."""
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter
 
 from mgmt_server.api.deps import AdminUserDep, CacheScanServiceDep, CurrentUserDep
 from mgmt_server.api.v1.schemas.cache_scan import ScanResultResponse
@@ -26,18 +26,12 @@ async def get_scan_result(
 async def trigger_scan(
     admin_user: AdminUserDep,
     service: CacheScanServiceDep,
-    threshold_days: int = Query(
-        default=90,
-        ge=1,
-        le=365,
-        description="Days without downloads to consider a repo as cold",
-    ),
 ) -> ScanResultResponse:
     """Manually trigger a cache scan (admin only).
 
-    Scans all active repositories and flags those with no download activity
-    within the specified threshold. Results are cached in Redis for subsequent
-    GET /result calls.
+    Scans all S3 objects to identify every cached repository and classifies
+    each as tracked (has DB profile) or untracked (S3-only). Results are
+    cached in Redis for subsequent GET /result calls.
     """
-    result = await service.scan(threshold_days=threshold_days)
+    result = await service.scan()
     return ScanResultResponse(data=result)

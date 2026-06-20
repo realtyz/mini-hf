@@ -74,9 +74,7 @@ function CacheScanSkeleton() {
               <Skeleton className="size-4 rounded" />
               <Skeleton className="h-4 w-64" />
               <Skeleton className="h-5 w-12 rounded-lg" />
-              <Skeleton className="h-5 w-10 rounded-lg" />
               <Skeleton className="h-4 w-12" />
-              <Skeleton className="h-4 w-8" />
               <Skeleton className="h-4 w-16" />
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-4 w-24" />
@@ -128,11 +126,7 @@ export function CacheScan() {
   const triggerScan = useTriggerCacheScan();
   const {
     search, setSearch,
-    typeFilter, setTypeFilter,
     categoryFilter, setCategoryFilter,
-    thresholdDays, setThresholdDays,
-    customDays, setCustomDays,
-    actualThreshold,
     sortField,
     sortDirection,
     setSort,
@@ -153,7 +147,6 @@ export function CacheScan() {
 
   // Filter setters that also clear selection
   const handleSetSearch = (v: string) => { setSearch(v); setSelectedIds(new Set()); };
-  const handleSetTypeFilter = (v: string) => { setTypeFilter(v); setSelectedIds(new Set()); };
   const handleSetCategoryFilter = (v: "all" | ScanCategory) => { setCategoryFilter(v); setSelectedIds(new Set()); };
 
   useEffect(() => {
@@ -174,7 +167,7 @@ export function CacheScan() {
   }, [batchDeleteStatus.data, queryClient]);
 
   const handleTrigger = () => {
-    triggerScan.mutate(actualThreshold, {
+    triggerScan.mutate(undefined, {
       onSuccess: (data) => {
         toast.success(
           `扫描完成：发现 ${data.data?.total_tracked_repos ?? 0} 个已追踪仓库，${data.data?.total_untracked_repos ?? 0} 个未追踪仓库`,
@@ -201,7 +194,6 @@ export function CacheScan() {
 
   const handleClearFilters = () => {
     setSearch("");
-    setTypeFilter("all");
     setCategoryFilter("all");
     setSelectedIds(new Set());
   };
@@ -295,15 +287,8 @@ export function CacheScan() {
       <CacheScanToolbar
         isAdmin={isAdmin}
         isPending={triggerScan.isPending}
-        thresholdDays={thresholdDays}
-        setThresholdDays={setThresholdDays}
-        customDays={customDays}
-        setCustomDays={setCustomDays}
-        actualThreshold={actualThreshold}
         onTrigger={handleTrigger}
         onRefresh={() => refetch()}
-        typeFilter={typeFilter}
-        setTypeFilter={handleSetTypeFilter}
         categoryFilter={categoryFilter}
         setCategoryFilter={handleSetCategoryFilter}
         search={search}

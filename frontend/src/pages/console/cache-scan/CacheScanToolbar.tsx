@@ -5,20 +5,12 @@ import {
   RefreshCw,
   Search,
   X,
-  Filter,
   Trash2,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shared/PageHeader";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,19 +25,11 @@ import {
 import { cn } from "@/lib/utils";
 import type { ScanCategory } from "@/lib/api/types";
 
-const THRESHOLD_PRESETS = [30, 60, 90, 180];
-
 interface CacheScanToolbarProps {
   isAdmin: boolean;
   isPending: boolean;
-  thresholdDays: number;
-  setThresholdDays: (v: number) => void;
-  customDays: string;
-  setCustomDays: (v: string) => void;
   onTrigger: () => void;
   onRefresh: () => void;
-  typeFilter: string;
-  setTypeFilter: (v: string) => void;
   categoryFilter: "all" | ScanCategory;
   setCategoryFilter: (v: "all" | ScanCategory) => void;
   search: string;
@@ -60,14 +44,8 @@ interface CacheScanToolbarProps {
 export function CacheScanToolbar({
   isAdmin,
   isPending,
-  thresholdDays,
-  setThresholdDays,
-  customDays,
-  setCustomDays,
   onTrigger,
   onRefresh,
-  typeFilter,
-  setTypeFilter,
   categoryFilter,
   setCategoryFilter,
   search,
@@ -90,35 +68,6 @@ export function CacheScanToolbar({
             <>
               {isAdmin && (
                 <>
-                  <div className="flex items-center rounded-xl border border-border/60 bg-muted/30 p-1 gap-0.5">
-                    {THRESHOLD_PRESETS.map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => {
-                          setCustomDays("");
-                          setThresholdDays(d);
-                        }}
-                        className={cn(
-                          "px-2.5 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
-                          thresholdDays === d && !customDays
-                            ? "bg-background text-foreground shadow-sm"
-                            : "text-muted-foreground hover:text-foreground",
-                        )}
-                      >
-                        {d}<span className="text-[10px] text-muted-foreground/60 ml-0.5">天</span>
-                      </button>
-                    ))}
-                  </div>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={365}
-                    placeholder="自定义"
-                    value={customDays}
-                    onChange={(e) => setCustomDays(e.target.value)}
-                    className="w-18 h-9 text-[12px] rounded-xl border-border/60"
-                  />
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
                       <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
@@ -223,22 +172,6 @@ export function CacheScanToolbar({
         <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
 
         <div className="flex flex-wrap items-center gap-3 px-5 py-4">
-          <motion.div whileHover={{ scale: 1.01 }}>
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-36 h-9 rounded-xl border-border/60 text-[13px]">
-                <div className="flex items-center gap-2">
-                  <Filter className="size-3.5 text-muted-foreground/60" />
-                  <SelectValue placeholder="类型" />
-                </div>
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">全部类型</SelectItem>
-                <SelectItem value="model">模型</SelectItem>
-                <SelectItem value="dataset">数据集</SelectItem>
-              </SelectContent>
-            </Select>
-          </motion.div>
-
           <div className="flex items-center rounded-xl border border-border/60 bg-muted/30 p-1 gap-0.5">
             <button
               type="button"

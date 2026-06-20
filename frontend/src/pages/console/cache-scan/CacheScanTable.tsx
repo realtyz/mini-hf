@@ -1,14 +1,15 @@
 import { motion } from "framer-motion";
 import { itemVariants } from "@/lib/animations/motion-config";
+import { useNavigate } from "react-router";
 import {
   Copy,
   Check,
-  ArrowUpRight,
   Search,
   Trash2,
   ArrowUp,
   ArrowDown,
   GripHorizontal,
+  ExternalLink,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -52,6 +53,17 @@ function formatDate(dateStr: string | null): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const minutes = Math.floor(diff / 60000);
+  if (minutes < 1) return "刚刚";
+  if (minutes < 60) return `${minutes} 分钟前`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  return `${days} 天前`;
 }
 
 interface CacheScanTableProps {
@@ -134,6 +146,7 @@ export function CacheScanTable({
   sortDirection,
   onSort,
 }: CacheScanTableProps) {
+  const navigate = useNavigate();
   const allSelected = repos.length > 0 && repos.every((r) => selectedIds.has(r.repo_id));
   const someSelected = repos.some((r) => selectedIds.has(r.repo_id)) && !allSelected;
 
@@ -210,20 +223,14 @@ export function CacheScanTable({
                   分类
                 </span>
               </TableHead>
-              <TableHead className="w-20 text-center">
-                <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
-                  类型
-                </span>
-              </TableHead>
               <TableHead className="w-22.5 text-center">
-                <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
-                  下载量
-                </span>
-              </TableHead>
-              <TableHead className="w-20 text-center">
-                <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
-                  快照
-                </span>
+                <SortableHeader
+                  field="downloads"
+                  label="下载量"
+                  sortField={sortField}
+                  sortDirection={sortDirection}
+                  onSort={onSort}
+                />
               </TableHead>
               <TableHead className="w-22.5 text-center">
                 <SortableHeader
@@ -252,7 +259,11 @@ export function CacheScanTable({
                   onSort={onSort}
                 />
               </TableHead>
-              <TableHead className="w-10 pr-5" />
+              <TableHead className="w-15 pr-5 text-center">
+                <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                  操作
+                </span>
+              </TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -278,31 +289,46 @@ export function CacheScanTable({
                 </TableCell>
 
                 <TableCell className="text-[13px] py-3 pl-4">
-                  <TooltipProvider delayDuration={300}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          type="button"
-                          onClick={() => onCopy(repo.repo_id)}
-                          className="font-mono font-medium text-left hover:text-primary transition-colors cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex items-center gap-1.5 max-w-70"
-                        >
-                          <span className="truncate text-[12.5px] text-foreground/80">
-                            {repo.repo_id}
-                          </span>
-                          {copiedId === repo.repo_id ? (
-                            <Check className="size-3 text-emerald-500 shrink-0" />
-                          ) : (
-                            <Copy className="size-3 text-muted-foreground/0 group-hover:text-muted-foreground/30 shrink-0 transition-all duration-200" />
-                          )}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent side="bottom" align="start" className="rounded-lg">
-                        <p className="text-xs font-mono">
-                          点击复制: {repo.repo_id}
-                        </p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <div className="flex items-center gap-2">
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => onCopy(repo.repo_id)}
+                            className="font-mono font-medium text-left hover:text-primary transition-colors cursor-pointer rounded-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring inline-flex items-center gap-1.5 max-w-70"
+                          >
+                            <span className="truncate text-[12.5px] text-foreground/80">
+                              {repo.repo_id}
+                            </span>
+                            {copiedId === repo.repo_id ? (
+                              <Check className="size-3 text-emerald-500 shrink-0" />
+                            ) : (
+                              <Copy className="size-3 text-muted-foreground/0 group-hover:text-muted-foreground/30 shrink-0 transition-all duration-200" />
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" align="start" className="rounded-lg">
+                          <p className="text-xs font-mono">
+                            点击复制: {repo.repo_id}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <Badge
+                      variant={
+                        repo.repo_type === "model" ? "secondary" : "outline"
+                      }
+                      className={cn(
+                        "text-[11px] font-medium rounded-lg px-2.5 py-0.5 shrink-0",
+                        repo.repo_type === "model"
+                          ? "bg-slate-100 text-slate-600 border-slate-200/50 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700/50"
+                          : "bg-amber-50 text-amber-700 border-amber-200/50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800/40",
+                      )}
+                    >
+                      {repoTypeLabels[repo.repo_type] ?? repo.repo_type}
+                    </Badge>
+                  </div>
                 </TableCell>
 
                 <TableCell className="py-3 text-center">
@@ -319,28 +345,8 @@ export function CacheScanTable({
                   </Badge>
                 </TableCell>
 
-                <TableCell className="py-3 text-center">
-                  <Badge
-                    variant={
-                      repo.repo_type === "model" ? "secondary" : "outline"
-                    }
-                    className={cn(
-                      "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
-                      repo.repo_type === "model"
-                        ? "bg-slate-100 text-slate-600 border-slate-200/50 dark:bg-slate-800/50 dark:text-slate-300 dark:border-slate-700/50"
-                        : "bg-amber-50 text-amber-700 border-amber-200/50 dark:bg-amber-950/30 dark:text-amber-300 dark:border-amber-800/40",
-                    )}
-                  >
-                    {repoTypeLabels[repo.repo_type] ?? repo.repo_type}
-                  </Badge>
-                </TableCell>
-
                 <TableCell className="text-[13px] text-center tabular-nums py-3 font-medium text-foreground/70">
                   {repo.downloads.toLocaleString()}
-                </TableCell>
-
-                <TableCell className="text-[13px] text-center tabular-nums py-3 font-medium text-foreground/70">
-                  {repo.cached_commits.toLocaleString()}
                 </TableCell>
 
                 <TableCell className="text-[13px] text-center tabular-nums py-3">
@@ -365,9 +371,20 @@ export function CacheScanTable({
 
                 <TableCell className="text-[13px] text-muted-foreground py-3 text-center">
                   {repo.last_downloaded_at ? (
-                    <span className="text-muted-foreground/60 tabular-nums">
-                      {formatDate(repo.last_downloaded_at)}
-                    </span>
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-muted-foreground/60 tabular-nums cursor-default">
+                            {formatRelativeTime(repo.last_downloaded_at)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="rounded-lg">
+                          <p className="text-xs tabular-nums">
+                            {formatDate(repo.last_downloaded_at)}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   ) : (
                     <span className="text-muted-foreground/25 italic text-[12px] select-none">
                       —
@@ -377,9 +394,20 @@ export function CacheScanTable({
 
                 <TableCell className="text-[13px] text-muted-foreground py-3 text-center">
                   {repo.cache_updated_at ? (
-                    <span className="text-muted-foreground/60 tabular-nums">
-                      {formatDate(repo.cache_updated_at)}
-                    </span>
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-muted-foreground/60 tabular-nums cursor-default">
+                            {formatRelativeTime(repo.cache_updated_at)}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent className="rounded-lg">
+                          <p className="text-xs tabular-nums">
+                            {formatDate(repo.cache_updated_at)}
+                          </p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   ) : (
                     <span className="text-muted-foreground/25 italic text-[12px] select-none">
                       —
@@ -387,7 +415,7 @@ export function CacheScanTable({
                   )}
                 </TableCell>
 
-                <TableCell className="py-3 pr-5">
+                <TableCell className="py-3 pr-5 text-center">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button
@@ -406,19 +434,22 @@ export function CacheScanTable({
                         <Copy className="size-3.5 mr-2.5" />
                         复制仓库 ID
                       </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        className="text-[13px] cursor-pointer rounded-lg"
-                        onClick={() => {
-                          window.open(
-                            `https://huggingface.co/${repo.repo_id}`,
-                            "_blank",
-                          );
-                        }}
-                      >
-                        <ArrowUpRight className="size-3.5 mr-2.5" />
-                        在 HF 查看
-                      </DropdownMenuItem>
+                      {repo.category === "tracked" && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-[13px] cursor-pointer rounded-lg"
+                            onClick={() => {
+                              navigate(
+                                `/console/repositories/detail?repoId=${encodeURIComponent(repo.repo_id)}&type=${repo.repo_type}`,
+                              );
+                            }}
+                          >
+                            <ExternalLink className="size-3.5 mr-2.5" />
+                            查看仓库详情
+                          </DropdownMenuItem>
+                        </>
+                      )}
                       {isAdmin && (
                         <>
                           <DropdownMenuSeparator />

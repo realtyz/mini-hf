@@ -1,21 +1,14 @@
 import { useState, useMemo } from "react";
 import type { RepoScanItem, ScanCategory, ScanResultData } from "@/lib/api/types";
 
-export type SortField = "cached_size" | "last_downloaded_at" | "cache_updated_at";
+export type SortField = "cached_size" | "last_downloaded_at" | "cache_updated_at" | "downloads";
 export type SortDirection = "asc" | "desc";
 
 interface UseCacheScanFiltersReturn {
   search: string;
   setSearch: (v: string) => void;
-  typeFilter: string;
-  setTypeFilter: (v: string) => void;
   categoryFilter: "all" | ScanCategory;
   setCategoryFilter: (v: "all" | ScanCategory) => void;
-  thresholdDays: number;
-  setThresholdDays: (v: number) => void;
-  customDays: string;
-  setCustomDays: (v: string) => void;
-  actualThreshold: number;
   sortField: SortField | null;
   sortDirection: SortDirection;
   setSort: (field: SortField) => void;
@@ -36,29 +29,19 @@ function nullsLastCompare(a: unknown, b: unknown, direction: SortDirection): num
 export function useCacheScanFilters(
   result: ScanResultData | null,
 ): UseCacheScanFiltersReturn {
-  const [thresholdDays, setThresholdDays] = useState(15);
-  const [customDays, setCustomDays] = useState("");
   const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<"all" | ScanCategory>("all");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
   const setSort = (field: SortField) => {
-    setSortField((prev) => {
-      if (prev === field) {
-        setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
-        return field;
-      }
+    if (sortField === field) {
+      setSortDirection((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
       setSortDirection("desc");
-      return field;
-    });
+    }
   };
-
-  const actualThreshold = useMemo(() => {
-    if (customDays && Number(customDays) > 0) return Number(customDays);
-    return thresholdDays;
-  }, [thresholdDays, customDays]);
 
   const filteredRepos = useMemo(() => {
     if (!result) return [];
@@ -71,9 +54,6 @@ export function useCacheScanFilters(
           (r.pipeline_tag && r.pipeline_tag.toLowerCase().includes(q)),
       );
     }
-    if (typeFilter !== "all") {
-      repos = repos.filter((r) => r.repo_type === typeFilter);
-    }
     if (categoryFilter !== "all") {
       repos = repos.filter((r) => r.category === categoryFilter);
     }
@@ -83,20 +63,13 @@ export function useCacheScanFilters(
       );
     }
     return repos;
-  }, [result, search, typeFilter, categoryFilter, sortField, sortDirection]);
+  }, [result, search, categoryFilter, sortField, sortDirection]);
 
   return {
     search,
     setSearch,
-    typeFilter,
-    setTypeFilter,
     categoryFilter,
     setCategoryFilter,
-    thresholdDays,
-    setThresholdDays,
-    customDays,
-    setCustomDays,
-    actualThreshold,
     sortField,
     sortDirection,
     setSort,

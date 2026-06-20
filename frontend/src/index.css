@@ -383,6 +383,30 @@
     animation: gradient-shift 8s ease infinite;
   }
 
+  /* Horizontal light streak - flows left to right */
+  @keyframes streak-h {
+    from { left: -100%; }
+    to { left: 100%; }
+  }
+
+  .animate-streak-h {
+    animation-name: streak-h;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+
+  /* Vertical light streak - flows top to bottom */
+  @keyframes streak-v {
+    from { top: -100%; }
+    to { top: 100%; }
+  }
+
+  .animate-streak-v {
+    animation-name: streak-v;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+  }
+
   /* Shimmer slide for skeleton loading */
   @keyframes shimmer-slide {
     0% { transform: translateX(-100%); }

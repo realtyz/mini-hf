@@ -25,10 +25,8 @@ export function useTriggerCacheScan() {
   const queryClient = useQueryClient();
 
   const mutation = useMutation({
-    mutationFn: (thresholdDays: number) =>
-      api.post<ScanResultResponse>(endpoints.cache.scanRun, null, {
-        params: { threshold_days: thresholdDays },
-      }),
+    mutationFn: () =>
+      api.post<ScanResultResponse>(endpoints.cache.scanRun),
     onSuccess: (data) => {
       queryClient.setQueryData(queryKeys.cacheScan.result(), data);
     },

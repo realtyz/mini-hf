@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+
 /** Reusable animated tech-grid background with flowing light streaks */
 
 interface StreakH {
@@ -12,6 +14,24 @@ interface StreakV {
   height: string;
   duration: string;
   delay: string;
+}
+
+interface StreakColor {
+  h: string;
+  s: string;
+  l: string;
+}
+
+function readPrimaryColor(): StreakColor {
+  if (typeof document === "undefined") {
+    return { h: "240", s: "5.9%", l: "10%" };
+  }
+  const style = getComputedStyle(document.documentElement);
+  return {
+    h: style.getPropertyValue("--primary-h").trim() || "240",
+    s: style.getPropertyValue("--primary-s").trim() || "5.9%",
+    l: style.getPropertyValue("--primary-l").trim() || "10%",
+  };
 }
 
 const HERO_STREAKS_H: StreakH[] = [
@@ -41,7 +61,8 @@ const CTA_STREAKS_V: StreakV[] = [
   { left: "92%", height: "20%", duration: "7s", delay: "5s" },
 ];
 
-function HStreak({ top, width, duration, delay }: StreakH) {
+function HStreak({ top, width, duration, delay, primary }: StreakH & { primary: StreakColor }) {
+  const { h, s, l } = primary;
   return (
     <div
       className="absolute left-0 right-0 overflow-hidden pointer-events-none"
@@ -53,17 +74,18 @@ function HStreak({ top, width, duration, delay }: StreakH) {
           width,
           animationDuration: duration,
           animationDelay: delay,
-          background:
-            "linear-gradient(to right, transparent, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.9), transparent)",
+          background: `linear-gradient(to right, transparent, hsla(${h}, ${s}, ${l}, 0.9), transparent)`,
           filter: "blur(0.5px)",
-          boxShadow: "0 0 8px 2px hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.5)",
+          WebkitFilter: "blur(0.5px)",
+          boxShadow: `0 0 8px 2px hsla(${h}, ${s}, ${l}, 0.5)`,
         }}
       />
     </div>
   );
 }
 
-function VStreak({ left, height, duration, delay }: StreakV) {
+function VStreak({ left, height, duration, delay, primary }: StreakV & { primary: StreakColor }) {
+  const { h, s, l } = primary;
   return (
     <div
       className="absolute top-0 bottom-0 overflow-hidden pointer-events-none"
@@ -75,10 +97,10 @@ function VStreak({ left, height, duration, delay }: StreakV) {
           height,
           animationDuration: duration,
           animationDelay: delay,
-          background:
-            "linear-gradient(to bottom, transparent, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.75), transparent)",
+          background: `linear-gradient(to bottom, transparent, hsla(${h}, ${s}, ${l}, 0.75), transparent)`,
           filter: "blur(0.5px)",
-          boxShadow: "0 0 8px 2px hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.35)",
+          WebkitFilter: "blur(0.5px)",
+          boxShadow: `0 0 8px 2px hsla(${h}, ${s}, ${l}, 0.35)`,
         }}
       />
     </div>
@@ -96,6 +118,20 @@ export function TechBackground({
   fadeTop = true,
   fadeBottom = true,
 }: TechBackgroundProps) {
+  const [primary, setPrimary] = useState<StreakColor>(readPrimaryColor);
+
+  // React to theme changes (light/dark toggle) by watching the class attribute on <html>
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setPrimary(readPrimaryColor());
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   const hStreaks = variant === "hero" ? HERO_STREAKS_H : CTA_STREAKS_H;
   const vStreaks = variant === "hero" ? HERO_STREAKS_V : CTA_STREAKS_V;
 
@@ -104,14 +140,14 @@ export function TechBackground({
       {/* Horizontal light streaks */}
       <div className="absolute inset-0 overflow-hidden">
         {hStreaks.map((s, i) => (
-          <HStreak key={`h-${i}`} {...s} />
+          <HStreak key={`h-${i}`} {...s} primary={primary} />
         ))}
       </div>
 
       {/* Vertical light streaks */}
       <div className="absolute inset-0 overflow-hidden">
         {vStreaks.map((s, i) => (
-          <VStreak key={`v-${i}`} {...s} />
+          <VStreak key={`v-${i}`} {...s} primary={primary} />
         ))}
       </div>
 

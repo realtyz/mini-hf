@@ -39,6 +39,7 @@ import { TaskStatusBadge } from "./TaskStatusBadge";
 import { TaskProgressBar } from "./TaskProgressBar";
 import { PreviewFileTree } from "./PreviewFileTree";
 import { FileProgressList } from "./FileProgressList";
+import { RetryTaskDialog } from "./RetryTaskDialog";
 import { useTaskDetail } from "@/hooks/use-task-detail";
 import type { PreviewItem, TaskStatus, TaskResponse } from "@/lib/api/types";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
@@ -68,7 +69,7 @@ const statusDisplayConfig: Record<
     /** 是否显示实时进度（需要轮询） */
     showRealtimeProgress: boolean;
     /** 底部操作类型 */
-    bottomActionType: "none" | "refresh" | "view-progress" | "paused" | "pausing" | "cancelled";
+    bottomActionType: "none" | "refresh" | "view-progress" | "paused" | "pausing" | "cancelled" | "failed";
   }
 > = {
   pending_approval: {
@@ -107,7 +108,7 @@ const statusDisplayConfig: Record<
     fileListTitle: "请求文件列表",
     showStorageStats: false,
     showRealtimeProgress: false,
-    bottomActionType: "none",
+    bottomActionType: "failed",
   },
   canceling: {
     fileListTitle: "请求文件列表",
@@ -156,6 +157,14 @@ function getRepoTypeLabel(repoType: string): string {
     dataset: "数据集",
   };
   return labels[repoType] || repoType;
+}
+
+function isWithin7Days(completedAt: string | null): boolean {
+  if (!completedAt) return false;
+  const completedDate = new Date(completedAt);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  return completedDate >= sevenDaysAgo;
 }
 
 function buildTimeline(t: TaskResponse): { label: string; value: string }[] {
@@ -360,19 +369,25 @@ export function TaskDetailDrawer({
   const { reviewTask, cancelTask, pauseTask, resumeTask, retryTask } = useTaskActions();
   const [rejectNotes, setRejectNotes] = useState("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [retryDialogOpen, setRetryDialogOpen] = useState(false);
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
 
   const canCancel = task ? isAdmin || user?.id === task.creator_user_id : false;
   const canPause = task ? (isAdmin || user?.id === task.creator_user_id) && (task.status === "running" || task.status === "pending") : false;
   const canResume = task ? (isAdmin || user?.id === task.creator_user_id) && task.status === "paused" : false;
-  const canRetry = task ? (isAdmin || user?.id === task.creator_user_id) && task.status === "cancelled" : false;
+  const canRetry = task
+    ? (task.status === "failed" || task.status === "cancelled") &&
+      isWithin7Days(task.completed_at) &&
+      (isAdmin || user?.id === task.creator_user_id)
+    : false;
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       reviewTask.reset();
       setRejectNotes("");
       setCancelDialogOpen(false);
+      setRetryDialogOpen(false);
     }
     onOpenChange(isOpen);
   };
@@ -414,13 +429,12 @@ export function TaskDetailDrawer({
   };
 
   const handleRetry = () => {
-    if (!taskId) return;
-    retryTask.mutate({ taskId }, {
-      onSuccess: () => {
-        // 重试成功后关闭当前详情页，跳转到新任务
-        onOpenChange(false);
-      },
-    });
+    setRetryDialogOpen(true);
+  };
+
+  const handleRetrySuccess = () => {
+    setRetryDialogOpen(false);
+    onOpenChange(false);
   };
 
   const statusConfig = task ? statusDisplayConfig[task.status] : null;
@@ -828,6 +842,27 @@ export function TaskDetailDrawer({
                     </div>
                   </div>
                 )}
+                {statusConfig.bottomActionType === "failed" && (
+                  <div className="flex items-center justify-between bg-red-50/60 dark:bg-red-950/20 border border-red-200/60 dark:border-red-800/40 rounded-xl px-4 py-3 mt-1">
+                    <div className="flex items-center gap-2 text-[13px] text-red-700 dark:text-red-300 font-medium">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      <span>任务失败</span>
+                    </div>
+                    <div className="flex gap-2">
+                      {canRetry && (
+                        <Button
+                          size="sm"
+                          onClick={handleRetry}
+                          disabled={retryTask.isPending}
+                          className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
+                        >
+                          <RefreshCw className="mr-1 h-3 w-3" />
+                          {retryTask.isPending ? "重试中..." : "重试任务"}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -876,6 +911,18 @@ export function TaskDetailDrawer({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 重试确认对话框 — 允许用户重新选择要下载的文件 */}
+      {task && taskId && (
+        <RetryTaskDialog
+          open={retryDialogOpen}
+          onOpenChange={setRetryDialogOpen}
+          taskId={taskId}
+          repoId={task.repo_id}
+          revision={task.revision}
+          onRetrySuccess={handleRetrySuccess}
+        />
+      )}
     </Sheet>
   );
 }

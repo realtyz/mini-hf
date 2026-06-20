@@ -159,7 +159,6 @@ export interface RepoScanItem {
 
 export interface ScanResultData {
   scanned_at: string
-  threshold_days: number
   total_tracked_repos: number
   total_untracked_repos: number
   total_wasted_bytes: number

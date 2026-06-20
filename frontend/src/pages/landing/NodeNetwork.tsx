@@ -68,8 +68,16 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
     };
 
     resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
+    let cleanupObserver: (() => void) | undefined;
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(resize);
+      ro.observe(canvas);
+      cleanupObserver = () => ro.disconnect();
+    } else {
+      // Fallback for browsers without ResizeObserver (Safari < 13.1)
+      window.addEventListener("resize", resize);
+      cleanupObserver = () => window.removeEventListener("resize", resize);
+    }
 
     const handleMouseMove = (e: MouseEvent) => {
       const rect = canvas.getBoundingClientRect();
@@ -78,7 +86,7 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
     window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
     const animate = (time: number) => {
-      if (!canvas.isConnected) return;
+      if (canvas.isConnected === false) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const hsl = getPrimaryHsl();
@@ -176,7 +184,7 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
 
     return () => {
       cancelAnimationFrame(frameRef.current);
-      ro.disconnect();
+      cleanupObserver?.();
       window.removeEventListener("mousemove", handleMouseMove);
     };
   }, [nodeCount]);

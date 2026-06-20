@@ -32,7 +32,6 @@ class ScanResultData(BaseModel):
     """Scan result payload."""
 
     scanned_at: datetime
-    threshold_days: int
     total_tracked_repos: int
     total_untracked_repos: int = 0
     total_wasted_bytes: int
