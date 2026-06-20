@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { itemVariants } from "@/lib/animations/motion-config";
-import { Clock, Database, HardDrive } from "lucide-react";
+import { Clock, Database, HardDrive, HelpCircle } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { cn, formatBytes } from "@/lib/utils";
 
@@ -8,6 +8,7 @@ interface CacheScanStatsProps {
   scannedAt: string;
   totalColdRepos: number;
   totalOrphanRepos: number;
+  totalUntrackedRepos: number;
   totalWastedBytes: number;
 }
 
@@ -37,9 +38,10 @@ export function CacheScanStats({
   scannedAt,
   totalColdRepos,
   totalOrphanRepos,
+  totalUntrackedRepos,
   totalWastedBytes,
 }: CacheScanStatsProps) {
-  const totalRepos = totalColdRepos + totalOrphanRepos;
+  const totalRepos = totalColdRepos + totalOrphanRepos + totalUntrackedRepos;
 
   return (
     <motion.div variants={itemVariants} className="flex items-stretch gap-6">
@@ -136,6 +138,46 @@ export function CacheScanStats({
           </p>
           <p className="text-xs text-muted-foreground/70">
             {totalOrphanRepos > 0 ? "已失效的残留存储" : "无孤儿存储"}
+          </p>
+        </div>
+      </div>
+
+      <Separator orientation="vertical" className="h-12" />
+
+      <div className="flex items-center gap-3">
+        <div
+          className={cn(
+            "size-10 rounded-xl flex items-center justify-center border",
+            totalUntrackedRepos > 0
+              ? "bg-purple-500/10 border-purple-500/15"
+              : "bg-emerald-500/10 border-emerald-500/15",
+          )}
+        >
+          <HelpCircle
+            className={cn(
+              "size-5",
+              totalUntrackedRepos > 0
+                ? "text-purple-600 dark:text-purple-400"
+                : "text-emerald-600 dark:text-emerald-400",
+            )}
+          />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            未追踪仓库
+          </p>
+          <p
+            className={cn(
+              "text-lg font-bold tracking-tight tabular-nums",
+              totalUntrackedRepos > 0
+                ? "text-purple-600 dark:text-purple-400"
+                : "text-emerald-600 dark:text-emerald-400",
+            )}
+          >
+            {(totalUntrackedRepos).toLocaleString()}
+          </p>
+          <p className="text-xs text-muted-foreground/70">
+            {totalUntrackedRepos > 0 ? "S3有数据但DB无记录" : "无遗留数据"}
           </p>
         </div>
       </div>

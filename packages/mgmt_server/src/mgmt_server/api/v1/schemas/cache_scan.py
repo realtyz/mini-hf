@@ -11,6 +11,7 @@ from mgmt_server.api.v1.schemas.base import BaseResponse
 class ScanCategory(str, Enum):
     cold = "cold"
     orphan = "orphan"
+    untracked = "untracked"
 
 
 class RepoScanItem(BaseModel):
@@ -35,6 +36,7 @@ class ScanResultData(BaseModel):
     threshold_days: int
     total_cold_repos: int
     total_orphan_repos: int = 0
+    total_untracked_repos: int = 0
     total_wasted_bytes: int
     repos: list[RepoScanItem]
 

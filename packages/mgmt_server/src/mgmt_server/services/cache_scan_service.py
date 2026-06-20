@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from cache.keys import CacheKeys
 from cache.services.cache import CacheService
-from database.db_models import HfRepoProfile, RepoStatus
+from database.db_models import RepoStatus
 from database.db_repositories import (
     HfRepoProfileRepository,
-    HfRepoSnapshotRepository,
     TaskRepository,
 )
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
+from storage import S3Client
 
 from mgmt_server.api.v1.schemas.cache_scan import (
     RepoScanItem,
@@ -22,103 +22,230 @@ from mgmt_server.api.v1.schemas.cache_scan import (
     ScanResultData,
 )
 
-class CacheScanService:
-    """Service for scanning and identifying cold (unused) repositories."""
 
-    def __init__(self, session: AsyncSession, cache: CacheService) -> None:
+class CacheScanService:
+    """Service for scanning and identifying cold (unused) repositories.
+
+    Scans S3 storage directly, grouping objects by repo-level prefix to
+    compute actual disk usage. DB profiles are consulted only for
+    download / cache-update timestamps — S3 is the source of truth for
+    *which* repos exist and how much space they consume.
+    """
+
+    def __init__(
+        self,
+        session: AsyncSession,
+        cache: CacheService,
+        s3: S3Client,
+    ) -> None:
         self._session = session
         self._cache = cache
+        self._s3 = s3
         self._profile_repo = HfRepoProfileRepository(session)
-        self._snapshot_repo = HfRepoSnapshotRepository(session)
         self._task_repo = TaskRepository(session)
 
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
+
     async def scan(self, threshold_days: int = 90) -> ScanResultData:
-        """Scan for cold repositories and cache the result in Redis.
+        """Scan S3 storage and identify repos that can be cleaned up.
 
-        A repo is considered "cold" if it is ACTIVE but has:
-        - Never been downloaded (downloads == 0), or
-        - Last downloaded more than threshold_days ago
+        Walks every object under ``hf/`` in a single pass, aggregates
+        sizes per repo prefix, then cross-references DB profiles to
+        classify each S3-backed repository.
 
-        A repo is considered "orphan" if it is INACTIVE and:
-        - cache_updated_at is older than threshold_days ago
+        Categories
+        ----------
+        * **cold** – DB profile is ACTIVE but downloads == 0 or
+          ``last_downloaded_at`` is older than *threshold_days*.
+        * **orphan** – DB profile is INACTIVE and cache timestamps are
+          older than *threshold_days* (or both NULL without an active
+          task in the queue).
+        * **untracked** – S3 data exists but no DB profile was found.
+          These are invisible to the old DB-driven scan.
         """
-        cold_profiles = await self._profile_repo.list_cold_repos(threshold_days)
-        orphan_profiles = await self._profile_repo.list_orphan_repos(threshold_days)
+        # 1. One-pass S3 listing → aggregate sizes per repo prefix
+        prefix_sizes: dict[str, int] = {}
+        async for obj in self._s3.list_all_objects("hf/"):
+            group = _repo_group_key(obj["key"])
+            if group is not None:
+                prefix_sizes[group] = prefix_sizes.get(group, 0) + obj["size"]
 
-        # Exclude repos that have been cleaned (removed)
-        excluded_statuses = {RepoStatus.CLEANED, RepoStatus.CLEANING}
-        cold_profiles = [p for p in cold_profiles if p.status not in excluded_statuses]
-        orphan_profiles = [p for p in orphan_profiles if p.status not in excluded_statuses]
-
-        cold_ids = {p.repo_id for p in cold_profiles}
-        orphan_profiles = [p for p in orphan_profiles if p.repo_id not in cold_ids]
-
-        # Filter NULL-NULL orphans: repos with neither cache_updated_at nor
-        # first_cached_at have likely never been downloaded. Keep them only
-        # if no active task exists in the queue.
-        null_null_profiles = [
-            p
-            for p in orphan_profiles
-            if p.cache_updated_at is None and p.first_cached_at is None
-        ]
-        if null_null_profiles:
-            active_repo_ids = await self._task_repo.get_repos_with_active_tasks(
-                [p.repo_id for p in null_null_profiles]
+        if not prefix_sizes:
+            logger.info("Cache scan: no objects found under hf/ prefix")
+            result = ScanResultData(
+                scanned_at=datetime.now(),
+                threshold_days=threshold_days,
+                total_cold_repos=0,
+                total_orphan_repos=0,
+                total_untracked_repos=0,
+                total_wasted_bytes=0,
+                repos=[],
             )
-            orphan_profiles = [
-                p
-                for p in orphan_profiles
-                if not (
-                    p.cache_updated_at is None
-                    and p.first_cached_at is None
-                    and p.repo_id in active_repo_ids
-                )
-            ]
+            await self._cache.set(
+                CacheKeys.cache_scan.key("result"),
+                {
+                    "data": result.model_dump(mode="json"),
+                    "_cached_at": time.time(),
+                },
+                ttl=CacheKeys.cache_scan.ttl,
+            )
+            return result
+
+        # 2. Parse each prefix → (repo_id, repo_type)
+        parsed: list[tuple[str, str, str, int]] = []  # (repo_id, repo_type, prefix, size)
+        for prefix, size in prefix_sizes.items():
+            pair = _parse_repo_identifier(prefix)
+            if pair is not None:
+                repo_id, repo_type = pair
+                parsed.append((repo_id, repo_type, prefix, size))
+            else:
+                logger.debug("Skipping unparseable S3 prefix: {}", prefix)
+
+        # 3. Batch-fetch DB profiles
+        pairs = [(repo_id, repo_type) for repo_id, repo_type, _, _ in parsed]
+        profiles = await self._profile_repo.get_profiles_by_pairs(pairs)
+
+        # 4. Collect NULL-NULL orphan candidates for active-task check
+        cutoff = datetime.now() - timedelta(days=threshold_days)
+        null_null_orphans: list[str] = []  # repo_ids to check
 
         repos: list[RepoScanItem] = []
         total_wasted = 0
+        cold_count = 0
+        orphan_count = 0
+        untracked_count = 0
 
-        for profile in cold_profiles:
-            cached_size = await self._compute_cached_size(profile)
-            repos.append(
-                RepoScanItem(
-                    category=ScanCategory.cold,
-                    repo_id=profile.repo_id,
-                    repo_type=profile.repo_type,
-                    pipeline_tag=profile.pipeline_tag,
-                    downloads=profile.downloads,
-                    last_downloaded_at=profile.last_downloaded_at,
-                    first_cached_at=profile.first_cached_at,
-                    cache_updated_at=profile.cache_updated_at,
-                    cached_commits=profile.cached_commits,
-                    cached_size=cached_size,
-                )
-            )
-            total_wasted += cached_size
+        for repo_id, repo_type, _prefix, cached_size in parsed:
+            profile = profiles.get((repo_id, repo_type))
 
-        for profile in orphan_profiles:
-            cached_size = await self._compute_cached_size(profile)
-            repos.append(
-                RepoScanItem(
-                    category=ScanCategory.orphan,
-                    repo_id=profile.repo_id,
-                    repo_type=profile.repo_type,
-                    pipeline_tag=profile.pipeline_tag,
-                    downloads=profile.downloads,
-                    last_downloaded_at=profile.last_downloaded_at,
-                    first_cached_at=profile.first_cached_at,
-                    cache_updated_at=profile.cache_updated_at,
-                    cached_commits=profile.cached_commits,
-                    cached_size=cached_size,
+            # --- untracked: S3 has data but DB has no record ---
+            if profile is None:
+                repos.append(
+                    RepoScanItem(
+                        category=ScanCategory.untracked,
+                        repo_id=repo_id,
+                        repo_type=repo_type,
+                        pipeline_tag=None,
+                        downloads=0,
+                        last_downloaded_at=None,
+                        first_cached_at=None,
+                        cache_updated_at=None,
+                        cached_commits=0,
+                        cached_size=cached_size,
+                    )
                 )
+                total_wasted += cached_size
+                untracked_count += 1
+                continue
+
+            # --- skip repos that are being cleaned or already cleaned ---
+            if profile.status in (RepoStatus.CLEANING, RepoStatus.CLEANED):
+                continue
+
+            # --- cold: ACTIVE but no download activity ---
+            if profile.status == RepoStatus.ACTIVE and (
+                profile.downloads == 0 or profile.last_downloaded_at is None
+                or profile.last_downloaded_at < cutoff
+            ):
+                repos.append(
+                    RepoScanItem(
+                        category=ScanCategory.cold,
+                        repo_id=profile.repo_id,
+                        repo_type=profile.repo_type,
+                        pipeline_tag=profile.pipeline_tag,
+                        downloads=profile.downloads,
+                        last_downloaded_at=profile.last_downloaded_at,
+                        first_cached_at=profile.first_cached_at,
+                        cache_updated_at=profile.cache_updated_at,
+                        cached_commits=profile.cached_commits,
+                        cached_size=cached_size,
+                    )
+                )
+                total_wasted += cached_size
+                cold_count += 1
+                continue
+
+            # --- orphan: INACTIVE with stale cache ---
+            if profile.status == RepoStatus.INACTIVE:
+                cache_stale = profile.cache_updated_at is not None and profile.cache_updated_at < cutoff
+                first_stale = (
+                    profile.cache_updated_at is None
+                    and profile.first_cached_at is not None
+                    and profile.first_cached_at < cutoff
+                )
+                both_null = (
+                    profile.cache_updated_at is None
+                    and profile.first_cached_at is None
+                )
+
+                if cache_stale or first_stale:
+                    repos.append(
+                        RepoScanItem(
+                            category=ScanCategory.orphan,
+                            repo_id=profile.repo_id,
+                            repo_type=profile.repo_type,
+                            pipeline_tag=profile.pipeline_tag,
+                            downloads=profile.downloads,
+                            last_downloaded_at=profile.last_downloaded_at,
+                            first_cached_at=profile.first_cached_at,
+                            cache_updated_at=profile.cache_updated_at,
+                            cached_commits=profile.cached_commits,
+                            cached_size=cached_size,
+                        )
+                    )
+                    total_wasted += cached_size
+                    orphan_count += 1
+                elif both_null:
+                    null_null_orphans.append(repo_id)
+                continue
+
+            # UPDATING and any other status are intentionally skipped
+
+        # 5. Filter NULL-NULL orphans: exclude if an active task exists
+        if null_null_orphans:
+            active_repo_ids = await self._task_repo.get_repos_with_active_tasks(
+                null_null_orphans
             )
-            total_wasted += cached_size
+            for repo_id, repo_type, _prefix, cached_size in parsed:
+                profile = profiles.get((repo_id, repo_type))
+                if profile is None or profile.status != RepoStatus.INACTIVE:
+                    continue
+                if (
+                    profile.cache_updated_at is None
+                    and profile.first_cached_at is None
+                    and repo_id in active_repo_ids
+                ):
+                    continue  # has an active task — skip
+                if (
+                    profile.cache_updated_at is None
+                    and profile.first_cached_at is None
+                    and repo_id in null_null_orphans
+                ):
+                    repos.append(
+                        RepoScanItem(
+                            category=ScanCategory.orphan,
+                            repo_id=profile.repo_id,
+                            repo_type=profile.repo_type,
+                            pipeline_tag=profile.pipeline_tag,
+                            downloads=profile.downloads,
+                            last_downloaded_at=profile.last_downloaded_at,
+                            first_cached_at=profile.first_cached_at,
+                            cache_updated_at=profile.cache_updated_at,
+                            cached_commits=profile.cached_commits,
+                            cached_size=cached_size,
+                        )
+                    )
+                    total_wasted += cached_size
+                    orphan_count += 1
 
         result = ScanResultData(
             scanned_at=datetime.now(),
             threshold_days=threshold_days,
-            total_cold_repos=len(cold_profiles),
-            total_orphan_repos=len(orphan_profiles),
+            total_cold_repos=cold_count,
+            total_orphan_repos=orphan_count,
+            total_untracked_repos=untracked_count,
             total_wasted_bytes=total_wasted,
             repos=repos,
         )
@@ -133,9 +260,10 @@ class CacheScanService:
         )
 
         logger.info(
-            "Cache scan complete: {} cold repos, {} orphan repos, {:.2f} GB wasted",
-            result.total_cold_repos,
-            result.total_orphan_repos,
+            "Cache scan complete: {} cold, {} orphan, {} untracked, {:.2f} GB wasted",
+            cold_count,
+            orphan_count,
+            untracked_count,
             total_wasted / (1024**3),
         )
         return result
@@ -151,12 +279,99 @@ class CacheScanService:
             await self._cache.delete(CacheKeys.cache_scan.key("result"))
             return None
 
-    async def _compute_cached_size(self, profile: HfRepoProfile) -> int:
-        """Compute total cached file size for a repository across all snapshots."""
-        snapshots = await self._snapshot_repo.get_all_snapshots(profile.repo_id)
-        if not snapshots:
-            return 0
+    async def remove_repos_from_cached_result(
+        self, repo_ids: set[str],
+    ) -> None:
+        """Remove deleted repos from the cached scan result.
 
-        commit_hashes = [s.commit_hash for s in snapshots]
-        size_stats = await self._snapshot_repo.get_snapshot_size_stats(commit_hashes)
-        return sum(stats.cached_size for stats in size_stats.values())
+        Called after successful deletion so that subsequent reads of the
+        scan cache reflect the current S3 / DB state without requiring a
+        full re-scan.
+        """
+        await _remove_repos_from_cache(self._cache, repo_ids)
+
+
+# ------------------------------------------------------------------
+# Internal helpers
+# ------------------------------------------------------------------
+
+
+async def _remove_repos_from_cache(
+    cache: CacheService, repo_ids: set[str],
+) -> None:
+    """Remove *repo_ids* from the scan result held in Redis.
+
+    This is a module-level function so it can be reused by the batch
+    delete service which only has a ``CacheService``, not a full
+    ``CacheScanService`` instance.
+    """
+    cached = await cache.get(CacheKeys.cache_scan.key("result"))
+    if cached is None:
+        return
+    data: dict | None = cached.get("data")
+    if not data:
+        return
+    repos: list[dict] = data.get("repos", [])
+    if not repos:
+        return
+
+    remaining = [r for r in repos if r.get("repo_id") not in repo_ids]
+    if len(remaining) == len(repos):
+        return  # no repos matched — nothing to do
+
+    # Recalculate aggregate counts
+    data["repos"] = remaining
+    data["total_cold_repos"] = sum(
+        1 for r in remaining if r.get("category") == "cold"
+    )
+    data["total_orphan_repos"] = sum(
+        1 for r in remaining if r.get("category") == "orphan"
+    )
+    data["total_untracked_repos"] = sum(
+        1 for r in remaining if r.get("category") == "untracked"
+    )
+    data["total_wasted_bytes"] = sum(
+        r.get("cached_size", 0) for r in remaining
+    )
+
+    await cache.set(
+        CacheKeys.cache_scan.key("result"),
+        {"data": data, "_cached_at": time.time()},
+        ttl=CacheKeys.cache_scan.ttl,
+    )
+    logger.debug(
+        "Removed {} deleted repo(s) from cached scan result",
+        len(repos) - len(remaining),
+    )
+
+
+def _repo_group_key(key: str) -> str | None:
+    """Extract the repo-level grouping prefix from an S3 object key.
+
+    Keys are expected in the form::
+
+        hf/{repo_type}--{namespace}--{repo_name}/blobs/{blob_id}
+
+    Returns everything up to (and including) the second ``/``, e.g.
+    ``"hf/model--facebook--bart-large/"``, or ``None`` if the key
+    does not have enough segments.
+    """
+    parts = key.split("/", 2)
+    if len(parts) < 2:
+        return None
+    return f"{parts[0]}/{parts[1]}/"
+
+
+def _parse_repo_identifier(prefix: str) -> tuple[str, str] | None:
+    """Parse a repo group prefix back into *(repo_id, repo_type)*.
+
+    >>> _parse_repo_identifier("hf/model--facebook--bart-large/")
+    ('facebook/bart-large', 'model')
+    """
+    # Strip "hf/" and trailing "/"
+    identifier = prefix[3:].rstrip("/")
+    parts = identifier.split("--")
+    if len(parts) != 3:
+        return None
+    repo_type, namespace, repo_name = parts
+    return (f"{namespace}/{repo_name}", repo_type)

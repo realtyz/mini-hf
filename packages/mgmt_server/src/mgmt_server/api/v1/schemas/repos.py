@@ -188,6 +188,10 @@ class BatchDeleteRepoRequest(BaseModel):
     repo_ids: list[RepoId] = Field(
         ..., min_length=1, max_length=50, description="List of repo_ids to delete"
     )
+    repo_types: dict[str, str] | None = Field(
+        None,
+        description="Optional mapping of repo_id → repo_type (model|dataset) for untracked repos",
+    )
 
 
 class BatchDeleteRepoItem(BaseModel):

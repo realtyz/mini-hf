@@ -12,6 +12,7 @@ from services.task import TaskService
 
 from mgmt_server.api.v1.schemas.repos import BatchDeleteRepoItem
 from mgmt_server.core.exceptions import ConflictError, NotFoundError
+from mgmt_server.services.cache_scan_service import _remove_repos_from_cache
 from mgmt_server.services.repo_service import RepoService
 
 _DEFAULT_TTL = 86400  # 24 hours
@@ -53,13 +54,21 @@ class BatchDeleteService:
         return operation_id, unique_ids
 
     def create_background_task(
-        self, operation_id: str, repo_ids: list[str]
+        self,
+        operation_id: str,
+        repo_ids: list[str],
+        repo_types: dict[str, str] | None = None,
     ):
         """Return a callable for FastAPI BackgroundTasks.
 
         Each repo_id is processed in its own DB transaction so that a
         failure in one does not roll back the work of others.
+
+        *repo_types* is an optional mapping of repo_id → repo_type for
+        untracked repos that have no DB profile.
         """
+
+        repo_types = repo_types or {}
 
         async def _run() -> None:
             semaphore = asyncio.Semaphore(_BATCH_CONCURRENCY)
@@ -72,7 +81,9 @@ class BatchDeleteService:
                             repo_service = RepoService(
                                 session, task_service=task_service
                             )
-                            result = await repo_service.delete_repo(repo_id)
+                            result = await repo_service.delete_repo(
+                                repo_id, repo_type=repo_types.get(repo_id)
+                            )
                             await session.commit()
                             return BatchDeleteRepoItem(
                                 repo_id=result.repo_id,
@@ -112,6 +123,11 @@ class BatchDeleteService:
                     await self._cache.set(
                         self._key(operation_id), existing, ttl=_DEFAULT_TTL
                     )
+
+            # Remove successfully-deleted repos from the cached scan result
+            deleted_ids = {r.repo_id for r in results if r.deleted}
+            if deleted_ids:
+                await _remove_repos_from_cache(self._cache, deleted_ids)
 
             # Mark completed
             existing = await self._cache.get(self._key(operation_id))

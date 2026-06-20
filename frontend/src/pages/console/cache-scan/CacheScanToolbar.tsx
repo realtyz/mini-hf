@@ -268,6 +268,9 @@ export function CacheScanToolbar({
             <ToggleGroupItem value="orphan" className="h-8 px-2.5 text-[12px]">
               孤儿
             </ToggleGroupItem>
+            <ToggleGroupItem value="untracked" className="h-8 px-2.5 text-[12px]">
+              未追踪
+            </ToggleGroupItem>
           </ToggleGroup>
 
           <div className="relative flex-1 min-w-50 max-w-sm">

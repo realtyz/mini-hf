@@ -1,8 +1,8 @@
 """Repository for HuggingFace repository profile operations."""
 
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.db_models import HfRepoProfile, HfRepoSnapshot, RepoStatus, SnapshotStatus
@@ -326,76 +326,32 @@ class HfRepoProfileRepository:
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
-    async def list_cold_repos(
+    async def get_profiles_by_pairs(
         self,
-        threshold_days: int,
-    ) -> list[HfRepoProfile]:
-        """List active repos with no download activity within threshold_days.
-
-        Returns repos where status=ACTIVE and either:
-        - downloads == 0 (never downloaded), or
-        - last_downloaded_at is older than threshold_days ago
+        pairs: list[tuple[str, str]],
+    ) -> dict[tuple[str, str], HfRepoProfile]:
+        """Batch-fetch profiles by (repo_id, repo_type) pairs.
 
         Args:
-            threshold_days: Number of days of inactivity to consider a repo "cold"
+            pairs: List of (repo_id, repo_type) tuples to look up.
 
         Returns:
-            List of cold HfRepoProfile records ordered by cache_updated_at desc
+            Dict mapping (repo_id, repo_type) → HfRepoProfile.
+            Pairs that don't match any profile are simply absent from the dict.
         """
-        cutoff = datetime.now() - timedelta(days=threshold_days)
+        if not pairs:
+            return {}
 
-        stmt = (
-            select(HfRepoProfile)
-            .where(
-                HfRepoProfile.status == RepoStatus.ACTIVE,
-                (
-                    (HfRepoProfile.downloads == 0)
-                    | (HfRepoProfile.last_downloaded_at < cutoff)
-                ),
+        conditions = [
+            and_(
+                HfRepoProfile.repo_id == repo_id,
+                HfRepoProfile.repo_type == repo_type,
             )
-            .order_by(HfRepoProfile.cache_updated_at.desc())
-        )
+            for repo_id, repo_type in pairs
+        ]
+        stmt = select(HfRepoProfile).where(or_(*conditions))
         result = await self._session.execute(stmt)
-        return list(result.scalars().all())
-
-    async def list_orphan_repos(
-        self,
-        threshold_days: int,
-    ) -> list[HfRepoProfile]:
-        """List inactive repos with cache_updated_at older than threshold_days.
-
-        Returns repos where status=INACTIVE and:
-        - cache_updated_at is older than threshold_days ago, or
-        - cache_updated_at is NULL and first_cached_at is older than threshold_days ago
-
-        Args:
-            threshold_days: Number of days of staleness to consider a repo "orphan"
-
-        Returns:
-            List of orphan HfRepoProfile records ordered by cache_updated_at desc
-        """
-        cutoff = datetime.now() - timedelta(days=threshold_days)
-
-        stmt = (
-            select(HfRepoProfile)
-            .where(
-                HfRepoProfile.status == RepoStatus.INACTIVE,
-                (
-                    (HfRepoProfile.cache_updated_at < cutoff)
-                    | (
-                        (HfRepoProfile.cache_updated_at.is_(None))
-                        & (HfRepoProfile.first_cached_at < cutoff)
-                    )
-                    | (
-                        (HfRepoProfile.cache_updated_at.is_(None))
-                        & (HfRepoProfile.first_cached_at.is_(None))
-                    )
-                ),
-            )
-            .order_by(HfRepoProfile.cache_updated_at.desc())
-        )
-        result = await self._session.execute(stmt)
-        return list(result.scalars().all())
+        return {(p.repo_id, p.repo_type): p for p in result.scalars().all()}
 
     async def count_repos(
         self,

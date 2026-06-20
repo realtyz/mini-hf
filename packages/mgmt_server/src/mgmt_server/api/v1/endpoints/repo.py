@@ -7,7 +7,7 @@ from fastapi.responses import RedirectResponse
 
 from database.db_models import HfRepoProfile, HfRepoSnapshot, RepoStatus
 from database.db_repositories.hf_repo_snapshot import SizeStats
-from mgmt_server.api.deps import AdminUserDep, RepoServiceDep
+from mgmt_server.api.deps import AdminUserDep, CacheScanServiceDep, RepoServiceDep
 from mgmt_server.api.v1.schemas.base import RepoId
 from mgmt_server.core.exceptions import NotFoundError, ValidationError
 from mgmt_server.api.v1.schemas.repos import (
@@ -204,9 +204,19 @@ async def delete_repository(
     repo_id: RepoId,
     admin_user: AdminUserDep,
     repo_service: RepoServiceDep,
+    cache_scan_service: CacheScanServiceDep,
+    repo_type: str | None = Query(
+        None, pattern="^(model|dataset)$",
+        description="Required for untracked repos (S3 data without DB profile)",
+    ),
 ) -> DeleteRepoResponse:
-    """Delete an entire cached repository and all associated records."""
-    result = await repo_service.delete_repo(repo_id)
+    """Delete an entire cached repository and all associated records.
+
+    For untracked repositories (S3 data without a DB profile), pass
+    *repo_type* to enable direct S3 cleanup.
+    """
+    result = await repo_service.delete_repo(repo_id, repo_type=repo_type)
+    await cache_scan_service.remove_repos_from_cached_result({repo_id})
     return DeleteRepoResponse(data=result)
 
 

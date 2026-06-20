@@ -27,6 +27,7 @@ from mgmt_server.services.batch_delete_service import BatchDeleteService
 from mgmt_server.services.task_lifecycle_service import TaskLifecycleService
 from mgmt_server.services.token_service import TokenService
 from mgmt_server.services.user_service import UserService
+from storage import s3_client
 
 
 # ------------------------------------------------------------------
@@ -143,7 +144,7 @@ async def get_cache_scan_service(
     cache: Annotated[CacheService, Depends(get_cache_service)],
 ) -> CacheScanService:
     """Get cache scan service dependency."""
-    return CacheScanService(db, cache=cache)
+    return CacheScanService(db, cache=cache, s3=s3_client)
 
 
 async def get_batch_delete_service(

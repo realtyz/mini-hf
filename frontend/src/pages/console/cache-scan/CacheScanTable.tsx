@@ -214,13 +214,14 @@ export function CacheScanTable({
 
                 <TableCell className="py-2.5 text-center">
                   <Badge
-                    variant={repo.category === "cold" ? "destructive" : "outline"}
+                    variant={repo.category === "cold" ? "destructive" : repo.category === "untracked" ? "secondary" : "outline"}
                     className={cn(
                       "text-[11px] font-medium",
                       repo.category === "orphan" && "border-amber-500/50 text-amber-700 dark:text-amber-400",
+                      repo.category === "untracked" && "border-purple-500/50 text-purple-700 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/30",
                     )}
                   >
-                    {repo.category === "cold" ? "冷仓库" : "孤儿"}
+                    {repo.category === "cold" ? "冷仓库" : repo.category === "orphan" ? "孤儿" : "未追踪"}
                   </Badge>
                 </TableCell>
 

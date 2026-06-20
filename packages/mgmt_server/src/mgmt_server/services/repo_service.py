@@ -14,7 +14,7 @@ from database.db_repositories.hf_repo_snapshot import SizeStats
 from loguru import logger
 from services.task import TaskService
 from sqlalchemy.ext.asyncio import AsyncSession
-from storage import build_blob_key, s3_client
+from storage import build_blob_key, build_blob_prefix, s3_client
 
 from mgmt_server.api.v1.schemas import BatchDeleteRepoItem, DeleteRepoResult
 from mgmt_server.core.exceptions import (
@@ -153,16 +153,23 @@ class RepoService:
     async def delete_repo(
         self,
         repo_id: str,
+        repo_type: str | None = None,
     ) -> DeleteRepoResult:
         """Delete an entire cached repository with all database records and S3 blobs.
 
+        For normal (tracked) repos the *repo_type* is read from the DB profile.
+        For untracked repos (S3 data without a DB profile) the caller MUST
+        supply *repo_type* — otherwise ``NotFoundError`` is raised.
+
         Raises:
-            NotFoundError: If repo not found
+            NotFoundError: If repo not found (DB or S3)
             ConflictError: If repo is updating or has active tasks
         """
         profile = await self._profile_repo.get_profile_by_repo_id(repo_id)
 
         if profile is None:
+            if repo_type:
+                return await self._delete_untracked_repo(repo_id, repo_type)
             raise NotFoundError(f"Repository '{repo_id}' not found")
 
         if profile.status == RepoStatus.UPDATING:
@@ -184,12 +191,18 @@ class RepoService:
     async def batch_delete_repos(
         self,
         repo_ids: list[str],
+        repo_types: dict[str, str] | None = None,
     ) -> list[BatchDeleteRepoItem]:
         """Delete multiple repositories, collecting per-repo results.
 
         Processes each repo_id independently — failures in one do not
         prevent deletion of the others.
+
+        *repo_types* is an optional mapping of repo_id → repo_type for
+        untracked repos that have no DB profile.
         """
+        repo_types = repo_types or {}
+
         # Deduplicate while preserving order
         seen: set[str] = set()
         unique_ids: list[str] = []
@@ -201,7 +214,9 @@ class RepoService:
         results: list[BatchDeleteRepoItem] = []
         for repo_id in unique_ids:
             try:
-                result = await self.delete_repo(repo_id)
+                result = await self.delete_repo(
+                    repo_id, repo_type=repo_types.get(repo_id)
+                )
                 results.append(
                     BatchDeleteRepoItem(
                         repo_id=result.repo_id,
@@ -338,6 +353,30 @@ class RepoService:
         deleted = sum(1 for ok in results if ok)
         failed = len(results) - deleted
         return deleted, failed
+
+    async def _delete_untracked_repo(
+        self,
+        repo_id: str,
+        repo_type: str,
+    ) -> DeleteRepoResult:
+        """Delete an untracked repository (S3 data with no DB profile).
+
+        Lists all S3 objects under the repo blob prefix and deletes them
+        in batches. There are no DB records to clean up.
+        """
+        prefix = build_blob_prefix(repo_id, repo_type)
+        deleted_count = await s3_client.delete_directory(prefix)
+        logger.info(
+            "Deleted untracked repo {} ({}): {} blobs removed",
+            repo_id,
+            repo_type,
+            deleted_count,
+        )
+        return DeleteRepoResult(
+            deleted=True,
+            repo_id=repo_id,
+            blobs_deleted=deleted_count,
+        )
 
     # ------------------------------------------------------------------
     # Cache status check (used by preview executor)

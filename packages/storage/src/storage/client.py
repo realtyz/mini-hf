@@ -355,6 +355,59 @@ class S3Client:
                 objects.extend(page["Contents"])
         return objects
 
+    def _list_objects_page_sync(
+        self,
+        client,
+        bucket_name: str,
+        prefix: str,
+        continuation_token: str | None = None,
+    ) -> dict:
+        """Synchronously list one page of objects (runs in thread pool)."""
+        kwargs: dict = {"Bucket": bucket_name, "Prefix": prefix, "MaxKeys": 1000}
+        if continuation_token:
+            kwargs["ContinuationToken"] = continuation_token
+        return client.list_objects_v2(**kwargs)
+
+    async def list_all_objects(self, prefix: str = ""):
+        """List all objects under a prefix, yielding one {key, size} dict per object.
+
+        This is a long-running async generator that paginates through the
+        entire prefix. Intended for admin-triggered batch operations like
+        cache scanning — not for hot-path request handling.
+
+        Args:
+            prefix: S3 key prefix to list under.
+
+        Yields:
+            Dict with 'key' (str) and 'size' (int) for each object.
+
+        Raises:
+            ClientError: If the S3 request fails.
+
+        Example:
+            >>> async for obj in s3.list_all_objects("hf/"):
+            ...     print(obj["key"], obj["size"])
+        """
+        client = self._get_client()
+        continuation_token: str | None = None
+
+        while True:
+            page = await asyncio.to_thread(
+                self._list_objects_page_sync,
+                client,
+                self.bucket_name,
+                prefix,
+                continuation_token,
+            )
+
+            if "Contents" in page:
+                for obj in page["Contents"]:
+                    yield {"key": obj["Key"], "size": obj["Size"]}
+
+            if not page.get("IsTruncated"):
+                break
+            continuation_token = page.get("NextContinuationToken")
+
     async def delete_directory(self, prefix: str) -> int:
         """Delete all files under a directory prefix.
 

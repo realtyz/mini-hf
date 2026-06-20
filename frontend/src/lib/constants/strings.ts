@@ -49,15 +49,24 @@ export const STRINGS = {
   cacheScanScanning: '扫描中...',
   cacheScanLoadFailed: '加载扫描结果失败',
   cacheScanLoadFailedDesc: '请检查网络连接后重试',
-  cacheScanAllClear: '暂无冷数据仓库或孤儿存储',
-  cacheScanAllClearDesc: '所有仓库均处于活跃下载状态，无孤儿存储',
+  cacheScanAllClear: '暂无冷数据仓库、孤儿存储或未追踪数据',
+  cacheScanAllClearDesc: '所有仓库均处于活跃下载状态，无残留存储',
   cacheScanDeleteSuccess: '仓库已彻底删除',
   cacheScanCopySuccess: '已复制仓库 ID',
   cacheScanBatchDelete: '批量删除',
   cacheScanBatchDeleteSelected: (n: number) => `批量删除 (${n})`,
   cacheScanBatchDeleteConfirmTitle: '确认批量删除仓库',
   cacheScanBatchDeleteStarted: (n: number) => `批量删除已启动，正在删除 ${n} 个仓库...`,
-  cacheScanBatchDeleteCompleted: (deleted: number, failed: number) => `批量删除完成：${deleted} 个成功，${failed} 个失败`,
+  cacheScanBatchDeleteCompleted: (deleted: number) => `批量删除完成：${deleted} 个仓库已删除`,
+  cacheScanBatchDeleteCompletedWithFailures: (deleted: number, failed: number) =>
+    `批量删除完成：${deleted} 个成功，${failed} 个失败`,
+  batchDeleteResultTitle: '批量删除结果',
+  batchDeleteAllSuccess: '全部删除成功',
+  batchDeleteResultSummary: (total: number, succeeded: number, failed: number) =>
+    failed > 0
+      ? `共 ${total} 个仓库，成功 ${succeeded} 个，失败 ${failed} 个`
+      : `共 ${total} 个仓库全部删除成功`,
+  batchDeleteResultClose: '确定',
 
   // Repository
   repoList: '仓库管理',

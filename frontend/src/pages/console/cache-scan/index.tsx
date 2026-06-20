@@ -24,6 +24,8 @@ import { CacheScanStats } from "./CacheScanStats";
 import { CacheScanToolbar } from "./CacheScanToolbar";
 import { CacheScanTable } from "./CacheScanTable";
 import { CleanupConfirmDialog } from "./CleanupConfirmDialog";
+import { BatchDeleteResultDialog } from "./BatchDeleteResultDialog";
+import type { BatchDeleteOperationState } from "@/lib/api/types";
 
 // =============================================================================
 // Sub-Components
@@ -120,6 +122,7 @@ export function CacheScan() {
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchOperationId, setBatchOperationId] = useState<string | null>(null);
+  const [batchDeleteResult, setBatchDeleteResult] = useState<BatchDeleteOperationState | null>(null);
   const completedOpRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
   const deleteRepo = useDeleteRepo();
@@ -136,7 +139,13 @@ export function CacheScan() {
     if (!data || data.status !== 'completed') return;
     if (data.operation_id === completedOpRef.current) return;
     completedOpRef.current = data.operation_id;
-    toast.success(STRINGS.cacheScanBatchDeleteCompleted(data.total_deleted, data.total_failed));
+
+    if (data.total_failed > 0) {
+      toast.warning(STRINGS.cacheScanBatchDeleteCompletedWithFailures(data.total_deleted, data.total_failed));
+      setBatchDeleteResult(data);
+    } else {
+      toast.success(STRINGS.cacheScanBatchDeleteCompleted(data.total_deleted));
+    }
     queryClient.invalidateQueries({ queryKey: queryKeys.cacheScan.result() });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setBatchOperationId(null);
@@ -146,7 +155,7 @@ export function CacheScan() {
     triggerScan.mutate(actualThreshold, {
       onSuccess: (data) => {
         toast.success(
-          `扫描完成：发现 ${data.data?.total_cold_repos ?? 0} 个冷仓库，${data.data?.total_orphan_repos ?? 0} 个孤儿仓库`,
+          `扫描完成：发现 ${data.data?.total_cold_repos ?? 0} 个冷仓库，${data.data?.total_orphan_repos ?? 0} 个孤儿仓库，${data.data?.total_untracked_repos ?? 0} 个未追踪仓库`,
         );
       },
       onError: () => {
@@ -200,22 +209,32 @@ export function CacheScan() {
   const handleBatchDelete = () => {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
-    batchDeleteRepos.mutate(ids, {
-      onSuccess: (data) => {
-        setBatchOperationId(data.operation_id);
-        setSelectedIds(new Set());
-        toast.success(STRINGS.cacheScanBatchDeleteStarted(ids.length));
-      },
-      onError: () => {
-        toast.error("批量删除启动失败，请重试");
-      },
-    });
+    const repoTypes: Record<string, string> = {};
+    for (const repo of result?.repos ?? []) {
+      if (selectedIds.has(repo.repo_id)) {
+        repoTypes[repo.repo_id] = repo.repo_type;
+      }
+    }
+    batchDeleteRepos.mutate(
+      { repoIds: ids, repoTypes },
+      {
+        onSuccess: (data) => {
+          setBatchOperationId(data.operation_id);
+          setSelectedIds(new Set());
+          toast.success(STRINGS.cacheScanBatchDeleteStarted(ids.length));
+        },
+        onError: () => {
+          toast.error("批量删除启动失败，请重试");
+        },
+      }
+    );
   };
 
   const handleConfirmDelete = () => {
     if (!deletingRepoId) return;
+    const repo = result?.repos.find((r) => r.repo_id === deletingRepoId);
     deleteRepo.mutate(
-      deletingRepoId,
+      { repoId: deletingRepoId, repoType: repo?.repo_type },
       {
         onSuccess: () => {
           toast.success(STRINGS.cacheScanDeleteSuccess);
@@ -341,6 +360,7 @@ export function CacheScan() {
               scannedAt={result.scanned_at}
               totalColdRepos={result.total_cold_repos}
               totalOrphanRepos={result.total_orphan_repos}
+              totalUntrackedRepos={result.total_untracked_repos}
               totalWastedBytes={result.total_wasted_bytes}
             />
 
@@ -370,6 +390,15 @@ export function CacheScan() {
         repoId={deletingRepoId}
         isDeleting={deleteRepo.isPending}
         onConfirm={handleConfirmDelete}
+      />
+
+      <BatchDeleteResultDialog
+        open={batchDeleteResult !== null}
+        onOpenChange={(open) => {
+          if (!open) setBatchDeleteResult(null);
+        }}
+        results={batchDeleteResult?.results ?? []}
+        totalRequested={batchDeleteResult?.total_requested ?? 0}
       />
     </motion.div>
   );
