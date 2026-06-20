@@ -415,7 +415,7 @@ export function TaskDetailDrawer({
 
   const handleRetry = () => {
     if (!taskId) return;
-    retryTask.mutate(taskId, {
+    retryTask.mutate({ taskId }, {
       onSuccess: () => {
         // 重试成功后关闭当前详情页，跳转到新任务
         onOpenChange(false);

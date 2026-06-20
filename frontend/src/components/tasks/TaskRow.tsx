@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
+import { RetryTaskDialog } from '@/components/tasks/RetryTaskDialog'
 import { formatBytes } from '@/lib/utils'
 import type { TaskResponse } from '@/lib/api/types'
 import { cn } from '@/lib/utils'
@@ -417,16 +418,30 @@ export const TaskRow = memo(function TaskRow({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        <ConfirmDialog
-          open={dialogType !== null}
-          onOpenChange={(open) => { if (!open) setDialogType(null) }}
-          title={dialogConfig?.title ?? ''}
-          description={dialogConfig ? dialogConfig.getDescription(task) : null}
-          confirmLabel={dialogConfig?.confirmLabel ?? ''}
-          confirmVariant={dialogConfig?.confirmVariant}
-          onConfirm={handleDialogConfirm}
-          disabled={isDialogDisabled}
-        />
+        {dialogType === 'retry' ? (
+          <RetryTaskDialog
+            open={true}
+            onOpenChange={(open) => { if (!open) setDialogType(null) }}
+            taskId={task.id}
+            repoId={task.repo_id}
+            revision={task.revision}
+            onRetrySuccess={() => {
+              setDialogType(null)
+              onRetry?.(task)
+            }}
+          />
+        ) : (
+          <ConfirmDialog
+            open={dialogType !== null}
+            onOpenChange={(open) => { if (!open) setDialogType(null) }}
+            title={dialogConfig?.title ?? ''}
+            description={dialogConfig ? dialogConfig.getDescription(task) : null}
+            confirmLabel={dialogConfig?.confirmLabel ?? ''}
+            confirmVariant={dialogConfig?.confirmVariant}
+            onConfirm={handleDialogConfirm}
+            disabled={isDialogDisabled}
+          />
+        )}
       </TableCell>
     </motion.tr>
   )

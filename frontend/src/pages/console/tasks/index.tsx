@@ -107,8 +107,8 @@ export function Tasks() {
   );
 
   const handleRetryTask = useCallback(
-    (task: TaskResponse) => { retryTask.mutate(task.id); },
-    [retryTask]
+    () => { refetch(); },
+    [refetch]
   );
 
   return (
@@ -260,7 +260,7 @@ export function Tasks() {
                       isApproving={reviewTask.isPending && reviewTask.variables?.taskId === task.id && reviewTask.variables?.approved === true}
                       isRejecting={reviewTask.isPending && reviewTask.variables?.taskId === task.id && reviewTask.variables?.approved === false}
                       isCanceling={cancelTask.isPending && cancelTask.variables === task.id}
-                      isRetrying={retryTask.isPending && retryTask.variables === task.id}
+                      isRetrying={retryTask.isPending && retryTask.variables?.taskId === task.id}
                       index={index}
                     />
                   ))}

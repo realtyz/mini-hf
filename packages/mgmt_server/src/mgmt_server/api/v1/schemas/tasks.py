@@ -169,3 +169,13 @@ class AsyncPreviewTaskStatusData(BaseModel):
 
 class AsyncPreviewTaskStatusResponse(BaseResponse[AsyncPreviewTaskStatusData]):
     """Async preview task status response."""
+
+
+class TaskRetryRequest(BaseModel):
+    """Request body for retrying a failed/cancelled task.
+
+    If selected_files is omitted, all previously required files are retried
+    (backward-compatible behavior).
+    """
+
+    selected_files: list[str] | None = None

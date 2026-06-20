@@ -8,12 +8,13 @@ import {
   Search,
   X,
   History,
-  AlertCircle,
+  RotateCcw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
+import { RetryTaskDialog } from "@/components/tasks/RetryTaskDialog";
 import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
 import {
   Table,
@@ -34,7 +35,6 @@ import {
 import type { TaskResponse } from "@/lib/api/types";
 import { format } from "date-fns";
 import { zhCN } from "date-fns/locale";
-import { useTaskActions } from "@/hooks/use-task-actions";
 import { useNavigate } from "react-router";
 
 interface TaskHistoryTableProps {
@@ -56,11 +56,10 @@ function formatDuration(start: string, end: string | null): string {
 export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [retryTaskId, setRetryTaskId] = useState<number | null>(null);
+  const [retryTask, setRetryTask] = useState<TaskResponse | null>(null);
   const [showLoginDialog, setShowLoginDialog] = useState(false);
 
   const navigate = useNavigate();
-  const { retryTask } = useTaskActions();
 
   const filteredTasks = search
     ? tasks.filter((t) => t.repo_id.toLowerCase().includes(search.toLowerCase()))
@@ -75,17 +74,6 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
   const handleSearch = (value: string) => {
     setSearch(value);
     setCurrentPage(1);
-  };
-
-  const handleConfirmRetry = async () => {
-    if (retryTaskId === null) return;
-    try {
-      await retryTask.mutateAsync(retryTaskId);
-      setRetryTaskId(null);
-    } catch (error) {
-      // 错误已经由全局拦截器和useTaskActions中的toast处理
-      if (import.meta.env.DEV) console.error("重试失败:", error);
-    }
   };
 
   const handleLoginNow = () => {
@@ -166,6 +154,7 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                   <TableHead className="w-24 text-center font-semibold text-xs">状态</TableHead>
                   <TableHead className="w-24 text-center font-semibold text-xs">耗时</TableHead>
                   <TableHead className="w-32 text-center font-semibold text-xs">完成时间</TableHead>
+                  <TableHead className="w-16 text-center font-semibold text-xs">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -229,6 +218,19 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                         })
                         : "-"}
                     </TableCell>
+                    <TableCell className="text-center">
+                      {task.status === "failed" || task.status === "cancelled" ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => setRetryTask(task)}
+                          title="重试任务"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : null}
+                    </TableCell>
                   </motion.tr>
                 ))}
               </TableBody>
@@ -257,37 +259,14 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
         </div>
       )}
 
-      {/* 重试确认对话框 */}
-      <Dialog open={retryTaskId !== null} onOpenChange={(open) => !open && setRetryTaskId(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-amber-500" />
-              确认重试任务
-            </DialogTitle>
-            <DialogDescription>
-              此操作将创建一个与原任务配置完全相同的新任务，并自动开始执行。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setRetryTaskId(null)}
-              disabled={retryTask.isPending}
-            >
-              取消
-            </Button>
-            <Button
-              onClick={handleConfirmRetry}
-              disabled={retryTask.isPending}
-              className="gap-2"
-            >
-              {retryTask.isPending && <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-t-transparent" />}
-              确认重试
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {/* 重试任务对话框（带缓存文件预览） */}
+      <RetryTaskDialog
+        open={retryTask !== null}
+        onOpenChange={(open) => { if (!open) setRetryTask(null) }}
+        taskId={retryTask?.id ?? 0}
+        repoId={retryTask?.repo_id ?? ''}
+        revision={retryTask?.revision ?? ''}
+      />
 
       {/* 登录提示对话框 */}
       <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>

@@ -499,7 +499,7 @@ function ConsoleSidebar() {
     return menuGroups.map(group => ({
       ...group,
       items: group.items.filter(item =>
-        item.path === '/console' || item.path === '/console/tasks' || item.path === '/console/cache-scan'
+        item.path === '/console' || item.path === '/console/tasks'
       ),
     })).filter(group => group.items.length > 0);
   }, [user?.role]);

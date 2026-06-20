@@ -29,6 +29,8 @@ export const queryKeys = {
       id === null ? ['tasks', 'progress', 'empty'] : [...queryKeys.tasks.all, 'progress', id] as const,
     previewStatus: (id: string | null) =>
       id === null ? ['tasks', 'preview-status', 'empty'] : [...queryKeys.tasks.all, 'preview-status', id] as const,
+    retryPreview: (id: number) =>
+      [...queryKeys.tasks.all, 'retry-preview', id] as const,
   },
   repos: {
     all: ['repos'] as const,

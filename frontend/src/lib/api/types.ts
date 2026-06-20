@@ -702,6 +702,8 @@ export interface AsyncPreviewTaskStatusData {
 
 export type AsyncPreviewTaskStatusResponse = ApiResponse<AsyncPreviewTaskStatusData>
 
+export type TaskPreviewResponse = ApiResponse<TaskPreviewData>
+
 // ==================== 批量删除 ====================
 
 export interface BatchDeleteRepoRequest {

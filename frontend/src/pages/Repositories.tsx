@@ -28,6 +28,7 @@ import type {
   RepoProfile,
   RepoListResponse,
   RepoListParams,
+  RepoStatus,
 } from "@/lib/api/types";
 import { RepoGrid } from "@/components/repo";
 import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
@@ -35,15 +36,18 @@ import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
 const PAGE_SIZE = 16;
 
 type RepoTypeFilter = "all" | "model" | "dataset";
+type StatusFilter = "all" | RepoStatus;
 type ModelSource = "huggingface" | "modelscope";
 
 interface FetchReposParams extends RepoListParams {
   repoType: RepoTypeFilter;
+  statusFilter: StatusFilter;
   modelSource: ModelSource;
 }
 
 async function fetchRepositories({
   repoType,
+  statusFilter,
   modelSource,
   ...params
 }: FetchReposParams): Promise<RepoListResponse> {
@@ -53,14 +57,22 @@ async function fetchRepositories({
     queryParams.repo_type = repoType;
   }
 
+  queryParams.statuses = [statusFilter];
+
   const endpoint =
     modelSource === "huggingface" ? endpoints.repo.hfListPublic : endpoints.repo.msList;
-  return api.get<RepoListResponse>(endpoint, { params: queryParams });
+  return api.get<RepoListResponse>(endpoint, {
+    params: queryParams,
+    paramsSerializer: {
+      indexes: null,
+    },
+  });
 }
 
 export function Repositories() {
   const navigate = useNavigate();
   const [repoType, setRepoType] = useState<RepoTypeFilter>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
   const [modelSource, setModelSource] = useState<ModelSource>("huggingface");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -77,12 +89,13 @@ export function Repositories() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: [
       "repositories",
-      { modelSource, repoType, search: debouncedSearch, page },
+      { modelSource, repoType, statusFilter, search: debouncedSearch, page },
     ],
     queryFn: () =>
       fetchRepositories({
         modelSource,
         repoType,
+        statusFilter,
         skip: page * PAGE_SIZE,
         limit: PAGE_SIZE,
         search: debouncedSearch || undefined,
@@ -100,6 +113,11 @@ export function Repositories() {
 
   const handleRepoTypeChange = (value: string) => {
     setRepoType(value as RepoTypeFilter);
+    setPage(0);
+  };
+
+  const handleStatusFilterChange = (value: string) => {
+    setStatusFilter(value as StatusFilter);
     setPage(0);
   };
 
@@ -172,6 +190,17 @@ export function Repositories() {
               <SelectItem value="all">全部类型</SelectItem>
               <SelectItem value="model">模型</SelectItem>
               <SelectItem value="dataset">数据集</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <SelectTrigger className="w-30">
+              <SelectValue placeholder="状态筛选" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">活跃</SelectItem>
+              <SelectItem value="inactive">不完整</SelectItem>
+              <SelectItem value="updating">更新中</SelectItem>
             </SelectContent>
           </Select>
         </div>

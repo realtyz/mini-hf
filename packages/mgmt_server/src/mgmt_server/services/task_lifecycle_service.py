@@ -18,6 +18,8 @@ from mgmt_server.api.v1.schemas import (
     ActiveTaskListResponse,
     TaskDetailResponse,
     TaskListResponse,
+    TaskPreviewData,
+    TaskPreviewResponse,
     TaskProgressResponse,
 )
 from mgmt_server.core.constants import BYTES_PER_GB, TASK_RETRY_WINDOW_DAYS, UserRole
@@ -27,6 +29,7 @@ from mgmt_server.core.exceptions import (
     PermissionDeniedError,
     ValidationError,
 )
+from mgmt_server.services.repo_service import RepoService
 from mgmt_server.services.task_response_builder import (
     build_active_task_list_response,
     build_file_progress_items,
@@ -317,7 +320,7 @@ class TaskLifecycleService:
             action_name="unpinned",
         )
 
-    async def retry_task(self, task_id: int, user: User) -> TaskDetailResponse:
+    async def retry_task(self, task_id: int, user: User, selected_files: list[str] | None = None) -> TaskDetailResponse:
         async def _do_retry(original_task: Task) -> Task:
             if original_task.completed_at is None:
                 raise ValidationError(
@@ -341,6 +344,22 @@ class TaskLifecycleService:
                     "Please wait for it to complete or cancel it before retrying."
                 )
 
+            # Filter repo_items based on selected_files (if provided)
+            repo_items = [
+                item
+                for item in (original_task.repo_items or [])
+                if item.get("type") == "file" and item.get("required", True)
+            ]
+
+            if selected_files is not None and len(selected_files) > 0:
+                selected_set = set(selected_files)
+                repo_items = [item for item in repo_items if item.get("path") in selected_set]
+                required_file_count = len(repo_items)
+                required_storage = sum(item.get("size", 0) for item in repo_items)
+            else:
+                required_file_count = original_task.required_file_count
+                required_storage = original_task.required_storage
+
             new_task = await self._task_service.add_new_task(
                 source=original_task.source,
                 repo_id=original_task.repo_id,
@@ -351,14 +370,10 @@ class TaskLifecycleService:
                 access_token=original_task.access_token,
                 creator_user_id=original_task.creator_user_id,
                 total_file_count=original_task.total_file_count,
-                required_file_count=original_task.required_file_count,
+                required_file_count=required_file_count,
                 total_storage=original_task.total_storage,
-                required_storage=original_task.required_storage,
-                repo_items=[
-                    item
-                    for item in (original_task.repo_items or [])
-                    if item.get("type") == "file" and item.get("required", True)
-                ],
+                required_storage=required_storage,
+                repo_items=repo_items,
             )
 
             approved_task = await self._task_service.review_task(
@@ -386,6 +401,113 @@ class TaskLifecycleService:
             action=_do_retry,
             action_name="retried",
         )
+
+    # ------------------------------------------------------------------
+    # Retry Preview
+    # ------------------------------------------------------------------
+
+    async def retry_preview_task(
+        self, task_id: int, user: User
+    ) -> TaskPreviewResponse:
+        """Preview files for retry with cache status annotation.
+
+        Performs the same pre-checks as retry_task and returns a file list
+        annotated with is_cached for each item.
+        """
+        task = await self._task_service.get_task(task_id)
+        if not task:
+            raise NotFoundError(f"Task '{task_id}' not found")
+
+        self._ensure_admin_or_creator(task, user)
+
+        if task.status not in {TaskStatus.FAILED, TaskStatus.CANCELLED}:
+            raise ValidationError(
+                f"Task cannot be retried in status '{task.status.value}'"
+            )
+
+        if task.completed_at is None:
+            raise ValidationError(
+                "Task cannot be retried: no completion time recorded"
+            )
+
+        seven_days_ago = datetime.now() - timedelta(days=TASK_RETRY_WINDOW_DAYS)
+        if task.completed_at < seven_days_ago:
+            raise ValidationError(
+                f"Task cannot be retried: completed more than {TASK_RETRY_WINDOW_DAYS} days ago "
+                f"(completed at {task.completed_at.isoformat()})"
+            )
+
+        existing = await self._task_service.get_active_download_task(
+            repo_id=task.repo_id,
+            source=task.source,
+        )
+        if existing:
+            raise ConflictError(
+                f"An active task for repository '{task.repo_id}' already exists. "
+                f"Task ID: {existing.id}, Status: {existing.status}. "
+                "Please wait for it to complete or cancel it before retrying."
+            )
+
+        # Build preview items from the task's repo_items
+        repo_items = task.repo_items or []
+        file_items = [
+            item for item in repo_items
+            if item.get("type") == "file" and item.get("required", True)
+        ]
+
+        # Check cache status via local snapshot
+        cached_paths: set[str] = set()
+        if task.commit_hash:
+            repo_service = RepoService(self._session, task_service=self._task_service)
+            _, _, cached_paths = await repo_service.check_cached_status(
+                repo_id=task.repo_id,
+                repo_type=task.repo_type,
+                revision=task.revision,
+                commit_hash=task.commit_hash,
+                required_file_paths={item["path"] for item in file_items},
+            )
+
+        # Build preview items with cache annotation
+        preview_items: list[dict[str, Any]] = []
+        for item in file_items:
+            entry = dict(item)
+            entry["is_cached"] = item["path"] in cached_paths
+            preview_items.append(entry)
+
+        all_required_cached = (
+            len(file_items) > 0
+            and all(item["path"] in cached_paths for item in file_items)
+        )
+
+        required_file_count = len(file_items)
+        required_storage = sum(item.get("size", 0) for item in file_items)
+
+        data = TaskPreviewData(
+            repo_id=task.repo_id,
+            repo_type=task.repo_type,
+            revision=task.revision,
+            commit_hash=task.commit_hash,
+            hf_endpoint=task.hf_endpoint,
+            total_storage=task.total_storage,
+            total_file_count=task.total_file_count,
+            required_storage=required_storage,
+            required_file_count=required_file_count,
+            items=[
+                {
+                    "path": item["path"],
+                    "size": item.get("size", 0),
+                    "type": item.get("type", "file"),
+                    "required": item.get("required", True),
+                    "is_cached": item["is_cached"],
+                }
+                for item in preview_items
+            ],
+            cache_key="",  # No Redis cache needed for retry preview
+            cached_commit_hash=task.commit_hash if cached_paths else None,
+            all_required_cached=all_required_cached,
+        )
+
+        return TaskPreviewResponse(code=200, message="ok", data=data)
 
     # ------------------------------------------------------------------
     # Queries

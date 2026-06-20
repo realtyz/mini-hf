@@ -6,4 +6,5 @@ export { TaskStatusBadge } from "./TaskStatusBadge";
 export { TaskProgressBar } from "./TaskProgressBar";
 export { TaskDetailDrawer } from "./TaskDetailDrawer";
 export { CreateTaskDialog } from "./CreateTaskDialog";
+export { RetryTaskDialog } from "./RetryTaskDialog";
 export { TaskRow, type TaskRowProps } from "./TaskRow";

@@ -115,13 +115,21 @@ async def list_repositories(
 async def list_public_repositories(
     repo_service: RepoServiceDep,
     params: Annotated[RepoListQueryParams, Depends()],
+    statuses: Annotated[
+        list[str] | None,
+        Query(
+            description="Filter by status (can specify multiple, e.g. statuses=active&statuses=updating)"
+        ),
+    ] = None,
 ) -> RepoListResponse:
-    """List publicly visible repositories (active and updating status only)."""
+    """List publicly visible repositories (default: active and updating only)."""
+    status_enums = _map_repo_status(statuses) if statuses else [RepoStatus.ACTIVE, RepoStatus.UPDATING]
+
     profiles, total = await repo_service.list_repos(
         repo_type=params.repo_type,
         skip=params.skip,
         limit=params.limit,
-        statuses=[RepoStatus.ACTIVE, RepoStatus.UPDATING],
+        statuses=status_enums,
         search=params.search,
         sort_by=params.sort_by,
         sort_order=params.sort_order,

@@ -40,6 +40,7 @@ const endpoints = {
     pin: (id: number) => `/task/${id}/pin`,
     unpin: (id: number) => `/task/${id}/unpin`,
     retry: (id: number) => `/task/${id}/retry`,
+    retryPreview: (id: number) => `/task/${id}/retry-preview`,
     progress: (id: number) => `/task/${id}/progress`,
     create: '/task',
   },

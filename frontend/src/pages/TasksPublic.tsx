@@ -7,7 +7,6 @@ import {
   Inbox,
   Plus,
   AlertCircle,
-  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -134,11 +133,6 @@ export function TasksPublic() {
           new Date(a.completed_at || a.updated_at).getTime(),
       ),
     [historyData?.data],
-  );
-
-  const failedTasks = useMemo(
-    () => completedTasks.filter((t) => t.status === "failed"),
-    [completedTasks],
   );
 
   // 派生选中的任务 ID：优先使用手动选择，否则自动选择第一个运行中的任务
@@ -300,7 +294,7 @@ export function TasksPublic() {
               }}
             >
               <div className="flex items-center gap-2 mb-4">
-                <h2 className="text-lg font-semibold">进行中的任务</h2>
+                <h2 className="text-lg font-semibold">任务队列</h2>
                 <span className="text-sm text-muted-foreground">
                   （共 {activeTasks.length} 个）
                 </span>
@@ -313,18 +307,6 @@ export function TasksPublic() {
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     <span className="font-medium">
                       {runningTasks.length} 个任务执行中
-                    </span>
-                  </motion.div>
-                )}
-                {failedTasks.length > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="flex items-center gap-1.5 rounded-full bg-red-50 px-2.5 py-1 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400"
-                  >
-                    <XCircle className="h-3.5 w-3.5" />
-                    <span className="font-medium">
-                      {failedTasks.length} 个任务失败
                     </span>
                   </motion.div>
                 )}

@@ -20,7 +20,9 @@ from mgmt_server.api.v1.schemas import (
     TaskListQueryParams,
     TaskListResponse,
     TaskPreviewRequest,
+    TaskPreviewResponse,
     TaskProgressResponse,
+    TaskRetryRequest,
     TaskReviewRequest,
 )
 
@@ -200,9 +202,33 @@ async def retry_task(
     task_id: int,
     current_user: CurrentUserDep,
     service: TaskLifecycleServiceDep,
+    request: TaskRetryRequest | None = None,
 ) -> TaskDetailResponse:
-    """Retry a failed or cancelled task by creating a new task with the same configuration."""
-    return await service.retry_task(task_id, current_user)
+    """Retry a failed or cancelled task by creating a new task with the same configuration.
+
+    Optionally accepts selected_files to retry only specific files.
+    When omitted, all previously required files are retried (backward-compatible).
+    """
+    return await service.retry_task(
+        task_id,
+        current_user,
+        selected_files=request.selected_files if request else None,
+    )
+
+
+@router.get("/{task_id}/retry-preview", response_model=TaskPreviewResponse)
+async def retry_preview_task(
+    task_id: int,
+    current_user: CurrentUserDep,
+    service: TaskLifecycleServiceDep,
+) -> TaskPreviewResponse:
+    """Preview files for retry with cache status annotation.
+
+    Returns the same pre-checks as retry and a file list annotated with
+    is_cached for each item, so the frontend can show which files are
+    already cached and let the user choose which ones to retry.
+    """
+    return await service.retry_preview_task(task_id, current_user)
 
 
 @router.get("/{task_id}/progress", response_model=TaskProgressResponse)

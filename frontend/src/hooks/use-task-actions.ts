@@ -176,11 +176,14 @@ export function useTaskActions() {
   )
 
   const retryTask = useCreateTaskMutation(
-    async (taskId: number) => {
-      const response = await api.post<TaskActionResponse>(endpoints.task.retry(taskId))
+    async ({ taskId, selectedFiles }: { taskId: number; selectedFiles?: string[] }) => {
+      const response = await api.post<TaskActionResponse>(
+        endpoints.task.retry(taskId),
+        selectedFiles && selectedFiles.length > 0 ? { selected_files: selectedFiles } : undefined,
+      )
       return response.data
     },
-    (taskId) => taskId,
+    ({ taskId }) => taskId,
     { actionName: '重试任务', invalidateDetail: false },
     queryClient
   )

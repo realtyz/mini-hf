@@ -68,7 +68,9 @@ from mgmt_server.api.v1.schemas.tasks import (
     TaskListResponse,
     TaskPreviewData,
     TaskPreviewRequest,
+    TaskPreviewResponse,
     TaskResponse,
+    TaskRetryRequest,
     TaskReviewRequest,
 )
 
@@ -138,6 +140,8 @@ __all__ = [
     "TaskListResponse",
     "TaskPreviewData",
     "TaskPreviewRequest",
+    "TaskPreviewResponse",
     "TaskResponse",
+    "TaskRetryRequest",
     "TaskReviewRequest",
 ]
