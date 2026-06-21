@@ -134,6 +134,7 @@ class TaskRepository:
                 status=TaskStatus.RUNNING,
                 started_at=now,
                 updated_at=now,
+                pinned_at=None,
             )
         )
         await self.session.flush()

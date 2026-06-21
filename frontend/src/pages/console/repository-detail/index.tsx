@@ -11,8 +11,7 @@ import type { RepoDetailResponse } from '@/lib/api/types'
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { cn, formatCompactNumber } from '@/lib/utils'
-import { StatCard } from '@/components/shared/StatCard'
-import { getRepoStatusLabel, getRepoStatusDotClass, REPO_STATUS_CONFIG } from '@/lib/constants/repo'
+import { getRepoStatusLabel, getRepoStatusDotClass } from '@/lib/constants/repo'
 import { DeleteRepoDialog } from './DeleteRepoDialog'
 import { SnapshotList } from './SnapshotList'
 import { RepositoryDetailSkeleton } from './RepositoryDetailSkeleton'
@@ -93,136 +92,158 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
     return (
       <div className="container mx-auto flex flex-1 flex-col px-4 py-8">
         <div className="flex flex-col items-center justify-center py-20">
-          <div className="size-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-            <Database className="size-8 text-destructive/60" />
+          <div className="size-16 rounded-2xl bg-destructive/5 ring-1 ring-destructive/10 flex items-center justify-center mb-5">
+            <Database className="size-7 text-destructive/40" />
           </div>
-          <div className="text-[15px] font-medium text-foreground mb-1">加载失败</div>
-          <div className="text-[13px] text-muted-foreground">仓库不存在或无法访问</div>
+          <p className="text-[15px] font-medium text-foreground mb-1">加载失败</p>
+          <p className="text-[13px] text-muted-foreground">仓库不存在或无法访问</p>
         </div>
       </div>
     )
   }
 
-  const statusConfig = REPO_STATUS_CONFIG[repo.status as RepoStatus]
+  const isModel = repo.repo_type === 'model'
+  const repoTypeLabel = isModel ? '模型' : '数据集'
 
   return (
     <div
-      className={`container mx-auto flex flex-1 flex-col px-4 py-8 ${isLeaving ? 'animate-out fade-out slide-out-to-bottom-4 duration-300 fill-mode-forwards' : 'animate-in fade-in slide-in-from-bottom-4 duration-300'}`}
+      className={cn(
+        'container mx-auto flex flex-1 flex-col px-4 py-8 max-w-5xl',
+        isLeaving
+          ? 'animate-out fade-out slide-out-to-bottom-4 duration-300 fill-mode-forwards'
+          : 'animate-in fade-in slide-in-from-bottom-4 duration-300'
+      )}
       onAnimationEnd={isLeaving ? () => navigate(backPath) : undefined}
     >
-      {/* Back button */}
+      {/* Back */}
       <Link
         to={backPath}
         onClick={handleBack}
-        className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground transition-colors mb-6 w-fit group"
+        className="group inline-flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors mb-8 w-fit"
       >
-        <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+        <ArrowLeft className="size-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
         返回仓库列表
       </Link>
 
-      {/* Header */}
-      <div className="flex items-start justify-between mb-8 gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              "size-12 rounded-xl flex items-center justify-center shrink-0",
-              "bg-primary/5 border border-primary/10"
-            )}>
-              {repo.repo_type === 'model' ? (
-                <Box className="size-6 text-primary/70" />
-              ) : (
-                <Database className="size-6 text-primary/70" />
-              )}
+      {/* ─── Identity block ─── */}
+      <div className="flex items-start justify-between gap-6 mb-10">
+        <div className="flex items-start gap-4 min-w-0">
+          <div
+            className={cn(
+              'size-14 rounded-2xl flex items-center justify-center shrink-0',
+              'bg-gradient-to-br from-primary/5 to-primary/10',
+              'ring-1 ring-primary/10'
+            )}
+          >
+            {isModel ? (
+              <Box className="size-6 text-primary/50" />
+            ) : (
+              <Database className="size-6 text-primary/50" />
+            )}
+          </div>
+
+          <div className="min-w-0 pt-0.5">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight truncate">{repo.repo_id}</h1>
+              <button
+                onClick={handleCopy}
+                className="inline-flex items-center justify-center size-7 rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-all duration-150"
+                title="复制仓库ID"
+              >
+                {copied ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-3.5" />}
+              </button>
             </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold tracking-tight truncate">{repo.repo_id}</h1>
-                <button
-                  onClick={handleCopy}
-                  className="inline-flex items-center justify-center rounded p-1 text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring opacity-60 hover:opacity-100"
-                  title="复制仓库ID"
-                >
-                  {copied ? (
-                    <Check className="size-4 text-emerald-500" />
-                  ) : (
-                    <Copy className="size-4" />
-                  )}
-                </button>
-              </div>
-              <div className="flex items-center gap-2 mt-1.5">
-                <Badge variant={repo.repo_type === 'model' ? 'info' : 'neutral'} className="text-[11px]">
-                  {repo.repo_type === 'model' ? '模型' : '数据集'}
+
+            <div className="flex flex-wrap items-center gap-2 mt-2.5">
+              <Badge variant="secondary" className="text-[11px] font-medium">
+                {repoTypeLabel}
+              </Badge>
+              {repo.pipeline_tag && (
+                <Badge variant="secondary" className="text-[11px] font-medium">
+                  {repo.pipeline_tag}
                 </Badge>
-                {repo.pipeline_tag && (
-                  <Badge variant="neutral" className="text-[11px]">{repo.pipeline_tag}</Badge>
-                )}
-                <Badge variant={statusConfig?.badgeVariant ?? 'neutral'} className="text-[11px]">
-                  <span className={cn("size-1.5 rounded-full mr-1 shrink-0", getRepoStatusDotClass(repo.status as RepoStatus))} />
-                  {getRepoStatusLabel(repo.status as RepoStatus)}
-                </Badge>
-                {isAdmin && (
-                  <StatusEditDialog
-                    currentStatus={repo.status}
-                    options={PROFILE_STATUS_OPTIONS}
-                    entityLabel="仓库状态"
-                    isPending={setProfileStatus.isPending}
-                    onConfirm={(newStatus) =>
-                      setProfileStatus.mutate({
-                        repoId,
-                        repo_type: repo.repo_type as 'model' | 'dataset',
-                        status: newStatus as RepoStatus,
-                      })
-                    }
-                  />
-                )}
-              </div>
+              )}
+              <span className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground">
+                <span className={cn('size-1.5 rounded-full', getRepoStatusDotClass(repo.status as RepoStatus))} />
+                {getRepoStatusLabel(repo.status as RepoStatus)}
+              </span>
+              {isAdmin && (
+                <StatusEditDialog
+                  currentStatus={repo.status}
+                  options={PROFILE_STATUS_OPTIONS}
+                  entityLabel="仓库状态"
+                  isPending={setProfileStatus.isPending}
+                  onConfirm={(newStatus) =>
+                    setProfileStatus.mutate({
+                      repoId,
+                      repo_type: repo.repo_type as 'model' | 'dataset',
+                      status: newStatus as RepoStatus,
+                    })
+                  }
+                />
+              )}
             </div>
           </div>
         </div>
+
         {showActions && (
-          <div className="flex gap-2 shrink-0">
-            <Button
-              variant="destructive"
-              size="sm"
-              className="text-[13px] cursor-pointer"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              删除仓库
-            </Button>
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[13px] text-muted-foreground hover:text-destructive hover:bg-destructive/5 shrink-0"
+            onClick={() => setDeleteDialogOpen(true)}
+          >
+            <Trash2 className="size-3.5" />
+            删除
+          </Button>
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
-        <StatCard
-          icon={<Download className="size-4" />}
-          label="下载量"
-          value={formatCompactNumber(repo.downloads)}
-          colorClass="text-sky-500"
-        />
-        <StatCard
-          icon={<GitCommit className="size-4" />}
-          label="缓存版本"
-          value={repo.cached_commits.toString()}
-          colorClass="text-violet-500"
-        />
-        <StatCard
-          icon={<Calendar className="size-4" />}
-          label="首次缓存"
-          value={repo.first_cached_at ? format(new Date(repo.first_cached_at), 'yyyy-MM-dd') : '-'}
-          colorClass="text-amber-500"
-        />
-        <StatCard
-          icon={<Clock className="size-4" />}
-          label="最近更新"
-          value={repo.cache_updated_at ? format(new Date(repo.cache_updated_at), 'yyyy-MM-dd') : '-'}
-          colorClass="text-emerald-500"
-        />
+      {/* ─── Metrics bar ─── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 rounded-2xl border bg-card/50 mb-10 overflow-hidden">
+        {[
+          {
+            icon: Download,
+            label: '下载量',
+            value: formatCompactNumber(repo.downloads),
+          },
+          {
+            icon: GitCommit,
+            label: '缓存版本',
+            value: repo.cached_commits.toString(),
+          },
+          {
+            icon: Calendar,
+            label: '最近下载',
+            value: repo.last_downloaded_at
+              ? format(new Date(repo.last_downloaded_at), 'yyyy-MM-dd')
+              : '-',
+          },
+          {
+            icon: Clock,
+            label: '最近更新',
+            value: repo.cache_updated_at
+              ? format(new Date(repo.cache_updated_at), 'yyyy-MM-dd')
+              : '-',
+          },
+        ].map((metric, i) => (
+          <div
+            key={metric.label}
+            className={cn(
+              'flex flex-col items-center justify-center px-4 py-5',
+              i > 0 && 'border-l border-border/60'
+            )}
+          >
+            <div className="flex items-center gap-2 mb-1.5">
+              <metric.icon className="size-3.5 text-muted-foreground/50" />
+              <span className="text-[11px] font-medium text-muted-foreground">{metric.label}</span>
+            </div>
+            <p className="text-2xl font-semibold tabular-nums tracking-tight">{metric.value}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Snapshot list */}
+      {/* ─── Version list ─── */}
       <SnapshotList snapshots={snapshots} repoId={repoId} />
 
       {/* Delete dialog */}

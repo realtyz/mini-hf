@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
+import { PaginationFooter } from "@/components/shared/PaginationFooter";
 import { RepoGrid } from "@/components/repo";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useRepoList, PAGE_SIZE } from "@/hooks/use-repo-list";
@@ -262,26 +262,19 @@ export function RepositoriesConsole() {
         isLoading={isLoading}
         error={error}
         onViewDetail={handleViewDetail}
+        columns={3}
       />
 
       {!isLoading && totalPages > 0 && (
-        <div className="flex items-center justify-between pt-2">
-          <p className="text-[13px] text-muted-foreground/60 tabular-nums">
-            <span className="font-medium text-foreground/80">
-              {Math.min((repoListState.page - 1) * PAGE_SIZE + 1, total)}–{Math.min(repoListState.page * PAGE_SIZE, total)}
-            </span>
-            <span className="mx-1 text-muted-foreground/40">/</span>
-            <span className="font-medium text-foreground/80">{total}</span>
-          </p>
-          {totalPages > 1 && (
-            <PaginatedNavigation
-              currentPage={repoListState.page}
-              totalPages={totalPages}
-              onPageChange={(p) => updateState({ page: p })}
-              className="mx-0 w-auto"
-            />
-          )}
-        </div>
+        <PaginationFooter
+          currentPage={repoListState.page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onPageChange={(p) => updateState({ page: p })}
+          itemLabel="个仓库"
+          className="pt-2"
+        />
       )}
     </div>
   );

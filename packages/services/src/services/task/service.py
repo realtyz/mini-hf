@@ -112,7 +112,7 @@ class TaskService:
             task_id: Task ID
         """
         await self._repo.update_status(
-            task_id, TaskStatus.RUNNING, started_at=datetime.now()
+            task_id, TaskStatus.RUNNING, started_at=datetime.now(), clear_pinned=True
         )
         self._logger.debug("Started task {}", task_id)
 
@@ -127,7 +127,6 @@ class TaskService:
             task_id,
             TaskStatus.COMPLETED,
             completed_at=datetime.now(),
-            clear_pinned=True,
         )
         self._logger.debug("Completed task {}", task_id)
 
@@ -143,7 +142,6 @@ class TaskService:
             TaskStatus.FAILED,
             error_message=error_message,
             completed_at=datetime.now(),
-            clear_pinned=True,
         )
         self._logger.debug("Failed task {}: {}", task_id, error_message)
 
@@ -190,7 +188,6 @@ class TaskService:
                 task_id,
                 TaskStatus.CANCELLED,
                 completed_at=now,
-                clear_pinned=True,
             )
             self._logger.info("Cancelled pending/paused task {}", task_id)
             return True
@@ -207,7 +204,6 @@ class TaskService:
             task_id,
             TaskStatus.CANCELLED,
             completed_at=datetime.now(),
-            clear_pinned=True,
         )
         self._logger.info("Task {} marked as cancelled", task_id)
 
@@ -239,7 +235,6 @@ class TaskService:
             await self._repo.update_status(
                 task_id,
                 TaskStatus.PAUSED,
-                clear_pinned=True,
             )
             self._logger.info("Paused pending task {}", task_id)
             return True
@@ -322,7 +317,6 @@ class TaskService:
                 error_message=review_notes or "Rejected by admin",
                 reviewed_at=now,
                 completed_at=now,
-                clear_pinned=True,
             )
             self._logger.info("Rejected task {}", task_id)
 

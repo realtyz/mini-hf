@@ -3,12 +3,21 @@ import { RepoCard } from "./RepoCard";
 import { RepoCardSkeleton } from "./RepoCardSkeleton";
 import { SearchX, FolderOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface RepoGridProps {
   repos: RepoProfile[];
   isLoading: boolean;
   error: Error | null;
   onViewDetail: (repo: RepoProfile) => void;
+  /** Number of card columns per row. Defaults to auto-fill. */
+  columns?: 3 | 4;
+}
+
+function gridColsClass(columns?: 3 | 4): string {
+  if (columns === 4) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
+  if (columns === 3) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+  return 'grid-cols-[repeat(auto-fill,minmax(260px,1fr))]';
 }
 
 export function RepoGrid({
@@ -16,11 +25,12 @@ export function RepoGrid({
   isLoading,
   error,
   onViewDetail,
+  columns,
 }: RepoGridProps) {
   if (isLoading) {
     return (
       <div className="@container">
-        <div className="grid grid-cols-1 @[500px]:grid-cols-2 @[750px]:grid-cols-3 @[1000px]:grid-cols-4 gap-4">
+        <div className={cn('grid gap-4', gridColsClass(columns))}>
           {Array.from({ length: 8 }).map((_, i) => (
             <RepoCardSkeleton key={i} index={i} />
           ))}
@@ -68,7 +78,7 @@ export function RepoGrid({
 
   return (
     <div className="@container">
-      <div className="grid grid-cols-1 @[500px]:grid-cols-2 @[750px]:grid-cols-3 @[1000px]:grid-cols-4 gap-4">
+      <div className={cn('grid gap-4', gridColsClass(columns))}>
         {repos.map((repo, index) => (
           <RepoCard
             key={repo.id}

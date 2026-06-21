@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Plus, RefreshCw, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
+import { PaginationFooter } from "@/components/shared/PaginationFooter";
 import {
   Table,
   TableBody,
@@ -297,25 +297,15 @@ export function Tasks() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ delay: 0.2 }}
-            className="mt-6 flex items-center justify-between"
           >
-            <p className="text-sm text-muted-foreground">
-              显示{" "}
-              <span className="font-medium text-foreground">
-                {Math.min((page - 1) * PAGE_SIZE + 1, total)}-
-                {Math.min(page * PAGE_SIZE, total)}
-              </span>{" "}
-              条，共 <span className="font-medium text-foreground">{total}</span>{" "}
-              条
-            </p>
-            {totalPages > 1 && (
-              <PaginatedNavigation
-                currentPage={page}
-                totalPages={totalPages}
-                onPageChange={setPage}
-                className="mx-0 w-auto"
-              />
-            )}
+            <PaginationFooter
+              currentPage={page}
+              totalPages={totalPages}
+              total={total}
+              pageSize={PAGE_SIZE}
+              onPageChange={setPage}
+              itemLabel="条"
+            />
           </motion.div>
         )}
       </AnimatePresence>

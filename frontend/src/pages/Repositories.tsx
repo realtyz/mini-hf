@@ -32,7 +32,7 @@ import type {
   RepoStatus,
 } from "@/lib/api/types";
 import { RepoGrid } from "@/components/repo";
-import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
+import { PaginationFooter } from "@/components/shared/PaginationFooter";
 import { motion } from "framer-motion";
 import { itemVariants } from "@/lib/animations/motion-config";
 
@@ -245,31 +245,21 @@ export function Repositories() {
           isLoading={isLoading}
           error={error}
           onViewDetail={handleViewDetail}
+          columns={4}
         />
       </div>
 
       {/* 分页 */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            显示{" "}
-            {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, total)}{" "}
-            个，共 {total} 个仓库
-          </p>
-          <PaginatedNavigation
-            currentPage={page + 1}
-            totalPages={totalPages}
-            onPageChange={(p) => setPage(p - 1)}
-            className="mx-0 w-auto"
-          />
-        </div>
-      )}
-      {totalPages <= 1 && total > 0 && (
-        <div className="mt-6">
-          <p className="text-sm text-muted-foreground">
-            显示 1-{total} 个，共 {total} 个仓库
-          </p>
-        </div>
+      {total > 0 && (
+        <PaginationFooter
+          currentPage={page + 1}
+          totalPages={totalPages}
+          total={total}
+          pageSize={PAGE_SIZE}
+          onPageChange={(p) => setPage(p - 1)}
+          itemLabel="个仓库"
+          className="mt-6"
+        />
       )}
     </div>
   );

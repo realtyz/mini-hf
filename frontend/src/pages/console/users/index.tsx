@@ -65,7 +65,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
+import { PaginationFooter } from "@/components/shared/PaginationFooter";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorState } from "@/components/shared/ErrorState";
@@ -1039,31 +1039,16 @@ export function Users() {
 
       {/* Footer: Stats + Pagination */}
       {!isLoading && !error && users.length > 0 && (
-        <motion.div
-          variants={itemVariants}
-          className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <p className="text-[13px] text-muted-foreground/60">
-            <span className="font-mono tabular-nums text-foreground/70">
-              {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, totalItems)}
-            </span>
-            {" "}/{" "}
-            <span className="font-mono tabular-nums text-foreground/70">
-              {totalItems.toLocaleString()}
-            </span>
-            {" "}个用户
-            {search && (
-              <span className="text-muted-foreground/40">（筛选中）</span>
-            )}
-          </p>
-          {totalPages > 1 && (
-            <PaginatedNavigation
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-              className="w-auto justify-end mx-0"
-            />
-          )}
+        <motion.div variants={itemVariants}>
+          <PaginationFooter
+            currentPage={page}
+            totalPages={totalPages}
+            total={totalItems}
+            pageSize={PAGE_SIZE}
+            onPageChange={setPage}
+            itemLabel="个用户"
+            note={search ? <span className="text-muted-foreground/40">（筛选中）</span> : undefined}
+          />
         </motion.div>
       )}
 

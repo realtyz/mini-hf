@@ -6,84 +6,71 @@ import {
   GitCommit,
   Copy,
   Check,
-  ChevronRight,
+  ArrowUpRight,
   Clock,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
 import type { RepoProfile, RepoStatus } from '@/lib/api/types'
-import { format } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import { zhCN } from 'date-fns/locale'
 import { cn, formatCompactNumber } from '@/lib/utils'
 import { motion } from 'framer-motion'
 
-type SoftColor = 'emerald' | 'slate' | 'sky' | 'amber' | 'red'
+type Accent = 'emerald' | 'slate' | 'sky' | 'amber' | 'red'
 
 const statusTheme: Record<
   RepoStatus,
   {
-    color: SoftColor
+    accent: Accent
     label: string
-    badgeClass: string
-    dotClass: string
-    barClass: string
-    gradient: string
+    dot: string
+    ring: string
+    hoverBorder: string
   }
 > = {
   active: {
-    color: 'emerald',
+    accent: 'emerald',
     label: '活跃',
-    badgeClass:
-      'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-    dotClass: 'bg-emerald-500',
-    barClass: 'bg-emerald-500/80 group-hover:bg-emerald-500',
-    gradient:
-      'from-emerald-500/8 via-emerald-500/3 to-transparent',
+    dot: 'bg-emerald-500',
+    ring: 'ring-emerald-500/20',
+    hoverBorder: 'hover:border-emerald-500/30 dark:hover:border-emerald-500/25',
   },
   inactive: {
-    color: 'slate',
-    label: '不完整',
-    badgeClass:
-      'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300',
-    dotClass: 'bg-slate-400',
-    barClass: 'bg-slate-400/80 group-hover:bg-slate-400',
-    gradient: 'from-slate-400/8 via-slate-400/3 to-transparent',
+    accent: 'slate',
+    label: '未就绪',
+    dot: 'bg-slate-400',
+    ring: 'ring-slate-400/20',
+    hoverBorder: 'hover:border-slate-400/40 dark:hover:border-slate-500/30',
   },
   updating: {
-    color: 'sky',
-    label: '更新中',
-    badgeClass:
-      'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300',
-    dotClass: 'bg-sky-500',
-    barClass: 'bg-sky-500/80 group-hover:bg-sky-500',
-    gradient: 'from-sky-500/8 via-sky-500/3 to-transparent',
+    accent: 'sky',
+    label: '同步中',
+    dot: 'bg-sky-500',
+    ring: 'ring-sky-500/20',
+    hoverBorder: 'hover:border-sky-500/30 dark:hover:border-sky-500/25',
   },
   cleaning: {
-    color: 'red',
+    accent: 'red',
     label: '清理中',
-    badgeClass:
-      'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300',
-    dotClass: 'bg-red-500',
-    barClass: 'bg-red-500/80 group-hover:bg-red-500',
-    gradient: 'from-red-500/8 via-red-500/3 to-transparent',
+    dot: 'bg-red-500',
+    ring: 'ring-red-500/20',
+    hoverBorder: 'hover:border-red-500/30 dark:hover:border-red-500/25',
   },
   cleaned: {
-    color: 'amber',
+    accent: 'amber',
     label: '已清理',
-    badgeClass:
-      'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300',
-    dotClass: 'bg-amber-500',
-    barClass: 'bg-amber-500/80 group-hover:bg-amber-500',
-    gradient: 'from-amber-500/8 via-amber-500/3 to-transparent',
+    dot: 'bg-amber-500',
+    ring: 'ring-amber-500/20',
+    hoverBorder: 'hover:border-amber-500/30 dark:hover:border-amber-500/25',
   },
 }
 
 function getRepoTypeIcon(type: string, className?: string) {
   return type === 'model' ? (
-    <Box className={className} />
+    <Box className={className} strokeWidth={1.75} />
   ) : (
-    <Database className={className} />
+    <Database className={className} strokeWidth={1.75} />
   )
 }
 
@@ -99,8 +86,8 @@ export const RepoCard = memo(function RepoCard({
   index = 0,
 }: RepoCardProps) {
   const [copied, setCopied] = useState(false)
-  const [isHovered, setIsHovered] = useState(false)
   const status = statusTheme[repo.status]
+  const isActive = repo.status === 'active' || repo.status === 'updating'
 
   const handleCopy = useCallback(
     async (e: React.MouseEvent) => {
@@ -121,154 +108,145 @@ export const RepoCard = memo(function RepoCard({
     onViewDetail?.()
   }
 
-  const shouldPulse = repo.status === 'active' || repo.status === 'updating'
+  const lastDownload = repo.last_downloaded_at
+    ? formatDistanceToNow(new Date(repo.last_downloaded_at), {
+        addSuffix: true,
+        locale: zhCN,
+      })
+    : '从未下载'
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{
-        duration: 0.5,
-        delay: index * 0.05,
+        duration: 0.4,
+        delay: Math.min(index * 0.04, 0.4),
         ease: [0.16, 1, 0.3, 1],
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       <Card
         className={cn(
-          'h-full flex flex-col cursor-pointer overflow-hidden relative',
-          'transition-all duration-300',
-          'hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-black/20',
-          'group'
+          'group relative cursor-pointer overflow-hidden',
+          'border-border/70 bg-card',
+          'py-0 gap-0 rounded-2xl',
+          'transition-[border-color,box-shadow,transform] duration-300 ease-out',
+          status.hoverBorder,
+          'hover:-translate-y-0.5',
+          'hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_8px_30px_-12px_rgba(0,0,0,0.5)]'
         )}
         onClick={handleCardClick}
       >
-        {/* Status indicator bar */}
-        <div className={cn('absolute top-0 left-0 right-0 h-0.5 z-10', status.barClass)} />
+        {/* Header */}
+        <div className="flex items-start gap-3 px-5 pt-5 pb-4">
+          <div
+            className={cn(
+              'shrink-0 mt-0.5 flex size-9 items-center justify-center rounded-xl',
+              'bg-muted/50 text-muted-foreground',
+              'ring-1 ring-inset ring-border/60',
+              'transition-colors duration-300',
+              'group-hover:bg-primary/5 group-hover:text-foreground'
+            )}
+          >
+            {getRepoTypeIcon(repo.repo_type, 'h-[18px] w-[18px]')}
+          </div>
 
-        {/* Hover gradient background */}
-        <div
-          className={cn(
-            'absolute inset-0 bg-linear-to-br opacity-0 group-hover:opacity-100 transition-opacity duration-300',
-            status.gradient
-          )}
-        />
-
-        {/* Subtle grid pattern */}
-        <div className="absolute inset-0 opacity-[0.02] bg-[linear-gradient(rgba(0,0,0,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.1)_1px,transparent_1px)] bg-size-[20px_20px]" />
-
-        {/* Bottom accent line */}
-        <motion.div
-          className={cn('absolute bottom-0 left-0 right-0 h-0.5', status.dotClass)}
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: isHovered ? 1 : 0 }}
-          transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-          style={{ originX: 0 }}
-        />
-
-        <CardHeader className="pb-3 pt-5 relative z-10">
-          <div className="flex items-start justify-between gap-3">
-            {/* Type icon */}
-            <motion.div
-              className={cn(
-                'shrink-0 size-9 rounded-lg flex items-center justify-center',
-                'bg-primary/5 group-hover:bg-primary/10 transition-colors duration-200'
-              )}
-              animate={{ scale: isHovered ? 1.05 : 1 }}
-              transition={{ duration: 0.2 }}
-            >
-              {getRepoTypeIcon(
-                repo.repo_type,
-                'h-5 w-5 text-primary/70 group-hover:text-primary transition-colors'
-              )}
-            </motion.div>
-
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-sm font-semibold break-all leading-relaxed group-hover:text-primary transition-colors">
-                <span title={repo.repo_id} className="align-middle">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <h3
+                  className="min-w-0 flex-1 truncate font-mono text-[13px] leading-snug font-medium tracking-tight text-foreground"
+                  title={repo.repo_id}
+                >
                   {repo.repo_id}
-                </span>
+                </h3>
                 <button
                   onClick={handleCopy}
-                  className="inline-flex align-baseline items-center justify-center rounded p-0.5 ml-1 text-muted-foreground transition-all duration-150 hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring opacity-60 group-hover:opacity-100"
-                  title="复制仓库名称"
+                  className={cn(
+                    'inline-flex shrink-0 items-center justify-center rounded p-0.5',
+                    'text-muted-foreground/50 transition-all duration-150',
+                    'opacity-0 group-hover:opacity-100',
+                    'hover:bg-accent hover:text-foreground',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring'
+                  )}
+                  title="复制 RepoId"
+                  aria-label="复制 RepoId"
                 >
                   {copied ? (
                     <Check className="h-3 w-3 text-emerald-500" />
                   ) : (
-                    <Copy className="h-3 w-3" />
+                    <Copy className="h-3 w-3" strokeWidth={1.75} />
                   )}
                 </button>
-              </CardTitle>
+              </div>
+              <ArrowUpRight
+                className={cn(
+                  'mt-0.5 h-4 w-4 shrink-0',
+                  'text-muted-foreground/40 transition-all duration-300',
+                  '-translate-y-0.5 translate-x-0.5 opacity-0',
+                  'group-hover:translate-x-0 group-hover:translate-y-0 group-hover:opacity-100 group-hover:text-foreground/70'
+                )}
+              />
             </div>
 
-            {/* Arrow indicator */}
-            <ChevronRight className="h-4 w-4 text-muted-foreground/30 group-hover:text-primary/60 group-hover:translate-x-0.5 transition-all duration-200 shrink-0 -translate-x-1 opacity-0 group-hover:opacity-100" />
-          </div>
-
-          {/* Status badges */}
-          <div className="mt-3 flex items-center gap-2 flex-wrap">
-            <Badge
-              className={cn(
-                'text-[11px] px-2 py-0 h-5 font-medium border-0 inline-flex items-center gap-1.5',
-                status.badgeClass
-              )}
-            >
-              <span className="relative flex h-1.5 w-1.5">
-                <span className={cn('relative inline-flex rounded-full h-1.5 w-1.5', status.dotClass)} />
-                {shouldPulse && (
+            {/* Status + tag line */}
+            <div className="mt-2 flex items-center gap-2.5">
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                <span className="relative flex size-1.5">
+                  {isActive && (
+                    <span
+                      className={cn(
+                        'absolute inline-flex size-full rounded-full opacity-60',
+                        status.dot,
+                        'animate-ping'
+                      )}
+                    />
+                  )}
                   <span
                     className={cn(
-                      'animate-ping absolute inline-flex h-full w-full rounded-full opacity-40',
-                      status.dotClass
+                      'relative inline-flex size-1.5 rounded-full ring-2 ring-card',
+                      status.dot
                     )}
                   />
-                )}
+                </span>
+                <span className={cn('text-foreground/80')}>{status.label}</span>
               </span>
-              {status.label}
-            </Badge>
-            {repo.pipeline_tag && (
-              <Badge
-                variant="info"
-                className="text-[11px] px-2 py-0 h-5 font-medium border-0 inline-flex items-center"
-              >
-                {repo.pipeline_tag}
-              </Badge>
-            )}
-          </div>
-        </CardHeader>
 
-        <CardContent className="pt-0 mt-auto pb-5 relative z-10">
-          {/* Stats row */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5 group/stat">
-              <Download className="h-3.5 w-3.5 text-muted-foreground/50 group-hover/stat:text-primary/60 transition-colors" />
-              <span className="text-xs font-medium tabular-nums">
-                {formatCompactNumber(repo.downloads)}
-              </span>
+              {repo.pipeline_tag && (
+                <>
+                  <span className="h-3 w-px bg-border" aria-hidden />
+                  <span className="truncate text-xs text-muted-foreground/70">
+                    {repo.pipeline_tag}
+                  </span>
+                </>
+              )}
             </div>
-            <div className="flex items-center gap-1.5 group/stat">
-              <GitCommit className="h-3.5 w-3.5 text-muted-foreground/50 group-hover/stat:text-primary/60 transition-colors" />
-              <span className="text-xs font-medium">{repo.cached_commits} 版本</span>
-            </div>
+          </div>
+        </div>
+
+        {/* Stats footer */}
+        <div className="mx-5 border-t border-border/60" />
+
+        <div className="flex items-center gap-4 px-5 py-3.5">
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <Download className="h-3.5 w-3.5 text-muted-foreground/60" strokeWidth={1.75} />
+            <span className="text-xs font-medium tabular-nums text-foreground/80">
+              {formatCompactNumber(repo.downloads)}
+            </span>
           </div>
 
-          {/* Time info */}
-          <div className="mt-3 pt-3 border-t border-border/30 flex flex-col justify-center gap-2 text-[11px] text-muted-foreground/70">
-            <div className="flex items-center gap-1.5">
-              <Clock className="h-3 w-3 shrink-0" />
-              <span className="text-muted-foreground/50">最近下载:</span>
-              <span className="font-medium">
-                {repo.last_downloaded_at
-                  ? format(new Date(repo.last_downloaded_at), 'yyyy-MM-dd HH:mm', {
-                      locale: zhCN,
-                    })
-                  : '-'}
-              </span>
-            </div>
+          <div className="flex items-center gap-1.5 text-muted-foreground">
+            <GitCommit className="h-3.5 w-3.5 text-muted-foreground/60" strokeWidth={1.75} />
+            <span className="text-xs font-medium tabular-nums text-foreground/80">
+              {repo.cached_commits}
+            </span>
           </div>
-        </CardContent>
+
+          <div className="ml-auto flex items-center gap-1.5 text-muted-foreground/70">
+            <Clock className="h-3 w-3 shrink-0" strokeWidth={1.75} />
+            <span className="text-[11px] truncate">{lastDownload}</span>
+          </div>
+        </div>
       </Card>
     </motion.div>
   )
