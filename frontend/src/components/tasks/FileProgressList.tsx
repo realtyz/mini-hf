@@ -1,6 +1,6 @@
 import { useState, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Loader2, XCircle, Pause, UploadCloud, ChevronDown, ChevronRight, FileWarning, Inbox } from "lucide-react";
+import { CheckCircle2, Loader2, XCircle, Pause, UploadCloud, ChevronDown, ChevronRight, FileWarning, Inbox, WifiOff } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { FileProgressItem } from "@/lib/api/types";
 
@@ -21,16 +21,18 @@ function formatSpeed(bytesPerSec: number | null | undefined): string {
 }
 
 const STATUS_ORDER: Record<string, number> = {
-  downloading: 0,
-  uploading: 1,
-  pending: 2,
-  failed: 3,
-  completed: 4,
+  reconnecting: 0,
+  downloading: 1,
+  uploading: 2,
+  pending: 3,
+  failed: 4,
+  completed: 5,
 };
 
 const STATUS_ACCENT: Record<string, string> = {
   completed: "border-l-emerald-500",
   downloading: "border-l-blue-500",
+  reconnecting: "border-l-amber-500",
   uploading: "border-l-violet-500",
   failed: "border-l-red-500",
   pending: "border-l-slate-300 dark:border-l-slate-600",
@@ -39,6 +41,7 @@ const STATUS_ACCENT: Record<string, string> = {
 const PROGRESS_COLOR: Record<string, string> = {
   completed: "bg-emerald-500",
   downloading: "bg-blue-500",
+  reconnecting: "bg-amber-500",
   uploading: "bg-violet-500",
   failed: "bg-red-500",
   pending: "bg-slate-300 dark:bg-slate-600",
@@ -57,7 +60,10 @@ const FileProgressRow = memo(function FileProgressRow({
         ? Math.min(100, Math.round((file.downloaded_bytes / file.total_bytes) * 100))
         : 0;
 
-  const isActive = file.status === "downloading" || file.status === "uploading";
+  const isActive =
+    file.status === "downloading" ||
+    file.status === "reconnecting" ||
+    file.status === "uploading";
 
   const getStatusIcon = () => {
     switch (file.status) {
@@ -65,6 +71,8 @@ const FileProgressRow = memo(function FileProgressRow({
         return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
       case "downloading":
         return <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />;
+      case "reconnecting":
+        return <WifiOff className="h-4 w-4 text-amber-500" />;
       case "uploading":
         return <UploadCloud className="h-4 w-4 text-violet-500 animate-bounce" />;
       case "failed":
@@ -82,9 +90,11 @@ const FileProgressRow = memo(function FileProgressRow({
       } ${
         file.status === "uploading"
           ? "bg-violet-50/50 dark:bg-violet-950/20"
-          : file.status === "failed"
-            ? "bg-red-50/40 dark:bg-red-950/20"
-            : "hover:bg-muted/40"
+          : file.status === "reconnecting"
+            ? "bg-amber-50/40 dark:bg-amber-950/20"
+            : file.status === "failed"
+              ? "bg-red-50/40 dark:bg-red-950/20"
+              : "hover:bg-muted/40"
       }`}
     >
       <div className="shrink-0 w-5 flex items-center justify-center">
@@ -113,7 +123,11 @@ const FileProgressRow = memo(function FileProgressRow({
           className="h-1.5 bg-muted w-full"
           indicatorClassName={PROGRESS_COLOR[file.status] ?? PROGRESS_COLOR.pending}
         />
-        {isActive && file.speed_bytes_per_sec ? (
+        {file.status === "reconnecting" ? (
+          <div className="text-xs mt-1 font-medium text-amber-600 dark:text-amber-400">
+            重连中…
+          </div>
+        ) : isActive && file.speed_bytes_per_sec ? (
           <div
             className={`text-xs mt-1 font-medium tabular-nums ${
               file.status === "uploading" ? "text-violet-600 dark:text-violet-400" : "text-blue-600 dark:text-blue-400"
@@ -143,6 +157,7 @@ const FileProgressRow = memo(function FileProgressRow({
 const STATUS_LABELS: Record<string, { label: string; color: string; barColor: string }> = {
   completed: { label: "已完成", color: "bg-emerald-500", barColor: "bg-emerald-500" },
   downloading: { label: "下载中", color: "bg-blue-500", barColor: "bg-blue-500" },
+  reconnecting: { label: "重连中", color: "bg-amber-500", barColor: "bg-amber-500" },
   uploading: { label: "上传中", color: "bg-violet-500", barColor: "bg-violet-500" },
   pending: { label: "等待中", color: "bg-slate-300 dark:bg-slate-600", barColor: "bg-slate-200 dark:bg-slate-700" },
   failed: { label: "失败", color: "bg-red-500", barColor: "bg-red-500" },

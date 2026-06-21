@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # Downloader — streaming
     WORKER_DOWNLOAD_CHUNK_SIZE: int = 65536  # 64 KB per chunk
     WORKER_DOWNLOAD_READ_TIMEOUT: float = 60.0  # max idle time between chunks
+    # No data for this many seconds during a download → report "reconnecting"
+    # (pure observation; does not interrupt or retry the download).
+    WORKER_STALL_REPORT_THRESHOLD: float = 10.0
 
     # S3 settings
     S3_ENDPOINT: str

@@ -597,12 +597,18 @@ export interface HealthResponse {
 
 // ==================== 任务进度 ====================
 
-export type FileProgressStatus = 'pending' | 'downloading' | 'uploading' | 'completed' | 'failed'
+export type FileProgressStatus =
+  | 'pending'
+  | 'downloading'
+  | 'reconnecting'
+  | 'uploading'
+  | 'completed'
+  | 'failed'
 
 export interface FileProgressItem {
   /** 文件路径 */
   path: string
-  /** 文件状态: pending/downloading/uploading/completed/failed */
+  /** 文件状态: pending/downloading/reconnecting/uploading/completed/failed */
   status: FileProgressStatus
   /** 已处理字节数（下载或上传） */
   downloaded_bytes: number

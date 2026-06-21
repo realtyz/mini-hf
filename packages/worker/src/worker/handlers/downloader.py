@@ -1,6 +1,7 @@
 """Async HTTP file downloader with resume, cancellation, and progress reporting."""
 
 import asyncio
+import contextlib
 import re
 import shutil
 import time
@@ -81,6 +82,9 @@ class ProgressInfo:
     total_bytes: int | None
     speed_bytes_per_sec: float
     is_resumed: bool
+    # "downloading" (data flowing) or "reconnecting" (stalled / retrying backoff).
+    # Pure UI signal — does not affect download behavior.
+    phase: str = "downloading"
 
 
 class HttpFileDownloader:
@@ -131,6 +135,18 @@ class HttpFileDownloader:
     # or forced termination.
     _FLUSH_INTERVAL_BYTES: int = 10 * 1024 * 1024  # 10 MB
 
+    # Minimum bytes a single connection must deliver before the in-stream
+    # retry counter is eligible to reset. Without this gate, the counter
+    # resets on every successful chunk (and on mere connection
+    # establishment), so a connection that keeps dropping after a few
+    # chunks never exhausts its budget and never escalates to the outer
+    # exponential-backoff loop — it can spin for a very long time on large
+    # files with only a fixed 3s backoff. Gating the reset on real
+    # per-connection progress bounds the no-progress / tiny-progress
+    # pathological cases while still tolerating a connection that
+    # delivers a meaningful chunk before dropping.
+    _STREAM_PROGRESS_RESET_BYTES: int = 1 * 1024 * 1024  # 1 MB
+
     # Exceptions that indicate transient network issues and should trigger
     # an immediate in-stream retry (without exponential backoff).
     #
@@ -163,6 +179,7 @@ class HttpFileDownloader:
         head_check: bool = True,
         head_check_timeout: float = 10.0,
         disk_space_check: bool = True,
+        stall_report_threshold: float = 10.0,
     ):
         self.temp_dir = Path(temp_dir)
         self.progress_callback = progress_callback
@@ -174,6 +191,7 @@ class HttpFileDownloader:
         self.head_check = head_check
         self.head_check_timeout = head_check_timeout
         self.disk_space_check = disk_space_check
+        self.stall_report_threshold = stall_report_threshold
 
         self._cancel_event = asyncio.Event()
         self._client: httpx.AsyncClient | None = None
@@ -279,6 +297,31 @@ class HttpFileDownloader:
         if is_resumed:
             logger.info(f"Resuming download from {downloaded_size} bytes: {url}")
 
+        # ---- short-circuit: temp file already complete ----
+        # If a prior run (or a paused task that finished downloading but
+        # hadn't uploaded yet) left a complete temp file, finalize it
+        # directly instead of sending ``Range: bytes=N-`` — which the
+        # server would reject with 416, triggering a wasteful full
+        # re-download via RETRY_WITH_RESET.
+        if (
+            expected_size is not None
+            and downloaded_size == expected_size
+            and temp_file.exists()
+        ):
+            logger.info(f"Temp file already complete, finalizing: {url}")
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(temp_file), str(target_path))
+            await self._report_progress(
+                url=url,
+                target_path=target_path,
+                downloaded=downloaded_size,
+                total=expected_size,
+                speed=0.0,
+                is_resumed=True,
+            )
+            logger.info(f"Downloaded: {target_path}")
+            return target_path
+
         # Build request headers
         request_headers = dict(headers) if headers else {}
         if downloaded_size > 0 and "Range" not in request_headers:
@@ -376,6 +419,15 @@ class HttpFileDownloader:
                         f"Download attempt {attempt + 1} failed for {url}: {e}. "
                         f"Retrying in {delay:.1f}s..."
                     )
+                    await self._report_progress(
+                        url=url,
+                        target_path=target_path,
+                        downloaded=downloaded_size,
+                        total=expected_size,
+                        speed=0.0,
+                        is_resumed=is_resumed,
+                        phase="reconnecting",
+                    )
                     await asyncio.sleep(delay)
 
                     # Check pause/cancel after the sleep — the user may
@@ -422,211 +474,271 @@ class HttpFileDownloader:
         # Content-Length header reflects the smaller compressed size.
         headers["Accept-Encoding"] = "identity"
 
-        while True:
-            try:
-                async with self.client.stream(
-                    "GET", url, headers=headers
-                ) as response:
-                    # Verify the server honored our Range request.
-                    # Only meaningful when a Range header was actually sent;
-                    # a stream retry before any bytes were written sets
-                    # is_resumed=True but may not have sent a Range header
-                    # (current_size == 0), in which case 200 is correct.
-                    if (
-                        is_resumed
-                        and "Range" in headers
-                        and response.status_code == 200
-                    ):
-                        raise DownloadError(
-                            "Server ignored Range header, full content returned. "
-                            "Need to restart from beginning.",
-                            reason="range_ignored",
-                        )
+        last_chunk_time = time.monotonic()
 
-                    if response.status_code in self.NO_RETRY_STATUS_CODES:
-                        raise DownloadError(
-                            f"HTTP {response.status_code} for {url}: "
-                            f"{response.reason_phrase}",
-                            reason="non_retryable_status",
-                        )
+        async def _stall_watchdog() -> None:
+            """Report "reconnecting" when no chunk arrives for the threshold.
 
-                    # Retryable server-side status codes (429, 5xx) — retry
-                    # at the connection level with server-specified wait time
-                    # for rate-limit responses.
-                    if response.status_code in self.RETRY_STATUS_CODES:
-                        stream_retries_remaining -= 1
-                        if stream_retries_remaining <= 0:
+            Pure observation — does NOT interrupt or retry the download. Reads
+            the enclosing locals (current_size / total_size / last_chunk_time /
+            is_resumed) by reference, so it always reports the latest state.
+            Cancelled by the caller's ``finally`` when streaming ends.
+            """
+            poll = min(self.progress_interval, self.stall_report_threshold / 2)
+            while True:
+                await asyncio.sleep(poll)
+                if cancel_event is not None and cancel_event.is_set():
+                    return
+                if pause_event is not None and pause_event.is_set():
+                    return
+                if time.monotonic() - last_chunk_time >= self.stall_report_threshold:
+                    await self._report_progress(
+                        url=url,
+                        target_path=target_path,
+                        downloaded=current_size,
+                        total=total_size,
+                        speed=0.0,
+                        is_resumed=is_resumed,
+                        phase="reconnecting",
+                    )
+
+        watchdog = asyncio.create_task(_stall_watchdog())
+        try:
+            while True:
+                try:
+                    async with self.client.stream(
+                        "GET", url, headers=headers
+                    ) as response:
+                        # Verify the server honored our Range request.
+                        # Only meaningful when a Range header was actually sent;
+                        # a stream retry before any bytes were written sets
+                        # is_resumed=True but may not have sent a Range header
+                        # (current_size == 0), in which case 200 is correct.
+                        if (
+                            is_resumed
+                            and "Range" in headers
+                            and response.status_code == 200
+                        ):
                             raise DownloadError(
-                                f"Download failed after {self.max_retries} "
-                                f"connection retries (HTTP {response.status_code}): {url}",
-                                reason="connection_retries_exhausted",
+                                "Server ignored Range header, full content returned. "
+                                "Need to restart from beginning.",
+                                reason="range_ignored",
                             )
 
-                        # 429 — honour the server's RateLimit reset hint
-                        wait_time = 1.0
-                        if response.status_code == 429:
-                            ratelimit_wait = self._parse_ratelimit_headers(response)
-                            if ratelimit_wait is not None:
-                                wait_time = float(ratelimit_wait) + 1.0
+                        if response.status_code in self.NO_RETRY_STATUS_CODES:
+                            raise DownloadError(
+                                f"HTTP {response.status_code} for {url}: "
+                                f"{response.reason_phrase}",
+                                reason="non_retryable_status",
+                            )
 
-                        logger.warning(
-                            f"HTTP {response.status_code} for {url}, "
-                            f"retrying in {wait_time:.0f}s "
-                            f"({stream_retries_remaining} retries left)..."
-                        )
-                        await asyncio.sleep(wait_time)
-                        self._check_cancelled(cancel_event, url)
-                        self._check_paused(pause_event, url)
-                        # Recalculate position from temp file for resume
-                        current_size = (
-                            temp_file.stat().st_size if temp_file.exists() else 0
-                        )
-                        if current_size > 0:
-                            headers["Range"] = f"bytes={current_size}-"
-                        else:
-                            headers.pop("Range", None)
-                        mode = "ab" if current_size > 0 else "wb"
-                        is_resumed = current_size > 0
-                        continue
-
-                    response.raise_for_status()
-
-                    total_size = self._get_total_size(response, current_size)
-                    self._check_cancelled(cancel_event, url)
-
-                    # Connection established — reset the stream retry counter
-                    # so that intermittent failures don't accumulate.
-                    stream_retries_remaining = self.max_retries
-
-                    bytes_since_last_update = 0
-                    bytes_since_flush = 0
-                    last_update_time = time.monotonic()
-
-                    async with aiofiles.open(temp_file, mode) as f:
-                        async for chunk in response.aiter_bytes(
-                            chunk_size=self.chunk_size
-                        ):
-                            self._check_cancelled(cancel_event, url)
-
-                            await f.write(chunk)
-                            current_size += len(chunk)
-
-                            # Check pause after chunk is written to keep
-                            # file consistent for potential resume.
-                            self._check_paused(pause_event, url)
-
-                            # Data is flowing — reset the retry counter so
-                            # a slow-but-stable connection never exhausts
-                            # retries.
-                            stream_retries_remaining = self.max_retries
-
-                            bytes_since_last_update += len(chunk)
-                            bytes_since_flush += len(chunk)
-
-                            # Periodic flush to disk: keeps the on-disk file
-                            # size accurate for reliable resume in case of a
-                            # crash or forced termination between retries.
-                            if bytes_since_flush >= self._FLUSH_INTERVAL_BYTES:
-                                await f.flush()
-                                bytes_since_flush = 0
-
-                            # Rate-limited progress reporting
-                            now = time.monotonic()
-                            elapsed = now - last_update_time
-                            if elapsed >= self.progress_interval:
-                                speed = bytes_since_last_update / elapsed
-                                await self._report_progress(
-                                    url=url,
-                                    target_path=target_path,
-                                    downloaded=current_size,
-                                    total=total_size,
-                                    speed=speed,
-                                    is_resumed=is_resumed,
+                        # Retryable server-side status codes (429, 5xx) — retry
+                        # at the connection level with server-specified wait time
+                        # for rate-limit responses.
+                        if response.status_code in self.RETRY_STATUS_CODES:
+                            stream_retries_remaining -= 1
+                            if stream_retries_remaining <= 0:
+                                raise DownloadError(
+                                    f"Download failed after {self.max_retries} "
+                                    f"connection retries (HTTP {response.status_code}): {url}",
+                                    reason="connection_retries_exhausted",
                                 )
-                                bytes_since_last_update = 0
-                                last_update_time = now
 
-                    # ---- streaming completed normally ----
-                    break
+                            # 429 — honour the server's RateLimit reset hint
+                            wait_time = 1.0
+                            if response.status_code == 429:
+                                ratelimit_wait = self._parse_ratelimit_headers(response)
+                                if ratelimit_wait is not None:
+                                    wait_time = float(ratelimit_wait) + 1.0
 
-            except self._STREAM_RETRY_EXCEPTIONS as e:
-                stream_retries_remaining -= 1
-                if stream_retries_remaining <= 0:
-                    raise DownloadError(
-                        f"Download failed after {self.max_retries} in-stream "
-                        f"retries: {url}",
-                        reason="stream_retries_exhausted",
-                    ) from e
+                            logger.warning(
+                                f"HTTP {response.status_code} for {url}, "
+                                f"retrying in {wait_time:.0f}s "
+                                f"({stream_retries_remaining} retries left)..."
+                            )
+                            await self._report_progress(
+                                url=url,
+                                target_path=target_path,
+                                downloaded=current_size,
+                                total=total_size,
+                                speed=0.0,
+                                is_resumed=is_resumed,
+                                phase="reconnecting",
+                            )
+                            await asyncio.sleep(wait_time)
+                            self._check_cancelled(cancel_event, url)
+                            self._check_paused(pause_event, url)
+                            # Recalculate position from temp file for resume
+                            current_size = (
+                                temp_file.stat().st_size if temp_file.exists() else 0
+                            )
+                            if current_size > 0:
+                                headers["Range"] = f"bytes={current_size}-"
+                            else:
+                                headers.pop("Range", None)
+                            mode = "ab" if current_size > 0 else "wb"
+                            is_resumed = current_size > 0
+                            continue
 
-                # SSL / connection errors may be due to stale certificates
-                # — recreate the internal client to pick up fresh state.
-                if isinstance(e, httpx.ConnectError):
-                    if self._client is not None:
-                        logger.debug(
-                            "ConnectError — recreating internal httpx client "
-                            "to refresh SSL session"
-                        )
-                        await self._client.aclose()
-                        self._client = httpx.AsyncClient(
-                            follow_redirects=True,
-                            timeout=httpx.Timeout(
-                                connect=10.0,
-                                read=120.0,
-                                write=10.0,
-                                pool=10.0,
-                            ),
-                        )
+                        response.raise_for_status()
 
-                # Recalculate current_size from the temp file in case the
-                # error occurred before any chunks were written this iteration.
-                current_size = (
-                    temp_file.stat().st_size if temp_file.exists() else 0
+                        total_size = self._get_total_size(response, current_size)
+                        self._check_cancelled(cancel_event, url)
+
+                        bytes_since_last_update = 0
+                        bytes_since_flush = 0
+                        bytes_this_connection = 0
+                        last_update_time = time.monotonic()
+
+                        async with aiofiles.open(temp_file, mode) as f:
+                            async for chunk in response.aiter_bytes(
+                                chunk_size=self.chunk_size
+                            ):
+                                self._check_cancelled(cancel_event, url)
+
+                                await f.write(chunk)
+                                current_size += len(chunk)
+                                last_chunk_time = time.monotonic()
+
+                                # Check pause after chunk is written to keep
+                                # file consistent for potential resume.
+                                self._check_paused(pause_event, url)
+
+                                # Data is flowing — reset the retry counter
+                                # only after this connection has delivered a
+                                # meaningful amount of NEW data, so a
+                                # connection that keeps dropping after a few
+                                # chunks eventually exhausts its budget and
+                                # escalates to the outer exponential-backoff
+                                # loop instead of looping indefinitely.
+                                bytes_this_connection += len(chunk)
+                                if (
+                                    bytes_this_connection
+                                    >= self._STREAM_PROGRESS_RESET_BYTES
+                                ):
+                                    stream_retries_remaining = self.max_retries
+                                    bytes_this_connection = 0
+
+                                bytes_since_last_update += len(chunk)
+                                bytes_since_flush += len(chunk)
+
+                                # Periodic flush to disk: keeps the on-disk file
+                                # size accurate for reliable resume in case of a
+                                # crash or forced termination between retries.
+                                if bytes_since_flush >= self._FLUSH_INTERVAL_BYTES:
+                                    await f.flush()
+                                    bytes_since_flush = 0
+
+                                # Rate-limited progress reporting
+                                now = time.monotonic()
+                                elapsed = now - last_update_time
+                                if elapsed >= self.progress_interval:
+                                    speed = bytes_since_last_update / elapsed
+                                    await self._report_progress(
+                                        url=url,
+                                        target_path=target_path,
+                                        downloaded=current_size,
+                                        total=total_size,
+                                        speed=speed,
+                                        is_resumed=is_resumed,
+                                    )
+                                    bytes_since_last_update = 0
+                                    last_update_time = now
+
+                        # ---- streaming completed normally ----
+                        break
+
+                except self._STREAM_RETRY_EXCEPTIONS as e:
+                    stream_retries_remaining -= 1
+                    if stream_retries_remaining <= 0:
+                        raise DownloadError(
+                            f"Download failed after {self.max_retries} in-stream "
+                            f"retries: {url}",
+                            reason="stream_retries_exhausted",
+                        ) from e
+
+                    # SSL / connection errors may be due to stale certificates
+                    # — recreate the internal client to pick up fresh state.
+                    if isinstance(e, httpx.ConnectError):
+                        if self._client is not None:
+                            logger.debug(
+                                "ConnectError — recreating internal httpx client "
+                                "to refresh SSL session"
+                            )
+                            await self._client.aclose()
+                            self._client = httpx.AsyncClient(
+                                follow_redirects=True,
+                                timeout=httpx.Timeout(
+                                    connect=10.0,
+                                    read=120.0,
+                                    write=10.0,
+                                    pool=10.0,
+                                ),
+                            )
+
+                    # Recalculate current_size from the temp file in case the
+                    # error occurred before any chunks were written this iteration.
+                    current_size = (
+                        temp_file.stat().st_size if temp_file.exists() else 0
+                    )
+
+                    logger.warning(
+                        f"Stream interrupted for {url}: {e}. "
+                        f"Resuming from byte {current_size} "
+                        f"({stream_retries_remaining} retries left)..."
+                    )
+
+                    # Prepare headers for resume on the next loop iteration.
+                    if current_size > 0:
+                        headers["Range"] = f"bytes={current_size}-"
+                    else:
+                        headers.pop("Range", None)
+                    mode = "ab" if current_size > 0 else "wb"
+                    is_resumed = current_size > 0
+                    await self._report_progress(
+                        url=url,
+                        target_path=target_path,
+                        downloaded=current_size,
+                        total=total_size,
+                        speed=0.0,
+                        is_resumed=is_resumed,
+                        phase="reconnecting",
+                    )
+                    await asyncio.sleep(3.0)
+                    self._check_cancelled(cancel_event, url)
+                    self._check_paused(pause_event, url)
+                    # loop continues
+
+            # ---- post-stream: verification and finalization ----
+
+            # Verify downloaded size matches expected
+            if expected_size is not None and current_size != expected_size:
+                raise DownloadError(
+                    f"Size mismatch for {target_path}: "
+                    f"expected {expected_size}, got {current_size}",
+                    reason="size_mismatch",
                 )
 
-                logger.warning(
-                    f"Stream interrupted for {url}: {e}. "
-                    f"Resuming from byte {current_size} "
-                    f"({stream_retries_remaining} retries left)..."
-                )
-
-                # Prepare headers for resume on the next loop iteration.
-                if current_size > 0:
-                    headers["Range"] = f"bytes={current_size}-"
-                else:
-                    headers.pop("Range", None)
-                mode = "ab" if current_size > 0 else "wb"
-                is_resumed = current_size > 0
-                await asyncio.sleep(3.0)
-                self._check_cancelled(cancel_event, url)
-                self._check_paused(pause_event, url)
-                # loop continues
-
-        # ---- post-stream: verification and finalization ----
-
-        # Verify downloaded size matches expected
-        if expected_size is not None and current_size != expected_size:
-            raise DownloadError(
-                f"Size mismatch for {target_path}: "
-                f"expected {expected_size}, got {current_size}",
-                reason="size_mismatch",
+            # Final progress report (stream completed)
+            await self._report_progress(
+                url=url,
+                target_path=target_path,
+                downloaded=current_size,
+                total=total_size,
+                speed=0.0,
+                is_resumed=is_resumed,
             )
 
-        # Final progress report (stream completed)
-        await self._report_progress(
-            url=url,
-            target_path=target_path,
-            downloaded=current_size,
-            total=total_size,
-            speed=0.0,
-            is_resumed=is_resumed,
-        )
+            # Atomic move from temp to target (shutil.move handles cross-filesystem)
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(temp_file), str(target_path))
+            logger.info(f"Downloaded: {target_path}")
 
-        # Atomic move from temp to target (shutil.move handles cross-filesystem)
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.move(str(temp_file), str(target_path))
-        logger.info(f"Downloaded: {target_path}")
-
-        return target_path
+            return target_path
+        finally:
+            watchdog.cancel()
+            with contextlib.suppress(asyncio.CancelledError, Exception):
+                await watchdog
 
     def _get_temp_path(self, target_path: Path) -> Path:
         """Return the .incomplete temp path for the given target file."""
@@ -799,6 +911,7 @@ class HttpFileDownloader:
         total: int | None,
         speed: float,
         is_resumed: bool,
+        phase: str = "downloading",
     ) -> None:
         """Call the progress callback with current download progress."""
         if self.progress_callback:
@@ -810,6 +923,7 @@ class HttpFileDownloader:
                     total_bytes=total,
                     speed_bytes_per_sec=speed,
                     is_resumed=is_resumed,
+                    phase=phase,
                 )
                 result = self.progress_callback(info)
                 # If the callback is a coroutine, await it

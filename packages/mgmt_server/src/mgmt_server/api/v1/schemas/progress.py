@@ -10,7 +10,8 @@ class FileProgressItem(BaseModel):
 
     path: str = Field(..., description="File path")
     status: str = Field(
-        ..., description="File status: pending/downloading/completed/failed"
+        ...,
+        description="File status: pending/downloading/reconnecting/uploading/completed/failed",
     )
     downloaded_bytes: int = Field(0, description="Downloaded bytes")
     total_bytes: int = Field(0, description="Total bytes")

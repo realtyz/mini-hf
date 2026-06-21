@@ -322,11 +322,17 @@ async def _download_phase(
         async def progress_callback(info: ProgressInfo) -> None:
             if ctx.progress_tracker:
                 try:
+                    status = (
+                        "reconnecting"
+                        if info.phase == "reconnecting"
+                        else "downloading"
+                    )
                     await ctx.progress_tracker.update_file_progress(
                         file_path=src_file.path,
                         downloaded=info.downloaded_bytes,
                         total=info.total_bytes or src_file.size,
                         speed=info.speed_bytes_per_sec,
+                        status=status,
                     )
                 except Exception as e:
                     logger.debug("Failed to update progress: {}", e)
@@ -343,6 +349,7 @@ async def _download_phase(
             head_check=settings.WORKER_HEAD_CHECK_ENABLED,
             head_check_timeout=settings.WORKER_HEAD_CHECK_TIMEOUT,
             disk_space_check=settings.WORKER_DISK_SPACE_CHECK_ENABLED,
+            stall_report_threshold=settings.WORKER_STALL_REPORT_THRESHOLD,
         ) as downloader:
             url = ctx.url_builder(
                 repo_id=ctx.repo_id,

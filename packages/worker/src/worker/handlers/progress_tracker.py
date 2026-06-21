@@ -210,6 +210,7 @@ class TaskProgressTracker:
         downloaded: int,
         total: int | None,
         speed: float,
+        status: str | None = None,
     ) -> None:
         """Update progress for a specific file.
 
@@ -218,13 +219,18 @@ class TaskProgressTracker:
             downloaded: Bytes downloaded so far
             total: Total file size (optional)
             speed: Download speed in bytes per second
+            status: Optional status to set (e.g. "downloading" while data
+                flows, "reconnecting" when stalled/retrying). When omitted,
+                the existing status is left unchanged.
         """
-        await self._update_file_data(
-            file_path,
-            downloaded_bytes=downloaded,
-            total_bytes=total or 0,
-            speed_bytes_per_sec=round(speed, 2),
-        )
+        updates: dict = {
+            "downloaded_bytes": downloaded,
+            "total_bytes": total or 0,
+            "speed_bytes_per_sec": round(speed, 2),
+        }
+        if status is not None:
+            updates["status"] = status
+        await self._update_file_data(file_path, **updates)
 
     async def complete_file(self, file_path: str, total_bytes: int) -> None:
         """Mark a file download as completed.
