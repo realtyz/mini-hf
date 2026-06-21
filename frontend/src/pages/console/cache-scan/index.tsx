@@ -272,18 +272,6 @@ export function CacheScan() {
       initial="hidden"
       animate="visible"
     >
-      {/* Page background texture — subtle grid */}
-      <div
-        className="pointer-events-none fixed inset-0 -z-10 opacity-[0.015] dark:opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-          maskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 30%, transparent 70%)",
-          WebkitMaskImage: "radial-gradient(ellipse 60% 50% at 50% 40%, black 30%, transparent 70%)",
-        }}
-      />
-
       <CacheScanToolbar
         isAdmin={isAdmin}
         isPending={triggerScan.isPending}

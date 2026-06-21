@@ -626,6 +626,17 @@ export function ConsoleLayout() {
     <SidebarProvider defaultOpen={true}>
       <ConsoleSidebar />
       <SidebarInset className="bg-muted/30 min-h-screen">
+        {/* Grid background texture — floats above bg-muted/30, below content */}
+        <div
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.08] dark:opacity-[0.06]"
+          style={{
+            backgroundImage:
+              "linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)",
+            backgroundSize: "32px 32px",
+            maskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 50%, transparent 90%)",
+            WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 50%, transparent 90%)",
+          }}
+        />
         <ConsoleHeader />
         <main className="flex-1">
           <div className="mx-auto max-w-7xl p-5 lg:p-8">
