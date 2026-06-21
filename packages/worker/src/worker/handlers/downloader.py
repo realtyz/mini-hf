@@ -37,11 +37,30 @@ class DownloadPausedError(DownloaderError):
 
 
 class DownloadError(DownloaderError):
-    """Download failed (network error, checksum mismatch, etc.)."""
+    """Download failed (network error, checksum mismatch, etc.).
 
-    def __init__(self, message: str = "", successful_paths: list[str] | None = None):
+    Attributes:
+        reason: Machine-readable failure category for retry decision logic.
+            Supported values:
+            - ``"range_ignored"`` — server returned 200 instead of 206
+            - ``"non_retryable_status"`` — HTTP 4xx client error (except 429)
+            - ``"connection_retries_exhausted"`` — inner retries exhausted on 5xx/429
+            - ``"stream_retries_exhausted"`` — inner retries exhausted on network errors
+            - ``"size_mismatch"`` — downloaded bytes != expected
+            - ``"insufficient_disk_space"`` — not enough free space
+            - ``"head_check_failed"`` — HEAD pre-check returned non-retryable status
+            - ``"all_retries_exhausted"`` — outer retry loop exhausted
+    """
+
+    def __init__(
+        self,
+        message: str = "",
+        successful_paths: list[str] | None = None,
+        reason: str = "generic",
+    ):
         super().__init__(message)
         self.successful_paths = successful_paths or []
+        self.reason = reason
 
 
 class RetryAction(Enum):
@@ -107,6 +126,28 @@ class HttpFileDownloader:
     # Regex to parse Retry-After header value as seconds (integer form only)
     _RETRY_AFTER_REGEX = re.compile(r"^\s*(?P<seconds>\d+)\s*$")
 
+    # Flush the temp file to disk every N bytes so that the on-disk size
+    # matches the actual downloaded data for reliable resume after a crash
+    # or forced termination.
+    _FLUSH_INTERVAL_BYTES: int = 10 * 1024 * 1024  # 10 MB
+
+    # Exceptions that indicate transient network issues and should trigger
+    # an immediate in-stream retry (without exponential backoff).
+    #
+    # NOTE: RemoteProtocolError is *not* a subclass of NetworkError in httpx
+    # 0.28+ — it inherits from ProtocolError → TransportError directly.
+    # HTTP/2 GOAWAY / RST_STREAM frames during response body streaming raise
+    # RemoteProtocolError, and without it here the download fails immediately
+    # with no retry (the outer _should_retry doesn't recognise it either).
+    _STREAM_RETRY_EXCEPTIONS = (
+        httpx.ConnectError,
+        httpx.ReadError,
+        httpx.WriteError,
+        httpx.TimeoutException,
+        httpx.NetworkError,
+        httpx.RemoteProtocolError,
+    )
+
     def __init__(
         self,
         temp_dir: str | Path,
@@ -115,9 +156,9 @@ class HttpFileDownloader:
         | None = None,
         progress_interval: float = 1.0,
         max_retries: int = 5,
-        retry_base_delay: float = 1.0,
-        retry_max_delay: float = 8.0,
-        chunk_size: int = 8192,
+        retry_base_delay: float = 5.0,
+        retry_max_delay: float = 30.0,
+        chunk_size: int = 65536,
         client: httpx.AsyncClient | None = None,
         head_check: bool = True,
         head_check_timeout: float = 10.0,
@@ -146,7 +187,12 @@ class HttpFileDownloader:
         if self._client is None:
             self._client = httpx.AsyncClient(
                 follow_redirects=True,
-                timeout=30.0,
+                timeout=httpx.Timeout(
+                    connect=10.0,
+                    read=120.0,
+                    write=10.0,
+                    pool=10.0,
+                ),
             )
         return self._client
 
@@ -249,7 +295,8 @@ class HttpFileDownloader:
                 # Fail fast on non-retryable client errors
                 if head_response.status_code in self.NO_RETRY_STATUS_CODES:
                     raise DownloadError(
-                        f"HEAD check failed: HTTP {head_response.status_code} for {url}"
+                        f"HEAD check failed: HTTP {head_response.status_code} for {url}",
+                        reason="head_check_failed",
                     )
                 # Update expected_size from the HEAD response (unaffected by
                 # Content-Encoding compression on streaming GETs).
@@ -268,7 +315,7 @@ class HttpFileDownloader:
 
         last_error: Exception | None = None
 
-        for attempt in range(self.max_retries + 1):
+        for attempt in range(self.max_retries + 2):
             self._check_cancelled(cancel_event, url)
 
             try:
@@ -317,6 +364,9 @@ class HttpFileDownloader:
                     if downloaded_size > 0:
                         request_headers["Range"] = f"bytes={downloaded_size}-"
                         is_resumed = True
+                    else:
+                        request_headers.pop("Range", None)
+                        is_resumed = False
 
                     # Calculate backoff delay
                     delay = min(
@@ -329,22 +379,15 @@ class HttpFileDownloader:
                     await asyncio.sleep(delay)
 
                     # Check pause/cancel after the sleep — the user may
-                    # have requested a pause while we were waiting.
+                    # have requested a pause or cancel while we were waiting.
                     self._check_paused(pause_event, url)
+                    self._check_cancelled(cancel_event, url)
 
         # All retries exhausted
         raise DownloadError(
-            f"Failed to download {url} after {self.max_retries + 1} attempts: {last_error}"
+            f"Failed to download {url} after {self.max_retries + 1} attempts: {last_error}",
+            reason="all_retries_exhausted",
         ) from last_error
-
-    # Exceptions that indicate transient network issues and should trigger
-    # an immediate in-stream retry (without exponential backoff).
-    _STREAM_RETRY_EXCEPTIONS = (
-        httpx.ConnectError,
-        httpx.ReadError,
-        httpx.TimeoutException,
-        httpx.NetworkError,
-    )
 
     async def _do_download(
         self,
@@ -361,15 +404,23 @@ class HttpFileDownloader:
         """Stream the file from URL and write to temp path, then rename to target.
 
         Transient network errors during streaming (ConnectError, ReadError,
-        TimeoutException, NetworkError) trigger an immediate retry from the
-        current byte position with a fixed short delay — the retry counter
-        resets every time data flows successfully.  This avoids the full
-        exponential-backoff path in the outer ``download()`` loop for brief
-        network interruptions.
+        WriteError, TimeoutException, NetworkError) trigger an immediate
+        retry from the current byte position with a fixed short delay — the
+        retry counter resets every time data flows successfully.  This avoids
+        the full exponential-backoff path in the outer ``download()`` loop for
+        brief network interruptions.
         """
         stream_retries_remaining = self.max_retries
         current_size = downloaded_size
         mode = "ab" if is_resumed else "wb"
+        total_size: int | None = None
+
+        # Force identity encoding so that Content-Length in the response
+        # matches the uncompressed byte count from aiter_bytes().  Without
+        # this, httpx transparently decompresses the response body and the
+        # progress bar shows "downloaded" exceeding "total" because the
+        # Content-Length header reflects the smaller compressed size.
+        headers["Accept-Encoding"] = "identity"
 
         while True:
             try:
@@ -377,16 +428,26 @@ class HttpFileDownloader:
                     "GET", url, headers=headers
                 ) as response:
                     # Verify the server honored our Range request.
-                    if is_resumed and response.status_code == 200:
+                    # Only meaningful when a Range header was actually sent;
+                    # a stream retry before any bytes were written sets
+                    # is_resumed=True but may not have sent a Range header
+                    # (current_size == 0), in which case 200 is correct.
+                    if (
+                        is_resumed
+                        and "Range" in headers
+                        and response.status_code == 200
+                    ):
                         raise DownloadError(
                             "Server ignored Range header, full content returned. "
-                            "Need to restart from beginning."
+                            "Need to restart from beginning.",
+                            reason="range_ignored",
                         )
 
                     if response.status_code in self.NO_RETRY_STATUS_CODES:
                         raise DownloadError(
                             f"HTTP {response.status_code} for {url}: "
-                            f"{response.reason_phrase}"
+                            f"{response.reason_phrase}",
+                            reason="non_retryable_status",
                         )
 
                     # Retryable server-side status codes (429, 5xx) — retry
@@ -395,10 +456,10 @@ class HttpFileDownloader:
                     if response.status_code in self.RETRY_STATUS_CODES:
                         stream_retries_remaining -= 1
                         if stream_retries_remaining <= 0:
-                            response.raise_for_status()
                             raise DownloadError(
                                 f"Download failed after {self.max_retries} "
-                                f"connection retries (HTTP {response.status_code}): {url}"
+                                f"connection retries (HTTP {response.status_code}): {url}",
+                                reason="connection_retries_exhausted",
                             )
 
                         # 429 — honour the server's RateLimit reset hint
@@ -414,14 +475,18 @@ class HttpFileDownloader:
                             f"({stream_retries_remaining} retries left)..."
                         )
                         await asyncio.sleep(wait_time)
+                        self._check_cancelled(cancel_event, url)
+                        self._check_paused(pause_event, url)
                         # Recalculate position from temp file for resume
                         current_size = (
                             temp_file.stat().st_size if temp_file.exists() else 0
                         )
-                        if current_size > 0 and "Range" not in headers:
+                        if current_size > 0:
                             headers["Range"] = f"bytes={current_size}-"
-                        mode = "ab"
-                        is_resumed = True
+                        else:
+                            headers.pop("Range", None)
+                        mode = "ab" if current_size > 0 else "wb"
+                        is_resumed = current_size > 0
                         continue
 
                     response.raise_for_status()
@@ -434,6 +499,7 @@ class HttpFileDownloader:
                     stream_retries_remaining = self.max_retries
 
                     bytes_since_last_update = 0
+                    bytes_since_flush = 0
                     last_update_time = time.monotonic()
 
                     async with aiofiles.open(temp_file, mode) as f:
@@ -455,6 +521,14 @@ class HttpFileDownloader:
                             stream_retries_remaining = self.max_retries
 
                             bytes_since_last_update += len(chunk)
+                            bytes_since_flush += len(chunk)
+
+                            # Periodic flush to disk: keeps the on-disk file
+                            # size accurate for reliable resume in case of a
+                            # crash or forced termination between retries.
+                            if bytes_since_flush >= self._FLUSH_INTERVAL_BYTES:
+                                await f.flush()
+                                bytes_since_flush = 0
 
                             # Rate-limited progress reporting
                             now = time.monotonic()
@@ -480,7 +554,8 @@ class HttpFileDownloader:
                 if stream_retries_remaining <= 0:
                     raise DownloadError(
                         f"Download failed after {self.max_retries} in-stream "
-                        f"retries: {url}"
+                        f"retries: {url}",
+                        reason="stream_retries_exhausted",
                     ) from e
 
                 # SSL / connection errors may be due to stale certificates
@@ -494,7 +569,12 @@ class HttpFileDownloader:
                         await self._client.aclose()
                         self._client = httpx.AsyncClient(
                             follow_redirects=True,
-                            timeout=30.0,
+                            timeout=httpx.Timeout(
+                                connect=10.0,
+                                read=120.0,
+                                write=10.0,
+                                pool=10.0,
+                            ),
                         )
 
                 # Recalculate current_size from the temp file in case the
@@ -510,11 +590,15 @@ class HttpFileDownloader:
                 )
 
                 # Prepare headers for resume on the next loop iteration.
-                if current_size > 0 and "Range" not in headers:
+                if current_size > 0:
                     headers["Range"] = f"bytes={current_size}-"
-                mode = "ab"
-                is_resumed = True
-                await asyncio.sleep(1.0)
+                else:
+                    headers.pop("Range", None)
+                mode = "ab" if current_size > 0 else "wb"
+                is_resumed = current_size > 0
+                await asyncio.sleep(3.0)
+                self._check_cancelled(cancel_event, url)
+                self._check_paused(pause_event, url)
                 # loop continues
 
         # ---- post-stream: verification and finalization ----
@@ -523,7 +607,8 @@ class HttpFileDownloader:
         if expected_size is not None and current_size != expected_size:
             raise DownloadError(
                 f"Size mismatch for {target_path}: "
-                f"expected {expected_size}, got {current_size}"
+                f"expected {expected_size}, got {current_size}",
+                reason="size_mismatch",
             )
 
         # Final progress report (stream completed)
@@ -536,9 +621,9 @@ class HttpFileDownloader:
             is_resumed=is_resumed,
         )
 
-        # Atomic rename from temp to target
+        # Atomic move from temp to target (shutil.move handles cross-filesystem)
         target_path.parent.mkdir(parents=True, exist_ok=True)
-        temp_file.rename(target_path)
+        shutil.move(str(temp_file), str(target_path))
         logger.info(f"Downloaded: {target_path}")
 
         return target_path
@@ -549,22 +634,29 @@ class HttpFileDownloader:
 
     @staticmethod
     def _check_disk_space(expected_size: int, target_dir: Path) -> None:
-        """Check that enough free disk space is available before downloading.
+        """Verify sufficient free disk space before downloading.
 
-        Walks *target_dir* and its parents until a readable path is found,
-        then logs a warning if free space is less than *expected_size*.
+        Walks *target_dir* and its parents until a readable path is found.
+        Raises ``DownloadError`` if free space is less than *expected_size*.
         """
         for path in [target_dir] + list(target_dir.parents):
             try:
                 free = shutil.disk_usage(path).free
                 if free < expected_size:
-                    logger.warning(
-                        f"Low disk space: need {expected_size / 1e6:.1f} MB, "
-                        f"but {target_dir} has only {free / 1e6:.1f} MB free"
+                    raise DownloadError(
+                        f"Insufficient disk space: need {expected_size / 1e6:.1f} MB, "
+                        f"but {target_dir} has only {free / 1e6:.1f} MB free",
+                        reason="insufficient_disk_space",
                     )
                 return
             except OSError:
                 pass  # path doesn't exist or can't be queried; try parent
+
+        # No readable path found — proceed conservatively
+        logger.warning(
+            f"Could not check disk space for {target_dir} — "
+            f"none of the parent directories are readable"
+        )
 
     def _parse_ratelimit_headers(self, response: httpx.Response) -> int | None:
         """Extract the rate-limit reset time (seconds) from a 429 response.
@@ -655,6 +747,10 @@ class HttpFileDownloader:
             # Force identity encoding so Content-Length reflects actual file
             # size, not the compressed transfer size.
             head_headers = dict(headers) if headers else {}
+            # HEAD is for full-file metadata — strip Range to avoid the
+            # server returning 206 with a Content-Length of only the
+            # remaining bytes, which would corrupt expected_size.
+            head_headers.pop("Range", None)
             head_headers["Accept-Encoding"] = "identity"
             return await self.client.head(
                 url,
@@ -725,13 +821,16 @@ class HttpFileDownloader:
     def _should_retry(self, error: Exception, attempt: int) -> RetryAction:
         """Decide whether to retry a failed download attempt.
 
+        Uses :attr:`DownloadError.reason` for structured dispatch instead of
+        error-message string matching.  Unknown error types default to no retry.
+
         Returns:
             RetryAction indicating whether to retry and whether to reset state.
         """
         if attempt >= self.max_retries:
             return RetryAction.NO_RETRY
 
-        # HTTP status code checks
+        # ---- HTTP status code checks ----
         if isinstance(error, httpx.HTTPStatusError):
             status_code = error.response.status_code
 
@@ -755,7 +854,7 @@ class HttpFileDownloader:
             # Other HTTP errors are retryable
             return RetryAction.RETRY
 
-        # Network errors are retryable
+        # ---- Network errors are retryable ----
         if isinstance(
             error,
             (
@@ -768,14 +867,27 @@ class HttpFileDownloader:
         ):
             return RetryAction.RETRY
 
-        # Check if Range header was ignored (server returned 200 instead of 206)
+        # ---- DownloadError — structured dispatch by reason ----
         if isinstance(error, DownloadError):
-            error_msg = str(error)
-            if "Server ignored Range header" in error_msg:
-                # Need to delete temp file and restart from scratch
+            # Server returned 200 instead of 206 for a resumed download —
+            # delete the stale temp file and restart from byte 0.
+            if error.reason == "range_ignored":
                 return RetryAction.RETRY_WITH_RESET
 
-        # Other errors are not retryable
+            # Inner retry loops exhausted (either network errors or 5xx/429) —
+            # give the outer exponential-backoff loop a turn.
+            if error.reason in (
+                "stream_retries_exhausted",
+                "connection_retries_exhausted",
+            ):
+                return RetryAction.RETRY
+
+            # All other DownloadError reasons (non_retryable_status,
+            # size_mismatch, insufficient_disk_space, head_check_failed,
+            # all_retries_exhausted, generic) are not retryable.
+            return RetryAction.NO_RETRY
+
+        # Unknown error types — conservative, do not retry
         return RetryAction.NO_RETRY
 
     async def __aenter__(self):

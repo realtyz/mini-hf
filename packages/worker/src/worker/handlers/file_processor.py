@@ -93,7 +93,12 @@ async def download_and_upload_files(
     if ctx.infra.shared_client is None:
         ctx.infra.shared_client = httpx.AsyncClient(
             follow_redirects=True,
-            timeout=30.0,
+            timeout=httpx.Timeout(
+                connect=10.0,
+                read=settings.WORKER_DOWNLOAD_READ_TIMEOUT,
+                write=10.0,
+                pool=10.0,
+            ),
             limits=httpx.Limits(
                 max_connections=settings.WORKER_CONCURRENT_DOWNLOADS
                 + settings.WORKER_CONCURRENT_UPLOADS
@@ -206,9 +211,7 @@ async def _process_single_file(
     async with ctx.infra.check_semaphore:
         if await ctx.infra.s3.file_exists(s3_key):
             if ctx.progress_tracker:
-                await ctx.progress_tracker.complete_file(
-                    src_file.path, src_file.size
-                )
+                await ctx.progress_tracker.complete_file(src_file.path, src_file.size)
             return FileProcessResult(
                 status="exists",
                 path=src_file.path,
@@ -335,6 +338,7 @@ async def _download_phase(
             max_retries=settings.WORKER_MAX_RETRIES,
             retry_base_delay=settings.WORKER_RETRY_BASE_DELAY,
             retry_max_delay=settings.WORKER_RETRY_MAX_DELAY,
+            chunk_size=settings.WORKER_DOWNLOAD_CHUNK_SIZE,
             client=ctx.infra.shared_client,
             head_check=settings.WORKER_HEAD_CHECK_ENABLED,
             head_check_timeout=settings.WORKER_HEAD_CHECK_TIMEOUT,

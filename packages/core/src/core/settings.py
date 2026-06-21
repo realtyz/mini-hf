@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     WORKER_STALE_FILE_AGE_SECONDS: int = 86400
     WORKER_MAX_REPO_STORAGE_GB: float = -1.0
     WORKER_MAX_RETRIES: int = 3
-    WORKER_RETRY_BASE_DELAY: float = 1.0
-    WORKER_RETRY_MAX_DELAY: float = 8.0
+    WORKER_RETRY_BASE_DELAY: float = 5.0
+    WORKER_RETRY_MAX_DELAY: float = 60.0
 
     # Downloader — HEAD pre-check
     WORKER_HEAD_CHECK_ENABLED: bool = True
@@ -60,6 +60,10 @@ class Settings(BaseSettings):
 
     # Downloader — disk space check
     WORKER_DISK_SPACE_CHECK_ENABLED: bool = True
+
+    # Downloader — streaming
+    WORKER_DOWNLOAD_CHUNK_SIZE: int = 65536  # 64 KB per chunk
+    WORKER_DOWNLOAD_READ_TIMEOUT: float = 60.0  # max idle time between chunks
 
     # S3 settings
     S3_ENDPOINT: str
