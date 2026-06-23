@@ -74,6 +74,19 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
 - (Optional) Python 3.12+ for local development
 - **Internet connectivity** — The worker node requires internet access to download models from HuggingFace and ModelScope upstream sources
 
+> [!IMPORTANT]
+> **S3-compatible storage is a required external dependency.**
+> Mini-HF does **not** ship an S3 service in `docker-compose.yml`. You must
+> provide a reachable S3-compatible endpoint (MinIO, RustFS, Ceph RGW, AWS S3,
+> Aliyun OSS, etc.) and fill in `S3_ENDPOINT` / `S3_ACCESS_KEY` /
+> `S3_SECRET_KEY` / `S3_BUCKET_NAME` in `.env` **before** running
+> `docker-compose up -d`. The bucket must already exist.
+>
+> The default `S3_ENDPOINT=http://localhost:9000` in `.env.example` is a
+> placeholder — `localhost` from inside the container points to the container
+> itself, not to your host. Use the host's LAN IP or a DNS name reachable from
+> the Docker network.
+
 ### Docker Deployment
 
 1. **Clone the repository**

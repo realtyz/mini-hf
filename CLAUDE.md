@@ -63,12 +63,20 @@ The handler is split into four protocol ABCs (Interface Segregation): `ProfileLi
 
 Key worker modules:
 - `handlers/base_handler.py` — Template method orchestrating the 6 phases
-- `handlers/hf/handler.py` — HuggingFace-specific implementation
 - `handlers/diff_calculator.py` — Compares old vs new file trees
 - `handlers/file_processor.py` — Concurrent download+upload pipeline
+- `handlers/downloader.py` — Byte-transfer implementation (resume, retry)
 - `handlers/download_context.py` — Shared state object passed through phases
 - `handlers/progress_tracker.py` — Redis-backed progress tracking
 - `handlers/contracts.py` — `TaskControl` (cancel/pause signals) and `ExecutionResult`
+- `handlers/source_types.py` — Source endpoint type definitions
+
+The `handlers/hf/` subdirectory splits the HuggingFace implementation by phase:
+- `handler.py` — Top-level `HfDownloadHandler` wiring the protocols together
+- `adapter.py` — Source API adapter (commit/tree resolution)
+- `tree_saver.py` — Snapshot + tree-item persistence
+- `cleanup.py` — Post-success cleanup (archived snapshots, orphaned files)
+- `profile_recovery.py` — Recovery for interrupted/failed profile states
 
 ### Key Domain Concepts
 
@@ -113,7 +121,11 @@ The `ConfigKey` enum and `ConfigEntry` dataclasses define every system config ke
 
 See [frontend/CLAUDE.md](frontend/CLAUDE.md) for detailed frontend conventions (component organization, state management, TanStack Query patterns, naming rules).
 
+End-user feature docs (HF repo flow, task flow, FAQ) live in [frontend/docs/](frontend/docs/) — useful context when working on the UI.
+
 Summary: React 19 + React Router 7 + TanStack Query 5 + Tailwind CSS 4 + shadcn/ui. Zustand for auth state. Entry: `frontend/src/main.tsx`, Routes: `frontend/src/router.tsx`.
+
+Design notes and implementation specs (e.g., the multi-version refactor) live in [docs/plans/](docs/plans/).
 
 ### Key Files
 
@@ -219,11 +231,8 @@ pnpm install
 # Development server
 pnpm dev
 
-# Build
+# Build (also runs `tsc -b` first)
 pnpm build
-
-# Type check
-pnpm tsc --noEmit
 
 # Lint
 pnpm lint

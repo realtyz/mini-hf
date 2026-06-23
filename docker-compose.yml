@@ -1,4 +1,14 @@
-version: "3.8"
+# mini-hf docker-compose
+#
+# NOTE: S3-compatible storage is NOT included here — see README.md
+# "Prerequisites". Configure S3_* in .env to point to your own MinIO/RustFS/S3
+# before bringing the stack up.
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
 
 services:
   db-init:
@@ -16,6 +26,7 @@ services:
       postgres:
         condition: service_healthy
     restart: "no"
+    logging: *default-logging
 
   mgmt-server:
     image: mini-hf/backend:${VERSION:-latest}
@@ -38,6 +49,18 @@ services:
         condition: service_completed_successfully
     volumes:
       - ${INCOMPLETE_FILE_PATH:-./data/incomplete}:/tmp/mini-hf
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:9800/api/v1/health/', timeout=3).status==200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *default-logging
 
   hf-server:
     image: mini-hf/backend:${VERSION:-latest}
@@ -57,7 +80,20 @@ services:
         condition: service_healthy
       db-init:
         condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:9801/', timeout=3).status==200 else 1)"
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    logging: *default-logging
 
+  # General-purpose worker: accepts tasks of any size.
   worker:
     image: mini-hf/backend:${VERSION:-latest}
     command: ["uv", "run", "python", "-m", "worker.main"]
@@ -76,10 +112,15 @@ services:
       db-init:
         condition: service_completed_successfully
     volumes:
-      - /data/mini-hf:/tmp/mini-hf
+      - ${WORKER_DATA_PATH:-./data/worker}:/tmp/mini-hf
+    restart: unless-stopped
+    logging: *default-logging
     deploy:
       replicas: 1
 
+  # Small-repo worker: only picks up tasks whose required_storage <= 50 GB.
+  # Provides fairness so that large downloads do not starve small repos.
+  # Routing is enforced in worker.py via WORKER_MAX_REPO_STORAGE_GB.
   worker-small:
     image: mini-hf/backend:${VERSION:-latest}
     command: ["uv", "run", "python", "-m", "worker.main"]
@@ -99,7 +140,9 @@ services:
       db-init:
         condition: service_completed_successfully
     volumes:
-      - /data/mini-hf:/tmp/mini-hf
+      - ${WORKER_DATA_PATH:-./data/worker}:/tmp/mini-hf
+    restart: unless-stopped
+    logging: *default-logging
     deploy:
       replicas: 1
 
@@ -115,8 +158,18 @@ services:
       - EMAIL_DOMAIN=${EMAIL_DOMAIN:-minihf.com}
       - HF_SERVER_URL=${HF_SERVER_URL:-http://localhost:9801}
     depends_on:
-      - mgmt-server
-      - hf-server
+      mgmt-server:
+        condition: service_healthy
+      hf-server:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    logging: *default-logging
 
   postgres:
     image: postgres:16-alpine
@@ -128,6 +181,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    restart: unless-stopped
     healthcheck:
       test:
         [
@@ -137,6 +191,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
@@ -144,11 +199,13 @@ services:
       - redis_data:/data
     ports:
       - "6379:6379"
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
+    logging: *default-logging
 
 volumes:
   postgres_data:
