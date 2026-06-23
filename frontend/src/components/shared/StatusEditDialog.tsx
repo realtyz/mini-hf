@@ -71,7 +71,7 @@ export function StatusEditDialog({
           <Pencil className="size-3" />
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[360px]">
+      <DialogContent className="sm:max-w-90">
         <DialogHeader>
           <DialogTitle>修改{entityLabel}</DialogTitle>
           <DialogDescription>

@@ -1,2 +1,40 @@
+# Python
 __pycache__
+**/__pycache__
+*.pyc
+*.pyo
 .venv
+*.egg-info
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Git / IDE / OS
+.git
+.gitignore
+.gitattributes
+.idea
+.vscode
+.DS_Store
+
+# Frontend (built and shipped in a separate image)
+frontend
+
+# Local secrets and runtime data — must never enter the image
+.env
+.env.*
+data
+*.log
+*.sqlite
+
+# Docs / dev artifacts not needed at runtime
+docs
+*.md
+!alembic/**/*.md
+LICENSE
+
+# Docker meta
+Dockerfile
+Dockerfile.*
+.dockerignore
+docker-compose*.yml
