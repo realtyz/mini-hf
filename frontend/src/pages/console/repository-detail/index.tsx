@@ -1,8 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams, Link, useNavigate } from 'react-router'
-import { ArrowLeft, Box, Database, Download, GitCommit, Trash2, Calendar, Clock, Copy, Check } from 'lucide-react'
+import { Database, Trash2, Copy, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query/keys'
 import api from '@/lib/api/client'
@@ -90,13 +89,18 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
 
   if (error || !repo) {
     return (
-      <div className="container mx-auto flex flex-1 flex-col px-4 py-8">
-        <div className="flex flex-col items-center justify-center py-20">
-          <div className="size-16 rounded-2xl bg-destructive/5 ring-1 ring-destructive/10 flex items-center justify-center mb-5">
-            <Database className="size-7 text-destructive/40" />
-          </div>
-          <p className="text-[15px] font-medium text-foreground mb-1">加载失败</p>
-          <p className="text-[13px] text-muted-foreground">仓库不存在或无法访问</p>
+      <div className="container mx-auto flex flex-1 flex-col px-4 py-12 max-w-5xl">
+        <nav className="mb-12 flex items-center gap-2 text-[12px]">
+          <Link to={backPath} className="text-muted-foreground hover:text-foreground transition-colors">
+            仓库
+          </Link>
+          <span className="text-muted-foreground/30">/</span>
+          <span className="text-foreground/80">未找到</span>
+        </nav>
+        <div className="border-y border-border/60 py-20 text-center">
+          <Database className="mx-auto size-5 text-muted-foreground/40 mb-4" />
+          <p className="text-[14px] font-medium text-foreground mb-1">加载失败</p>
+          <p className="text-[12px] text-muted-foreground">仓库不存在或无法访问</p>
         </div>
       </div>
     )
@@ -105,68 +109,70 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
   const isModel = repo.repo_type === 'model'
   const repoTypeLabel = isModel ? '模型' : '数据集'
 
+  // Split repo id into org/name parts — the typographic hook.
+  const slashIdx = repo.repo_id.indexOf('/')
+  const orgPart = slashIdx > 0 ? repo.repo_id.slice(0, slashIdx) : null
+  const namePart = slashIdx > 0 ? repo.repo_id.slice(slashIdx + 1) : repo.repo_id
+
+  const metrics: { label: string; value: string }[] = [
+    { label: '下载量', value: formatCompactNumber(repo.downloads) },
+    { label: '缓存版本', value: repo.cached_commits.toString() },
+    {
+      label: '最近下载',
+      value: repo.last_downloaded_at ? format(new Date(repo.last_downloaded_at), 'yyyy-MM-dd') : '—',
+    },
+    {
+      label: '最近更新',
+      value: repo.cache_updated_at ? format(new Date(repo.cache_updated_at), 'yyyy-MM-dd') : '—',
+    },
+  ]
+
   return (
     <div
       className={cn(
-        'container mx-auto flex flex-1 flex-col px-4 py-8 max-w-5xl',
+        'container mx-auto flex flex-1 flex-col px-4 py-12 max-w-5xl',
         isLeaving
           ? 'animate-out fade-out slide-out-to-bottom-4 duration-300 fill-mode-forwards'
           : 'animate-in fade-in slide-in-from-bottom-4 duration-300'
       )}
       onAnimationEnd={isLeaving ? () => navigate(backPath) : undefined}
     >
-      {/* Back */}
-      <Link
-        to={backPath}
-        onClick={handleBack}
-        className="group inline-flex items-center gap-2 text-[13px] text-muted-foreground hover:text-foreground transition-colors mb-8 w-fit"
-      >
-        <ArrowLeft className="size-3.5 transition-transform duration-200 group-hover:-translate-x-0.5" />
-        返回仓库列表
-      </Link>
+      {/* ─── Breadcrumb (back affordance lives here) ─── */}
+      <nav className="mb-12 flex items-center gap-2 text-[12px] min-w-0">
+        <Link
+          to={backPath}
+          onClick={handleBack}
+          className="text-muted-foreground hover:text-foreground transition-colors shrink-0"
+        >
+          仓库
+        </Link>
+        <span className="text-muted-foreground/30 shrink-0">/</span>
+        {orgPart && (
+          <>
+            <span className="text-muted-foreground/70 truncate">{orgPart}</span>
+            <span className="text-muted-foreground/30 shrink-0">/</span>
+          </>
+        )}
+        <span className="text-foreground/90 font-medium truncate">{namePart}</span>
+      </nav>
 
-      {/* ─── Identity block ─── */}
-      <div className="flex items-start justify-between gap-6 mb-10">
-        <div className="flex items-start gap-4 min-w-0">
-          <div
-            className={cn(
-              'size-14 rounded-2xl flex items-center justify-center shrink-0',
-              'bg-gradient-to-br from-primary/5 to-primary/10',
-              'ring-1 ring-primary/10'
+      {/* ─── Identity hero ─── */}
+      <header className="mb-14 flex items-start justify-between gap-6">
+        <div className="min-w-0 flex-1">
+          <h1 className="font-semibold tracking-tight text-[28px] sm:text-[34px] leading-[1.15] break-all">
+            {orgPart && (
+              <>
+                <span className="text-muted-foreground/70 font-normal">{orgPart}</span>
+                <span className="mx-1.5 text-muted-foreground/30 font-light">/</span>
+              </>
             )}
-          >
-            {isModel ? (
-              <Box className="size-6 text-primary/50" />
-            ) : (
-              <Database className="size-6 text-primary/50" />
-            )}
-          </div>
+            <span className="text-foreground">{namePart}</span>
+          </h1>
 
-          <div className="min-w-0 pt-0.5">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight truncate">{repo.repo_id}</h1>
-              <button
-                onClick={handleCopy}
-                className="inline-flex items-center justify-center size-7 rounded-lg text-muted-foreground/50 hover:text-foreground hover:bg-muted transition-all duration-150"
-                title="复制仓库ID"
-              >
-                {copied ? <Check className="size-4 text-emerald-500" /> : <Copy className="size-3.5" />}
-              </button>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 mt-2.5">
-              <Badge variant="secondary" className="text-[11px] font-medium">
-                {repoTypeLabel}
-              </Badge>
-              {repo.pipeline_tag && (
-                <Badge variant="secondary" className="text-[11px] font-medium">
-                  {repo.pipeline_tag}
-                </Badge>
-              )}
-              <span className="inline-flex items-center gap-1.5 text-[13px] text-muted-foreground">
-                <span className={cn('size-1.5 rounded-full', getRepoStatusDotClass(repo.status as RepoStatus))} />
-                {getRepoStatusLabel(repo.status as RepoStatus)}
-              </span>
+          <div className="mt-5 flex flex-wrap items-center gap-x-3.5 gap-y-2 text-[12px]">
+            <span className="inline-flex items-center gap-1.5">
+              <span className={cn('size-1.5 rounded-full', getRepoStatusDotClass(repo.status as RepoStatus))} />
+              <span className="text-foreground/85 font-medium">{getRepoStatusLabel(repo.status as RepoStatus)}</span>
               {isAdmin && (
                 <StatusEditDialog
                   currentStatus={repo.status}
@@ -182,7 +188,31 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
                   }
                 />
               )}
-            </div>
+            </span>
+
+            <span className="text-muted-foreground/30">·</span>
+            <span className="text-muted-foreground">{repoTypeLabel}</span>
+
+            {repo.pipeline_tag && (
+              <>
+                <span className="text-muted-foreground/30">·</span>
+                <span className="font-mono text-muted-foreground tracking-tight">{repo.pipeline_tag}</span>
+              </>
+            )}
+
+            <span className="text-muted-foreground/30">·</span>
+            <button
+              onClick={handleCopy}
+              className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors group"
+              title="复制仓库ID"
+            >
+              {copied ? (
+                <Check className="size-3 text-emerald-500" />
+              ) : (
+                <Copy className="size-3 text-muted-foreground/60 group-hover:text-foreground transition-colors" />
+              )}
+              <span className="text-[12px]">{copied ? '已复制' : '复制ID'}</span>
+            </button>
           </div>
         </div>
 
@@ -190,58 +220,35 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
           <Button
             variant="ghost"
             size="sm"
-            className="text-[13px] text-muted-foreground hover:text-destructive hover:bg-destructive/5 shrink-0"
+            className="text-[12px] text-muted-foreground hover:text-destructive hover:bg-destructive/5 shrink-0 -mr-2"
             onClick={() => setDeleteDialogOpen(true)}
           >
             <Trash2 className="size-3.5" />
             删除
           </Button>
         )}
-      </div>
+      </header>
 
-      {/* ─── Metrics bar ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 rounded-2xl border bg-card/50 mb-10 overflow-hidden">
-        {[
-          {
-            icon: Download,
-            label: '下载量',
-            value: formatCompactNumber(repo.downloads),
-          },
-          {
-            icon: GitCommit,
-            label: '缓存版本',
-            value: repo.cached_commits.toString(),
-          },
-          {
-            icon: Calendar,
-            label: '最近下载',
-            value: repo.last_downloaded_at
-              ? format(new Date(repo.last_downloaded_at), 'yyyy-MM-dd')
-              : '-',
-          },
-          {
-            icon: Clock,
-            label: '最近更新',
-            value: repo.cache_updated_at
-              ? format(new Date(repo.cache_updated_at), 'yyyy-MM-dd')
-              : '-',
-          },
-        ].map((metric, i) => (
+      {/* ─── Manifest-style metric strip ─── */}
+      <dl className="mb-16 grid grid-cols-2 sm:grid-cols-4 border-y border-border/60 divide-x divide-border/60">
+        {metrics.map((m, i) => (
           <div
-            key={metric.label}
+            key={m.label}
             className={cn(
-              'flex flex-col items-center justify-center px-4 py-5',
-              i > 0 && 'border-l border-border/60'
+              'flex flex-col gap-2.5 px-5 py-5',
+              // On the 2-col layout, the second row needs a top hairline.
+              i >= 2 && 'border-t border-border/60 sm:border-t-0'
             )}
           >
-            <div className="flex items-center gap-2 mb-1.5">
-              <metric.icon className="size-3.5 text-muted-foreground/50" />
-              <span className="text-[11px] font-medium text-muted-foreground">{metric.label}</span>
-            </div>
-            <p className="text-2xl font-semibold tabular-nums tracking-tight">{metric.value}</p>
+            <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              {m.label}
+            </dt>
+            <dd className="text-[22px] font-medium tabular-nums tracking-tight leading-none text-foreground">
+              {m.value}
+            </dd>
           </div>
         ))}
-      </div>
+      </dl>
 
       {/* ─── Version list ─── */}
       <SnapshotList snapshots={snapshots} repoId={repoId} />

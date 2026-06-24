@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { GitCommit, HardDrive, ChevronRight } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { ChevronRight } from 'lucide-react'
 import { RepoTreeViewer } from '@/components/repo/RepoTreeViewer'
 import { formatBytes } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -20,6 +19,13 @@ const SNAPSHOT_STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'inactive', label: '未完成' },
   { value: 'archived', label: '已归档' },
 ]
+
+// Single-accent palette: emerald for live, amber for in-flight, muted for archived.
+const SNAPSHOT_DOT_CLASS: Record<SnapshotStatusType, string> = {
+  active: 'bg-emerald-500',
+  inactive: 'bg-amber-500',
+  archived: 'bg-muted-foreground/30',
+}
 
 export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
   const [expandedSnapshots, setExpandedSnapshots] = useState<Set<number>>(new Set())
@@ -41,74 +47,103 @@ export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
 
   return (
     <section>
-      {/* Section header */}
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold tracking-tight">版本管理</h2>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {snapshots.length} 个版本
+      {/* Section eyebrow */}
+      <header className="mb-4 flex items-baseline justify-between">
+        <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          版本
+        </h2>
+        <span className="text-[12px] tabular-nums text-muted-foreground/60">
+          {snapshots.length} 个
         </span>
-      </div>
+      </header>
 
       {snapshots.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 rounded-2xl border border-dashed">
-          <div className="size-12 rounded-xl bg-muted/50 flex items-center justify-center mb-3">
-            <GitCommit className="size-5 text-muted-foreground/40" />
-          </div>
+        <div className="border-y border-dashed border-border/60 py-20 text-center">
           <p className="text-[13px] text-muted-foreground">暂无版本信息</p>
         </div>
       ) : (
-        <div className="rounded-2xl border bg-card/50 overflow-hidden">
+        <div className="border-y border-border/60">
           {snapshots.map((snapshot, idx) => {
             const isExpanded = expandedSnapshots.has(snapshot.id)
-            const statusConfig =
-              SNAPSHOT_STATUS_CONFIG[snapshot.status as SnapshotStatusType] ??
-              SNAPSHOT_STATUS_CONFIG.archived
+            const statusKey = (snapshot.status as SnapshotStatusType) in SNAPSHOT_STATUS_CONFIG
+              ? (snapshot.status as SnapshotStatusType)
+              : 'archived'
+            const statusLabel = SNAPSHOT_STATUS_CONFIG[statusKey].label
             const isLast = idx === snapshots.length - 1
+
+            const total = snapshot.total_size ?? 0
+            const cached = snapshot.cached_size ?? 0
+            const ratio = total > 0 ? Math.min(1, Math.max(0, cached / total)) : 0
 
             return (
               <div key={snapshot.id} className={cn(!isLast && 'border-b border-border/60')}>
-                {/* Row header - always visible */}
+                {/* Row — keep as div so admin pencil button doesn't nest in a button */}
                 <div
-                  className="flex items-center justify-between px-4 py-3.5 cursor-pointer select-none hover:bg-muted/30 active:bg-muted/50 transition-colors group"
+                  role="button"
+                  tabIndex={0}
+                  aria-expanded={isExpanded}
                   onClick={() => toggleSnapshot(snapshot.id)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      toggleSnapshot(snapshot.id)
+                    }
+                  }}
+                  className="flex items-center gap-5 px-2 py-4 cursor-pointer select-none group hover:bg-muted/30 transition-colors outline-none focus-visible:bg-muted/40"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span
-                      className={cn(
-                        'text-muted-foreground/40 shrink-0 transition-all duration-200',
-                        isExpanded && 'text-foreground/60'
-                      )}
-                    >
-                      <ChevronRight
-                        className={cn(
-                          'size-4 transition-transform duration-200',
-                          isExpanded && 'rotate-90'
-                        )}
-                      />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="font-semibold text-[14px] tracking-tight group-hover:text-foreground transition-colors">
-                        {snapshot.revision}
-                      </div>
-                      <div className="text-[12px] text-muted-foreground/60 font-mono truncate max-w-64 mt-0.5">
-                        {snapshot.commit_hash}
-                      </div>
+                  <ChevronRight
+                    className={cn(
+                      'size-3.5 shrink-0 text-muted-foreground/40 transition-all duration-200',
+                      'group-hover:text-muted-foreground/80',
+                      isExpanded && 'rotate-90 text-foreground/70'
+                    )}
+                  />
+
+                  {/* Revision name + commit hash (mono) */}
+                  <div className="min-w-0 flex-1 flex flex-col gap-1">
+                    <div className="text-[14px] font-medium tracking-tight truncate text-foreground">
+                      {snapshot.revision}
+                    </div>
+                    <div className="text-[11px] font-mono text-muted-foreground/60 truncate">
+                      {snapshot.commit_hash}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0 ml-4">
-                    {snapshot.total_size != null && (
-                      <div className="hidden sm:flex items-center gap-1.5 text-[12px] tabular-nums text-muted-foreground/70">
-                        <HardDrive className="size-3" />
-                        <span className="font-medium text-foreground/70">
-                          {formatBytes(snapshot.cached_size ?? 0)}
-                        </span>
-                        <span className="text-muted-foreground/30">/</span>
-                        <span>{formatBytes(snapshot.total_size)}</span>
+                  {/* Cache-completeness bar + byte counts */}
+                  {snapshot.total_size != null && (
+                    <div className="hidden md:flex items-center gap-3 shrink-0">
+                      <div
+                        className="h-0.75 w-24 rounded-full bg-border/70 overflow-hidden"
+                        aria-label={`已缓存 ${Math.round(ratio * 100)}%`}
+                      >
+                        <div
+                          className={cn(
+                            'h-full transition-[width] duration-300',
+                            ratio >= 1
+                              ? 'bg-emerald-500/80'
+                              : ratio > 0
+                                ? 'bg-foreground/70'
+                                : 'bg-transparent'
+                          )}
+                          style={{ width: `${ratio * 100}%` }}
+                        />
                       </div>
-                    )}
-                    <Badge className={statusConfig.className}>{statusConfig.label}</Badge>
-                    {isAdmin && (
+                      <div className="text-[11px] font-mono tabular-nums text-muted-foreground/70 min-w-31.5 text-right">
+                        <span className="text-foreground/90">{formatBytes(cached)}</span>
+                        <span className="mx-1 text-muted-foreground/30">/</span>
+                        <span>{formatBytes(total)}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status: dot + label, no pill */}
+                  <div className="flex items-center gap-1.5 shrink-0 min-w-13">
+                    <span className={cn('size-1.5 rounded-full', SNAPSHOT_DOT_CLASS[statusKey])} />
+                    <span className="text-[12px] text-foreground/80">{statusLabel}</span>
+                  </div>
+
+                  {isAdmin && (
+                    <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
                       <StatusEditDialog
                         currentStatus={snapshot.status}
                         options={SNAPSHOT_STATUS_OPTIONS}
@@ -122,26 +157,23 @@ export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
                           })
                         }
                       />
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Expanded: file tree */}
-                {isExpanded && (
-                  <div
-                    className={cn(
-                      'grid transition-all duration-250 ease-out',
-                      isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                    )}
-                  >
-                    <div className="overflow-hidden">
-                      <div className="border-t border-border/30" />
-                      <div className="px-4 pb-4 pt-3">
-                        <RepoTreeViewer repoId={repoId} commitHash={snapshot.commit_hash} />
-                      </div>
+                {/* Expanded file tree */}
+                <div
+                  className={cn(
+                    'grid transition-[grid-template-rows] duration-250 ease-out',
+                    isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                  )}
+                >
+                  <div className="overflow-hidden">
+                    <div className="px-2 pb-5 pt-1">
+                      <RepoTreeViewer repoId={repoId} commitHash={snapshot.commit_hash} />
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             )
           })}
