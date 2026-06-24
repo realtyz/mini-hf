@@ -17,7 +17,6 @@ import {
   Sun,
   Moon,
   Monitor,
-  ChevronRight,
   BookOpen,
   Boxes,
   ScanSearch,
@@ -430,28 +429,28 @@ function NavItem({ item }: { item: MenuItem }) {
         isActive={isActive}
         tooltip={item.title}
         className={cn(
-          "group/menu-button relative overflow-hidden rounded-lg py-2 transition-all duration-200",
-          "hover:bg-accent hover:text-accent-foreground",
-          isActive && "bg-accent/80 text-accent-foreground font-medium"
+          "group/menu-button relative overflow-hidden rounded-md py-2 transition-colors duration-150",
+          "hover:bg-accent/60 hover:text-accent-foreground",
+          isActive && "bg-accent/50 text-foreground font-medium"
         )}
       >
         <Link to={item.path} viewTransition className="relative">
-          {/* 激活指示线 */}
+          {/* 激活指示线 - 细发丝指示当前位置 */}
           <div
             className={cn(
-              "absolute left-0 top-1/2 h-5 w-0.75 -translate-y-1/2 rounded-r-full bg-primary transition-all duration-300",
-              isActive ? "opacity-100 scale-100" : "opacity-0 scale-0"
+              "absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-foreground transition-opacity duration-200",
+              isActive ? "opacity-100" : "opacity-0"
             )}
           />
           <Icon
             className={cn(
-              "relative z-10 h-4.5 w-4.5 shrink-0 transition-transform duration-200",
-              isActive ? "text-primary" : "text-muted-foreground group-hover/menu-button:text-foreground"
+              "relative z-10 h-4 w-4 shrink-0 transition-colors duration-150",
+              isActive ? "text-foreground" : "text-muted-foreground group-hover/menu-button:text-foreground"
             )}
           />
           <span className="relative z-10 truncate text-sm">{item.title}</span>
           {item.badge && (
-            <Badge className="ml-auto h-5 min-w-5 px-1.5 text-[10px] font-semibold bg-primary/15 text-primary border-0">
+            <Badge className="ml-auto h-5 min-w-5 px-1.5 text-[10px] font-medium bg-foreground/8 text-foreground border-0">
               {item.badge}
             </Badge>
           )}
@@ -462,22 +461,19 @@ function NavItem({ item }: { item: MenuItem }) {
 }
 
 /**
- * 版本与版权信息
+ * 版本与版权信息 - 摊平为单行素文字,不再做卡片化处理
  */
 function VersionInfo() {
   const version = config.APP_VERSION;
   const copyright = config.APP_COPYRIGHT;
 
   return (
-    <div className="rounded-lg bg-muted/40 border border-border/50 p-3 group-data-[collapsible=icon]:hidden">
-      <div className="flex flex-col gap-1 text-center">
-        <span className="text-xs font-medium text-muted-foreground">
-          Mini-HF v{version}
-        </span>
-        <span className="text-[11px] text-muted-foreground/70">
-          {copyright}
-        </span>
-      </div>
+    <div className="px-2 group-data-[collapsible=icon]:hidden">
+      <p className="font-mono text-[11px] text-muted-foreground/70 leading-relaxed">
+        <span className="text-muted-foreground">v{version}</span>
+        <span className="mx-1.5 text-muted-foreground/40">·</span>
+        <span>{copyright}</span>
+      </p>
     </div>
   );
 }
@@ -519,7 +515,7 @@ function ConsoleSidebar() {
       <SidebarContent className="gap-6 px-3 py-4">
         {filteredMenuGroups.map((group) => (
           <SidebarGroup key={group.label} className="p-0">
-            <SidebarGroupLabel className="px-3 pb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+            <SidebarGroupLabel className="px-3 pb-2 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/55">
               {group.label}
             </SidebarGroupLabel>
             <SidebarGroupContent>
@@ -534,7 +530,7 @@ function ConsoleSidebar() {
       </SidebarContent>
 
       {/* 侧边栏底部 - 版本信息 */}
-      <SidebarFooter className="p-3 border-t border-border">
+      <SidebarFooter className="p-3 border-t border-border/40">
         <VersionInfo />
       </SidebarFooter>
 
@@ -565,16 +561,16 @@ function BreadcrumbNav() {
   const currentPageTitle = breadcrumbMap[currentPage] || "控制台";
 
   return (
-    <nav className="hidden md:flex items-center gap-1.5 text-sm text-muted-foreground">
+    <nav className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
       <Link
         to="/console"
-        className="hover:text-foreground transition-colors duration-200"
+        className="hover:text-foreground transition-colors duration-150"
       >
         控制台
       </Link>
       {pathSegments.length > 1 && (
         <>
-          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/50" />
+          <span className="text-muted-foreground/30 select-none">/</span>
           <span className="font-medium text-foreground">{currentPageTitle}</span>
         </>
       )}
@@ -601,14 +597,14 @@ function ConsoleHeader() {
         <BreadcrumbNav />
       </div>
 
-      {/* 右侧区域 */}
-      <div className="flex items-center gap-1.5">
-        <DocsLink />
-        <ReposLink />
-        <TaskListLink />
-        <div className="h-5 w-px bg-border mx-0.5 hidden sm:block" />
+      {/* 右侧区域 - 通过间距而非分隔线区分功能组 */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-0.5">
+          <DocsLink />
+          <ReposLink />
+          <TaskListLink />
+        </div>
         <ThemeToggle />
-        <div className="h-5 w-px bg-border mx-0.5 hidden sm:block" />
         <UserDropdown />
       </div>
     </header>
@@ -626,15 +622,15 @@ export function ConsoleLayout() {
     <SidebarProvider defaultOpen={true}>
       <ConsoleSidebar />
       <SidebarInset className="bg-muted/30 min-h-screen">
-        {/* Grid background texture — floats above bg-muted/30, below content */}
+        {/* Grid background texture — 减弱至近乎不可见,只在主区域中心留下一抹空间锚点 */}
         <div
-          className="pointer-events-none absolute inset-0 z-0 opacity-[0.08] dark:opacity-[0.06]"
+          className="pointer-events-none absolute inset-0 z-0 opacity-[0.07] dark:opacity-[0.05]"
           style={{
             backgroundImage:
               "linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)",
-            backgroundSize: "32px 32px",
-            maskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 50%, transparent 90%)",
-            WebkitMaskImage: "radial-gradient(ellipse 80% 70% at 50% 40%, black 50%, transparent 90%)",
+            backgroundSize: "56px 56px",
+            maskImage: "radial-gradient(ellipse 65% 55% at 50% 30%, black 40%, transparent 85%)",
+            WebkitMaskImage: "radial-gradient(ellipse 65% 55% at 50% 30%, black 40%, transparent 85%)",
           }}
         />
         <ConsoleHeader />
