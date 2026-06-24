@@ -7,7 +7,9 @@ import { STALE_TIMES } from "@/lib/query/client";
 import { useTaskList } from "@/hooks/use-task-list";
 import type {
   TaskResponse,
+  TaskStatus,
   DashboardStatsResponse,
+  RecentTaskListResponse,
 } from "@/lib/api/types";
 import api from "@/lib/api/client";
 import endpoints from "@/lib/api/endpoints";
@@ -97,16 +99,41 @@ export function useTaskTrends() {
 }
 
 /**
- * 获取最近任务列表（用于Dashboard表格）
+ * 获取最近任务列表(用于 Dashboard 卡片)
  *
- * 特性：
- * - 当列表中有活跃任务（running/pending/pending_approval/canceling）时，自动每 3 秒轮询
+ * 走专用端点 /task/recent:
+ * - 按 created_at desc 排序,不混入队列优先级
+ * - 后端不做 COUNT,不返回 total
+ * - 默认窗口 7 天,limit 10
+ *
+ * 轮询策略:
+ * - 当返回列表中存在活跃任务(running/pending/pending_approval/canceling)时,
+ *   每 10s 自动刷新一次;否则停轮询
  */
-export function useRecentTasks(limit = 10) {
-  return useTaskList({
-    hours: 24 * 30, // 最近30天
-    limit,
-    enablePolling: true,
+const RECENT_ACTIVE_STATUSES: TaskStatus[] = [
+  "running",
+  "pending",
+  "pending_approval",
+  "canceling",
+];
+
+function hasRecentActiveTask(tasks: TaskResponse[] | undefined): boolean {
+  if (!tasks?.length) return false;
+  return tasks.some((task) => RECENT_ACTIVE_STATUSES.includes(task.status));
+}
+
+export function useRecentTasks(limit = 10, hours = 24 * 7) {
+  return useQuery<RecentTaskListResponse>({
+    queryKey: queryKeys.tasks.recent(limit, hours),
+    queryFn: () =>
+      api.get<RecentTaskListResponse>(endpoints.task.recent, {
+        params: { limit, hours },
+      }),
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      return hasRecentActiveTask(data?.data) ? 10000 : false;
+    },
+    staleTime: STALE_TIMES.list,
   });
 }
 

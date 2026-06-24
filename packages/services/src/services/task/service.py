@@ -379,6 +379,25 @@ class TaskService:
             exclude_repo_items=exclude_repo_items,
         )
 
+    async def list_recent_tasks(
+        self,
+        limit: int = 10,
+        since: Optional[datetime] = None,
+        creator_user_id: Optional[int] = None,
+        exclude_repo_items: bool = True,
+    ) -> List[Task]:
+        """List most recently created tasks for the Dashboard widget.
+
+        Lightweight query — no COUNT, no status filtering, pure ORDER BY
+        created_at DESC. See TaskRepository.list_recent_tasks for details.
+        """
+        return await self._repo.list_recent_tasks(
+            limit=limit,
+            since=since,
+            creator_user_id=creator_user_id,
+            exclude_repo_items=exclude_repo_items,
+        )
+
     async def increment_retry_count(self, task_id: int) -> int:
         """Increment retry_count and return the new value."""
         return await self._repo.increment_retry_count(task_id)

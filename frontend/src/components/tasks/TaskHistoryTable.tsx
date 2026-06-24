@@ -8,13 +8,10 @@ import {
   Search,
   X,
   History,
-  RotateCcw,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
-import { RetryTaskDialog } from "@/components/tasks/RetryTaskDialog";
 import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
 import {
   Table,
@@ -24,19 +21,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import type { TaskResponse } from "@/lib/api/types";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import { zhCN } from "date-fns/locale";
-import { useNavigate } from "react-router";
+import { cn, formatDistanceToNow } from "@/lib/utils";
 
 interface TaskHistoryTableProps {
   tasks: TaskResponse[]; // completed + failed
@@ -57,10 +43,6 @@ function formatDuration(start: string, end: string | null): string {
 export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [retryTask, setRetryTask] = useState<TaskResponse | null>(null);
-  const [showLoginDialog, setShowLoginDialog] = useState(false);
-
-  const navigate = useNavigate();
 
   const filteredTasks = search
     ? tasks.filter((t) => t.repo_id.toLowerCase().includes(search.toLowerCase()))
@@ -75,10 +57,6 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
   const handleSearch = (value: string) => {
     setSearch(value);
     setCurrentPage(1);
-  };
-
-  const handleLoginNow = () => {
-    navigate("/login");
   };
 
   return (
@@ -180,14 +158,9 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                       耗时
                     </span>
                   </TableHead>
-                  <TableHead className="w-36 text-center">
+                  <TableHead className="w-36 pr-5 text-center">
                     <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
                       完成时间
-                    </span>
-                  </TableHead>
-                  <TableHead className="w-16 pr-5 text-center">
-                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
-                      操作
                     </span>
                   </TableHead>
                 </TableRow>
@@ -251,25 +224,10 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                         ? formatDuration(task.started_at, task.completed_at)
                         : "-"}
                     </TableCell>
-                    <TableCell className="py-3 text-center text-[13px] text-muted-foreground/60 tabular-nums">
+                    <TableCell className="py-3 pr-5 text-center text-[13px] text-muted-foreground/60">
                       {task.completed_at
-                        ? format(new Date(task.completed_at), "MM-dd HH:mm", {
-                          locale: zhCN,
-                        })
+                        ? formatDistanceToNow(new Date(task.completed_at))
                         : "-"}
-                    </TableCell>
-                    <TableCell className="py-3 pr-5 text-center">
-                      {task.status === "failed" || task.status === "cancelled" ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 opacity-0 group-hover:opacity-100 transition-all duration-150 rounded-lg"
-                          onClick={() => setRetryTask(task)}
-                          title="重试任务"
-                        >
-                          <RotateCcw className="size-3.5 text-muted-foreground/60" />
-                        </Button>
-                      ) : null}
                     </TableCell>
                   </motion.tr>
                 ))}
@@ -298,38 +256,6 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
           )}
         </div>
       )}
-
-      {/* 重试任务对话框（带缓存文件预览） */}
-      <RetryTaskDialog
-        open={retryTask !== null}
-        onOpenChange={(open) => { if (!open) setRetryTask(null) }}
-        taskId={retryTask?.id ?? 0}
-        repoId={retryTask?.repo_id ?? ''}
-        revision={retryTask?.revision ?? ''}
-      />
-
-      {/* 登录提示对话框 */}
-      <Dialog open={showLoginDialog} onOpenChange={setShowLoginDialog}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>需要登录</DialogTitle>
-            <DialogDescription>
-              您需要登录后才能执行重试操作。
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowLoginDialog(false)}
-            >
-              取消
-            </Button>
-            <Button onClick={handleLoginNow}>
-              前往登录
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </motion.div>
   );
 }

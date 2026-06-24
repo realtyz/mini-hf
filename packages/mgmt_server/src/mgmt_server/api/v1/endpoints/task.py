@@ -16,6 +16,8 @@ from mgmt_server.api.v1.schemas import (
     AsyncPreviewTaskStatusResponse,
     CreateTaskFromCacheRequest,
     PublicTaskListQueryParams,
+    RecentTaskListQueryParams,
+    RecentTaskListResponse,
     TaskDetailResponse,
     TaskListQueryParams,
     TaskListResponse,
@@ -30,6 +32,7 @@ router = APIRouter()
 
 TaskListParamsDep = Annotated[TaskListQueryParams, Depends()]
 PublicTaskListParamsDep = Annotated[PublicTaskListQueryParams, Depends()]
+RecentTaskListParamsDep = Annotated[RecentTaskListQueryParams, Depends()]
 
 
 @router.get("/list", response_model=TaskListResponse)
@@ -68,6 +71,20 @@ async def list_public_tasks(
         limit=params.limit,
         skip=params.skip,
         hours=params.hours,
+    )
+
+
+@router.get("/recent", response_model=RecentTaskListResponse)
+async def list_recent_tasks(
+    current_user: CurrentUserDep,
+    service: TaskLifecycleServiceDep,
+    params: RecentTaskListParamsDep,
+) -> RecentTaskListResponse:
+    """Dashboard 'recent tasks' widget — ordered by created_at desc, no count."""
+    return await service.list_recent_tasks(
+        limit=params.limit,
+        hours=params.hours,
+        user=current_user,
     )
 
 

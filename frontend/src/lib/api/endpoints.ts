@@ -30,6 +30,7 @@ const endpoints = {
     list: '/task/list',
     listPublic: '/task/list-public',
     activePublic: '/task/active-public',
+    recent: '/task/recent',
     preview: '/task/preview',
     previewStatus: (taskId: string) => `/task/preview/${taskId}`,
     detail: (id: number) => `/task/${id}`,

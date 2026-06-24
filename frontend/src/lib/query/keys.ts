@@ -21,6 +21,8 @@ export const queryKeys = {
   tasks: {
     all: ['tasks'] as const,
     active: () => [...queryKeys.tasks.all, 'active'] as const,
+    recent: (limit: number, hours: number) =>
+      [...queryKeys.tasks.all, 'recent', { limit, hours }] as const,
     list: (filters?: TaskListFilters, params?: PaginationParams) =>
       [...queryKeys.tasks.all, 'list', { filters, params }] as const,
     detail: (id: number | null) =>

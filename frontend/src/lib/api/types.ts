@@ -237,6 +237,12 @@ export interface ActiveTaskListResponse {
   data: TaskResponse[]
 }
 
+export interface RecentTaskListResponse {
+  code: number
+  message: string
+  data: TaskResponse[]
+}
+
 export interface TaskListFilters {
   status?: TaskStatus
   repo_type?: string

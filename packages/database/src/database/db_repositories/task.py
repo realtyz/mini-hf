@@ -300,6 +300,45 @@ class TaskRepository:
 
         return total, tasks
 
+    async def list_recent_tasks(
+        self,
+        limit: int = 10,
+        since: Optional[datetime] = None,
+        creator_user_id: Optional[int] = None,
+        exclude_repo_items: bool = True,
+    ) -> List[Task]:
+        """List most recently created tasks — Dashboard widget query.
+
+        Optimized for the "recent tasks" panel:
+        - No COUNT query (panel does not show a total)
+        - No status / search / pagination
+        - Pure ORDER BY created_at DESC
+
+        Args:
+            limit: Maximum results
+            since: Filter tasks created after this datetime (optional)
+            creator_user_id: Filter by creator (None = no filter, admin scope)
+            exclude_repo_items: If True, skip loading repo_items JSONB column
+
+        Returns:
+            Tasks ordered by created_at descending
+        """
+        stmt = select(Task)
+
+        if exclude_repo_items:
+            stmt = stmt.options(defer(Task.repo_items))
+
+        if since is not None:
+            stmt = stmt.where(Task.created_at >= since)
+
+        if creator_user_id is not None:
+            stmt = stmt.where(Task.creator_user_id == creator_user_id)
+
+        stmt = stmt.order_by(Task.created_at.desc()).limit(limit)
+
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
     async def list_active_tasks(
         self,
         exclude_repo_items: bool = True,

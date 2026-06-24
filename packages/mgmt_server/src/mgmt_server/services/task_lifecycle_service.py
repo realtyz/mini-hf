@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from mgmt_server.api.v1.schemas import (
     ActiveTaskListResponse,
+    RecentTaskListResponse,
     TaskDetailResponse,
     TaskListResponse,
     TaskPreviewData,
@@ -34,6 +35,7 @@ from mgmt_server.services.task_response_builder import (
     build_active_task_list_response,
     build_file_progress_items,
     build_progress_response,
+    build_recent_task_list_response,
     build_task_detail_response,
     build_task_list_response,
 )
@@ -550,6 +552,26 @@ class TaskLifecycleService:
             exclude_repo_items=True,
         )
         return build_task_list_response(tasks, total)
+
+    async def list_recent_tasks(
+        self,
+        limit: int,
+        hours: int,
+        user: User,
+    ) -> RecentTaskListResponse:
+        """Dashboard 'recent tasks' widget — ordered by created_at desc.
+
+        Non-admin users only see their own tasks (same scope as /task/list).
+        """
+        creator_user_id = None if user.role == UserRole.ADMIN else user.id
+        since = datetime.now() - timedelta(hours=hours)
+        tasks = await self._task_service.list_recent_tasks(
+            limit=limit,
+            since=since,
+            creator_user_id=creator_user_id,
+            exclude_repo_items=True,
+        )
+        return build_recent_task_list_response(tasks)
 
     async def list_active_public_tasks(self) -> ActiveTaskListResponse:
         tasks = await self._task_service.list_active_tasks(exclude_repo_items=True)

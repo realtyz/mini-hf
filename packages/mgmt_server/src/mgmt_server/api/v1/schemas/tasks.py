@@ -23,6 +23,17 @@ class PublicTaskListQueryParams(PaginationQueryParams):
     status: TaskStatus | None = None
 
 
+class RecentTaskListQueryParams(BaseModel):
+    """Query parameters for the Dashboard 'recent tasks' widget.
+
+    No pagination, no status filter — the widget shows tasks ordered by
+    created_at desc within a sliding time window.
+    """
+
+    limit: int = Field(10, ge=1, le=50)
+    hours: int = Field(24 * 7, ge=1, le=24 * 365)
+
+
 class TaskCreatorUser(BaseModel):
     """Creator user info embedded in task response."""
 
@@ -74,6 +85,10 @@ class TaskListResponse(BaseResponse[list[TaskResponse]]):
 
 class ActiveTaskListResponse(BaseResponse[list[TaskResponse]]):
     """Active task list response schema — no pagination, no total."""
+
+
+class RecentTaskListResponse(BaseResponse[list[TaskResponse]]):
+    """Recent task list response schema — no pagination, no total."""
 
 
 class TaskDetailResponse(BaseResponse[TaskResponse]):

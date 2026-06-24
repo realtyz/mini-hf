@@ -9,6 +9,7 @@ from database.db_models import Task, User
 from mgmt_server.api.v1.schemas import (
     ActiveTaskListResponse,
     FileProgressItem,
+    RecentTaskListResponse,
     TaskCreatorUser,
     TaskDetailResponse,
     TaskListResponse,
@@ -84,6 +85,14 @@ def build_active_task_list_response(
     tasks: list[Task],
 ) -> ActiveTaskListResponse:
     return ActiveTaskListResponse(
+        data=[build_task_response(t, repo_items_override=[]) for t in tasks],
+    )
+
+
+def build_recent_task_list_response(
+    tasks: list[Task],
+) -> RecentTaskListResponse:
+    return RecentTaskListResponse(
         data=[build_task_response(t, repo_items_override=[]) for t in tasks],
     )
 

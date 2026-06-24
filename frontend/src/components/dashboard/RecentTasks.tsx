@@ -2,6 +2,8 @@ import {
   ArrowRight,
   Database,
   CloudDownload,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -121,10 +123,10 @@ function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
 }
 
 // 加载状态
-function TaskListSkeleton() {
+function TaskListSkeleton({ count = 10 }: { count?: number }) {
   return (
     <div className="space-y-2">
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: count }).map((_, i) => (
         <motion.div
           key={i}
           initial={{ opacity: 0, y: 10 }}
@@ -161,9 +163,35 @@ function EmptyState() {
   )
 }
 
+// 错误状态
+function ErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="text-center py-12"
+    >
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-100 to-rose-50 dark:from-rose-900/30 dark:to-rose-950/30 mb-4 shadow-sm">
+        <AlertCircle className="size-6 text-rose-500 dark:text-rose-400" />
+      </div>
+      <p className="text-muted-foreground font-medium">任务列表加载失败</p>
+      <p className="text-xs text-muted-foreground/60 mt-1">请检查网络连接或稍后再试</p>
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-4 gap-1.5"
+        onClick={onRetry}
+      >
+        <RefreshCw className="size-3.5" />
+        重新加载
+      </Button>
+    </motion.div>
+  )
+}
+
 // 主组件
 export function RecentTasks() {
-  const { data: tasksData, isLoading } = useRecentTasks(10)
+  const { data: tasksData, isLoading, isError, refetch } = useRecentTasks(10)
   const tasks = tasksData?.data || []
 
   return (
@@ -180,7 +208,7 @@ export function RecentTasks() {
           <div className="space-y-1.5">
             <CardTitle className="text-base font-semibold tracking-tight">最近任务</CardTitle>
             <p className="text-xs text-muted-foreground">
-              显示最近30天内的任务记录
+              按创建时间显示最近 7 天的任务
             </p>
           </div>
           <Button
@@ -198,7 +226,9 @@ export function RecentTasks() {
 
         <CardContent className="pt-0">
           {isLoading ? (
-            <TaskListSkeleton />
+            <TaskListSkeleton count={10} />
+          ) : isError ? (
+            <ErrorState onRetry={() => refetch()} />
           ) : tasks.length === 0 ? (
             <EmptyState />
           ) : (
