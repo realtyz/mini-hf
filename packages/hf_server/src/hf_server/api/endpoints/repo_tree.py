@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from core.settings import settings
-from database.db_models import HfRepoSnapshot, HfRepoTreeItem, SnapshotStatus
+from database.db_models import HfRepoSnapshot, HfRepoTreeItem
 from hf_server.api.deps import DbDep
 from hf_server.api.schemas.responses.repo_tree import (
     RepoTreeItemResponse,
@@ -90,12 +90,17 @@ async def _get_repo_tree(
     if limit > MAX_LIMIT:
         raise HTTPException(status_code=400, detail=f"Limit cannot exceed {MAX_LIMIT}")
 
-    # Get active snapshot to find commit_hash
-    snapshot_stmt = select(HfRepoSnapshot).where(
-        HfRepoSnapshot.repo_id == repo_id,
-        HfRepoSnapshot.repo_type == repo_type,
-        HfRepoSnapshot.revision == revision,
-        HfRepoSnapshot.status == SnapshotStatus.ACTIVE,
+    # Resolve the latest snapshot for this revision regardless of status, so
+    # partially-downloaded repositories (status != ACTIVE) remain listable.
+    snapshot_stmt = (
+        select(HfRepoSnapshot)
+        .where(
+            HfRepoSnapshot.repo_id == repo_id,
+            HfRepoSnapshot.repo_type == repo_type,
+            HfRepoSnapshot.revision == revision,
+        )
+        .order_by(HfRepoSnapshot.created_at.desc())
+        .limit(1)
     )
     result = await db.execute(snapshot_stmt)
     snapshot = result.scalar_one_or_none()

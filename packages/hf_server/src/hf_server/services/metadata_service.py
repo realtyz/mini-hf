@@ -3,7 +3,7 @@ import re
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.db_models import HfRepoSnapshot, HfRepoTreeItem, SnapshotStatus
+from database.db_models import HfRepoSnapshot, HfRepoTreeItem
 
 # Regex to match commit hash (40 hex characters)
 REGEX_COMMIT_HASH = re.compile(r"^[0-9a-f]{40}$")
@@ -23,15 +23,20 @@ class MetadataService:
     ) -> HfRepoSnapshot | None:
         """Get model snapshot by namespace, repo_name and revision.
 
-        Only returns ACTIVE snapshots (each revision only has one active commit).
+        Returns the latest snapshot for the revision regardless of status, so
+        partially-downloaded repositories (status != ACTIVE) remain reachable.
         """
         repo_id = f"{namespace}/{repo_name}"
 
-        stmt = select(HfRepoSnapshot).where(
-            HfRepoSnapshot.repo_id == repo_id,
-            HfRepoSnapshot.repo_type == "model",
-            HfRepoSnapshot.revision == revision,
-            HfRepoSnapshot.status == SnapshotStatus.ACTIVE,
+        stmt = (
+            select(HfRepoSnapshot)
+            .where(
+                HfRepoSnapshot.repo_id == repo_id,
+                HfRepoSnapshot.repo_type == "model",
+                HfRepoSnapshot.revision == revision,
+            )
+            .order_by(HfRepoSnapshot.created_at.desc())
+            .limit(1)
         )
         result = await self._db.execute(stmt)
         return result.scalar_one_or_none()
@@ -44,15 +49,20 @@ class MetadataService:
     ) -> HfRepoSnapshot | None:
         """Get dataset snapshot by namespace, repo_name and revision.
 
-        Only returns ACTIVE snapshots (each revision only has one active commit).
+        Returns the latest snapshot for the revision regardless of status, so
+        partially-downloaded repositories (status != ACTIVE) remain reachable.
         """
         repo_id = f"{namespace}/{repo_name}"
 
-        stmt = select(HfRepoSnapshot).where(
-            HfRepoSnapshot.repo_id == repo_id,
-            HfRepoSnapshot.repo_type == "dataset",
-            HfRepoSnapshot.revision == revision,
-            HfRepoSnapshot.status == SnapshotStatus.ACTIVE,
+        stmt = (
+            select(HfRepoSnapshot)
+            .where(
+                HfRepoSnapshot.repo_id == repo_id,
+                HfRepoSnapshot.repo_type == "dataset",
+                HfRepoSnapshot.revision == revision,
+            )
+            .order_by(HfRepoSnapshot.created_at.desc())
+            .limit(1)
         )
         result = await self._db.execute(stmt)
         return result.scalar_one_or_none()
@@ -65,8 +75,10 @@ class MetadataService:
     ) -> HfRepoSnapshot | None:
         """Get snapshot by repo_id, repo_type and rev.
 
-        For revision (tag/branch name), only returns ACTIVE snapshots.
-        For commit hash, searches all snapshots (to support direct commit access).
+        For both revision names and commit hashes, returns the latest matching
+        snapshot regardless of status. Partially-downloaded snapshots remain
+        reachable; per-file completeness is enforced downstream by the S3
+        existence check in the resolve endpoint.
 
         Args:
             repo_id: Repository ID (e.g., "facebook/bart-large")
@@ -76,21 +88,22 @@ class MetadataService:
         Returns:
             RepoSnapshot instance or None if not found
         """
-        # Check if rev is a commit hash (40 hex characters)
         if REGEX_COMMIT_HASH.match(rev):
-            # Query by commit_hash - search all snapshots for direct commit access
             stmt = select(HfRepoSnapshot).where(
                 HfRepoSnapshot.repo_id == repo_id,
                 HfRepoSnapshot.repo_type == repo_type,
                 HfRepoSnapshot.commit_hash == rev,
             )
         else:
-            # Query by revision (tag/branch name) - only return ACTIVE snapshots
-            stmt = select(HfRepoSnapshot).where(
-                HfRepoSnapshot.repo_id == repo_id,
-                HfRepoSnapshot.repo_type == repo_type,
-                HfRepoSnapshot.revision == rev,
-                HfRepoSnapshot.status == SnapshotStatus.ACTIVE,
+            stmt = (
+                select(HfRepoSnapshot)
+                .where(
+                    HfRepoSnapshot.repo_id == repo_id,
+                    HfRepoSnapshot.repo_type == repo_type,
+                    HfRepoSnapshot.revision == rev,
+                )
+                .order_by(HfRepoSnapshot.created_at.desc())
+                .limit(1)
             )
         result = await self._db.execute(stmt)
         return result.scalar_one_or_none()
