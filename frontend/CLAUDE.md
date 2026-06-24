@@ -110,3 +110,10 @@ pnpm dlx shadcn@latest add <component>  # Add shadcn/ui component
 6. **UI text is in Chinese** (toast messages, labels, error text). Keep it consistent.
 7. **No unnecessary refactoring**. If you're fixing a bug, don't also "clean up" the surrounding code.
 8. **Prefer `memo()` + `useCallback()`** for pure presentation components that receive props and fire callbacks — match the pattern in `RepoCard.tsx`.
+
+## Layout & Z-Index
+
+The console layout (`layouts/ConsoleLayout.tsx`) establishes the page chrome: a sticky header, a decorative grid background, and `<main>` lifted to its own stacking context (`relative z-10`) so cards sit cleanly above the grid. Two rules keep this working:
+
+1. **Use Radix/shadcn portal components for global overlays** — Dialog, Sheet, Popover, DropdownMenu, Tooltip. They render to `document.body` and correctly escape `main`'s stacking context to sit above the sticky header. Don't hand-roll a fixed-positioned overlay with `z-[9999]` inside a page — it will be capped by `main`'s `z-10` and won't cover the header.
+2. **Page-decorative backgrounds (grids, noise, ambient gradients) belong in `ConsoleLayout`, not individual pages.** Per-page absolute decorations re-introduce the same z-index trap (the decoration paints above sibling content with no positioning), and each page would need its own workaround.

@@ -638,7 +638,7 @@ export function ConsoleLayout() {
           }}
         />
         <ConsoleHeader />
-        <main className="flex-1">
+        <main className="relative z-10 flex-1">
           <div className="mx-auto max-w-7xl p-5 lg:p-8">
             <Outlet />
           </div>
