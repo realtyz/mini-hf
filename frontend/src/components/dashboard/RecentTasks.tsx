@@ -68,7 +68,7 @@ function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
     >
       {/* 背景渐变层 */}
       <div className={cn(
-        'absolute inset-0 rounded-xl bg-gradient-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300',
+        'absolute inset-0 rounded-xl bg-linear-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300',
         status.gradient
       )} />
 
@@ -154,7 +154,7 @@ function EmptyState() {
       animate={{ opacity: 1, scale: 1 }}
       className="text-center py-12"
     >
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800/50 dark:to-slate-900/50 mb-4 shadow-sm">
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-slate-100 to-slate-50 dark:from-slate-800/50 dark:to-slate-900/50 mb-4 shadow-sm">
         <CloudDownload className="size-6 text-slate-400 dark:text-slate-500" />
       </div>
       <p className="text-muted-foreground font-medium">暂无任务记录</p>
@@ -171,7 +171,7 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
       animate={{ opacity: 1, scale: 1 }}
       className="text-center py-12"
     >
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-rose-100 to-rose-50 dark:from-rose-900/30 dark:to-rose-950/30 mb-4 shadow-sm">
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-rose-100 to-rose-50 dark:from-rose-900/30 dark:to-rose-950/30 mb-4 shadow-sm">
         <AlertCircle className="size-6 text-rose-500 dark:text-rose-400" />
       </div>
       <p className="text-muted-foreground font-medium">任务列表加载失败</p>
@@ -202,7 +202,7 @@ export function RecentTasks() {
     >
       <Card className="border transition-all duration-300 hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 overflow-hidden">
         {/* 顶部渐变装饰线 */}
-        <div className="h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />
+        <div className="h-px bg-linear-to-r from-transparent via-primary/30 to-transparent" />
 
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <div className="space-y-1.5">
