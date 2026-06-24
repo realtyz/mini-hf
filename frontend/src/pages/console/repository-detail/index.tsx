@@ -89,15 +89,15 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
 
   if (error || !repo) {
     return (
-      <div className="container mx-auto flex flex-1 flex-col px-4 py-12 max-w-5xl">
-        <nav className="mb-12 flex items-center gap-2 text-[12px]">
+      <div className="container mx-auto flex flex-1 flex-col px-4 py-10 max-w-5xl">
+        <nav className="mb-6 flex items-center gap-2 text-[12px]">
           <Link to={backPath} className="text-muted-foreground hover:text-foreground transition-colors">
             仓库
           </Link>
           <span className="text-muted-foreground/30">/</span>
           <span className="text-foreground/80">未找到</span>
         </nav>
-        <div className="border-y border-border/60 py-20 text-center">
+        <div className="rounded-2xl border border-border/60 bg-card py-20 text-center">
           <Database className="mx-auto size-5 text-muted-foreground/40 mb-4" />
           <p className="text-[14px] font-medium text-foreground mb-1">加载失败</p>
           <p className="text-[12px] text-muted-foreground">仓库不存在或无法访问</p>
@@ -130,15 +130,15 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
   return (
     <div
       className={cn(
-        'container mx-auto flex flex-1 flex-col px-4 py-12 max-w-5xl',
+        'container mx-auto flex flex-1 flex-col px-4 py-10 max-w-5xl',
         isLeaving
           ? 'animate-out fade-out slide-out-to-bottom-4 duration-300 fill-mode-forwards'
           : 'animate-in fade-in slide-in-from-bottom-4 duration-300'
       )}
       onAnimationEnd={isLeaving ? () => navigate(backPath) : undefined}
     >
-      {/* ─── Breadcrumb (back affordance lives here) ─── */}
-      <nav className="mb-12 flex items-center gap-2 text-[12px] min-w-0">
+      {/* ─── Breadcrumb (sits on the page background, above the card) ─── */}
+      <nav className="mb-6 flex items-center gap-2 text-[12px] min-w-0">
         <Link
           to={backPath}
           onClick={handleBack}
@@ -156,102 +156,105 @@ export function RepositoryDetail({ backPath = '/console/repositories', showActio
         <span className="text-foreground/90 font-medium truncate">{namePart}</span>
       </nav>
 
-      {/* ─── Identity hero ─── */}
-      <header className="mb-14 flex items-start justify-between gap-6">
-        <div className="min-w-0 flex-1">
-          <h1 className="font-semibold tracking-tight text-[28px] sm:text-[34px] leading-[1.15] break-all">
-            {orgPart && (
-              <>
-                <span className="text-muted-foreground/70 font-normal">{orgPart}</span>
-                <span className="mx-1.5 text-muted-foreground/30 font-light">/</span>
-              </>
-            )}
-            <span className="text-foreground">{namePart}</span>
-          </h1>
-
-          <div className="mt-5 flex flex-wrap items-center gap-x-3.5 gap-y-2 text-[12px]">
-            <span className="inline-flex items-center gap-1.5">
-              <span className={cn('size-1.5 rounded-full', getRepoStatusDotClass(repo.status as RepoStatus))} />
-              <span className="text-foreground/85 font-medium">{getRepoStatusLabel(repo.status as RepoStatus)}</span>
-              {isAdmin && (
-                <StatusEditDialog
-                  currentStatus={repo.status}
-                  options={PROFILE_STATUS_OPTIONS}
-                  entityLabel="仓库状态"
-                  isPending={setProfileStatus.isPending}
-                  onConfirm={(newStatus) =>
-                    setProfileStatus.mutate({
-                      repoId,
-                      repo_type: repo.repo_type as 'model' | 'dataset',
-                      status: newStatus as RepoStatus,
-                    })
-                  }
-                />
+      {/* ─── Manifest sheet — lifts the typographic content off the grid ─── */}
+      <div className="rounded-2xl border border-border/60 bg-card px-6 py-10 sm:px-10 sm:py-12">
+        {/* ─── Identity hero ─── */}
+        <header className="mb-14 flex items-start justify-between gap-6">
+          <div className="min-w-0 flex-1">
+            <h1 className="font-semibold tracking-tight text-[28px] sm:text-[34px] leading-[1.15] break-all">
+              {orgPart && (
+                <>
+                  <span className="text-muted-foreground/70 font-normal">{orgPart}</span>
+                  <span className="mx-1.5 text-muted-foreground/30 font-light">/</span>
+                </>
               )}
-            </span>
+              <span className="text-foreground">{namePart}</span>
+            </h1>
 
-            <span className="text-muted-foreground/30">·</span>
-            <span className="text-muted-foreground">{repoTypeLabel}</span>
+            <div className="mt-5 flex flex-wrap items-center gap-x-3.5 gap-y-2 text-[12px]">
+              <span className="inline-flex items-center gap-1.5">
+                <span className={cn('size-1.5 rounded-full', getRepoStatusDotClass(repo.status as RepoStatus))} />
+                <span className="text-foreground/85 font-medium">{getRepoStatusLabel(repo.status as RepoStatus)}</span>
+                {isAdmin && (
+                  <StatusEditDialog
+                    currentStatus={repo.status}
+                    options={PROFILE_STATUS_OPTIONS}
+                    entityLabel="仓库状态"
+                    isPending={setProfileStatus.isPending}
+                    onConfirm={(newStatus) =>
+                      setProfileStatus.mutate({
+                        repoId,
+                        repo_type: repo.repo_type as 'model' | 'dataset',
+                        status: newStatus as RepoStatus,
+                      })
+                    }
+                  />
+                )}
+              </span>
 
-            {repo.pipeline_tag && (
-              <>
-                <span className="text-muted-foreground/30">·</span>
-                <span className="font-mono text-muted-foreground tracking-tight">{repo.pipeline_tag}</span>
-              </>
-            )}
+              <span className="text-muted-foreground/30">·</span>
+              <span className="text-muted-foreground">{repoTypeLabel}</span>
 
-            <span className="text-muted-foreground/30">·</span>
-            <button
-              onClick={handleCopy}
-              className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors group"
-              title="复制仓库ID"
+              {repo.pipeline_tag && (
+                <>
+                  <span className="text-muted-foreground/30">·</span>
+                  <span className="font-mono text-muted-foreground tracking-tight">{repo.pipeline_tag}</span>
+                </>
+              )}
+
+              <span className="text-muted-foreground/30">·</span>
+              <button
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors group"
+                title="复制仓库ID"
+              >
+                {copied ? (
+                  <Check className="size-3 text-emerald-500" />
+                ) : (
+                  <Copy className="size-3 text-muted-foreground/60 group-hover:text-foreground transition-colors" />
+                )}
+                <span className="text-[12px]">{copied ? '已复制' : '复制ID'}</span>
+              </button>
+            </div>
+          </div>
+
+          {showActions && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-[12px] text-muted-foreground hover:text-destructive hover:bg-destructive/5 shrink-0 -mr-2"
+              onClick={() => setDeleteDialogOpen(true)}
             >
-              {copied ? (
-                <Check className="size-3 text-emerald-500" />
-              ) : (
-                <Copy className="size-3 text-muted-foreground/60 group-hover:text-foreground transition-colors" />
+              <Trash2 className="size-3.5" />
+              删除
+            </Button>
+          )}
+        </header>
+
+        {/* ─── Manifest-style metric strip ─── */}
+        <dl className="mb-16 grid grid-cols-2 sm:grid-cols-4 border-y border-border/60 divide-x divide-border/60">
+          {metrics.map((m, i) => (
+            <div
+              key={m.label}
+              className={cn(
+                'flex flex-col gap-2.5 px-5 py-5',
+                // On the 2-col layout, the second row needs a top hairline.
+                i >= 2 && 'border-t border-border/60 sm:border-t-0'
               )}
-              <span className="text-[12px]">{copied ? '已复制' : '复制ID'}</span>
-            </button>
-          </div>
-        </div>
+            >
+              <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                {m.label}
+              </dt>
+              <dd className="text-[22px] font-medium tabular-nums tracking-tight leading-none text-foreground">
+                {m.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
 
-        {showActions && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-[12px] text-muted-foreground hover:text-destructive hover:bg-destructive/5 shrink-0 -mr-2"
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <Trash2 className="size-3.5" />
-            删除
-          </Button>
-        )}
-      </header>
-
-      {/* ─── Manifest-style metric strip ─── */}
-      <dl className="mb-16 grid grid-cols-2 sm:grid-cols-4 border-y border-border/60 divide-x divide-border/60">
-        {metrics.map((m, i) => (
-          <div
-            key={m.label}
-            className={cn(
-              'flex flex-col gap-2.5 px-5 py-5',
-              // On the 2-col layout, the second row needs a top hairline.
-              i >= 2 && 'border-t border-border/60 sm:border-t-0'
-            )}
-          >
-            <dt className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-              {m.label}
-            </dt>
-            <dd className="text-[22px] font-medium tabular-nums tracking-tight leading-none text-foreground">
-              {m.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-
-      {/* ─── Version list ─── */}
-      <SnapshotList snapshots={snapshots} repoId={repoId} />
+        {/* ─── Version list ─── */}
+        <SnapshotList snapshots={snapshots} repoId={repoId} />
+      </div>
 
       {/* Delete dialog */}
       <DeleteRepoDialog
