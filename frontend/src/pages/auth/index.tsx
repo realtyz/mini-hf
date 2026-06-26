@@ -38,6 +38,7 @@ import {
 import { useAuthStore } from "@/stores/auth-store";
 import { cn } from "@/lib/utils";
 import { getPasswordStrength } from "./password-strength";
+import { PasswordStrengthIndicator } from "./PasswordStrengthIndicator";
 
 // --- Spring Configs ---
 const springConfig = {
@@ -807,38 +808,7 @@ function RegisterForm({ onFlip }: FormProps) {
           </div>
 
           {/* Password strength indicator */}
-          {password && (
-            <motion.div
-              className="space-y-1.5"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-            >
-              <div className="flex h-1 gap-1">
-                {[1, 2, 3, 4].map((level) => (
-                  <motion.div
-                    key={level}
-                    className={cn(
-                      "flex-1 rounded-full transition-colors duration-300",
-                      passwordStrength.score >= level
-                        ? passwordStrength.color
-                        : "bg-muted",
-                    )}
-                    initial={false}
-                    animate={{
-                      scale: passwordStrength.score >= level ? [1, 1.1, 1] : 1,
-                    }}
-                    transition={{ duration: 0.2 }}
-                  />
-                ))}
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">密码强度</span>
-                <span className={cn("font-medium", passwordStrength.textColor)}>
-                  {passwordStrength.label}
-                </span>
-              </div>
-            </motion.div>
-          )}
+          {password && <PasswordStrengthIndicator password={password} />}
         </StaggerItem>
 
         {/* Confirm Password Field */}
@@ -989,7 +959,6 @@ function ForgotPasswordForm() {
     }
   }, [countdown]);
 
-  const passwordStrength = getPasswordStrength(newPassword);
   const passwordsMatch =
     newPassword === confirmPassword && confirmPassword !== "";
   const passwordsMismatch =
@@ -1267,37 +1236,7 @@ function ForgotPasswordForm() {
           </div>
 
           {newPassword && (
-            <motion.div
-              className="space-y-1.5"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-            >
-              <div className="flex h-1 gap-1">
-                {[1, 2, 3, 4].map((level) => (
-                  <motion.div
-                    key={level}
-                    className={cn(
-                      "flex-1 rounded-full transition-colors duration-300",
-                      passwordStrength.score >= level
-                        ? passwordStrength.color
-                        : "bg-muted",
-                    )}
-                    initial={false}
-                    animate={{
-                      scale:
-                        passwordStrength.score >= level ? [1, 1.1, 1] : 1,
-                    }}
-                    transition={{ duration: 0.2 }}
-                  />
-                ))}
-              </div>
-              <div className="flex justify-between text-xs">
-                <span className="text-muted-foreground">密码强度</span>
-                <span className={cn("font-medium", passwordStrength.textColor)}>
-                  {passwordStrength.label}
-                </span>
-              </div>
-            </motion.div>
+            <PasswordStrengthIndicator password={newPassword} />
           )}
         </StaggerItem>
 
