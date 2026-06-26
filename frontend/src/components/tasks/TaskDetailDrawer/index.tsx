@@ -35,11 +35,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { TaskStatusBadge } from "./TaskStatusBadge";
-import { TaskProgressBar } from "./TaskProgressBar";
-import { PreviewFileTree } from "./PreviewFileTree";
-import { FileProgressList } from "./FileProgressList";
-import { RetryTaskDialog } from "./RetryTaskDialog";
+import { TaskStatusBadge } from "../TaskStatusBadge";
+import { TaskProgressBar } from "../TaskProgressBar";
+import { PreviewFileTree } from "../PreviewFileTree";
+import { FileProgressList } from "../FileProgressList";
+import { RetryTaskDialog } from "../RetryTaskDialog";
 import { useTaskDetail } from "@/hooks/use-task-detail";
 import type { PreviewItem, TaskStatus, TaskResponse } from "@/lib/api/types";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
