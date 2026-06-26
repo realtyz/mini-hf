@@ -11,13 +11,7 @@ import {
   Trash2,
   Search,
   X,
-  Users2,
-  Shield,
-  User,
-  Mail,
   Calendar,
-  AlertCircle,
-  CheckCircle2,
   UsersIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,48 +31,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { PaginationFooter } from "@/components/shared/PaginationFooter";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ListFooter } from "@/components/shared/ListFooter";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import {
-  useUsers,
-  useCreateUser,
-  useUpdateUser,
-  useDeleteUser,
-  useResetUserPassword,
-} from "@/hooks/api/use-user-queries";
-import type { UserResponse, UserRole } from "@/lib/api/types";
+import { useUsers } from "@/hooks/api/use-user-queries";
+import type { UserResponse } from "@/lib/api/types";
+import { avatarColor, getInitials } from "./user-avatar";
+import { UsersTableSkeleton } from "./UsersTableSkeleton";
+import { UsersEmptyState } from "./UsersEmptyState";
+import { DeleteUserAlertDialog } from "./DeleteUserAlertDialog";
+import { ResetPasswordDialog } from "./ResetPasswordDialog";
+import { EditUserDialog } from "./EditUserDialog";
+import { CreateUserDialog } from "./CreateUserDialog";
 
 const PAGE_SIZE = 10;
 
@@ -97,586 +64,37 @@ function formatDateTime(iso: string) {
   });
 }
 
-function getInitials(name: string) {
-  return name
-    .split(/\s+/)
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-const AVATAR_COLORS = [
-  "bg-blue-500",
-  "bg-violet-500",
-  "bg-emerald-500",
-  "bg-amber-500",
-  "bg-rose-500",
-  "bg-cyan-500",
-  "bg-indigo-500",
-  "bg-teal-500",
-];
-
-function avatarColor(id: number) {
-  return AVATAR_COLORS[id % AVATAR_COLORS.length];
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // Loading Skeleton Component
+// (extracted to ./UsersTableSkeleton.tsx)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function UsersTableSkeleton() {
-  return (
-    <div className="space-y-6">
-      {/* Search bar skeleton */}
-      <div className="rounded-2xl border border-border/40 bg-card p-5">
-        <div className="flex items-center gap-3">
-          <Skeleton className="h-9 flex-1 max-w-sm" />
-          <Skeleton className="h-4 w-20 ml-auto" />
-        </div>
-      </div>
-
-      {/* Table skeleton */}
-      <div className="rounded-2xl border border-border/40 bg-card overflow-hidden">
-        <div className="px-5 py-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-4 py-3.5 border-b border-border/30 last:border-0"
-            >
-              <Skeleton className="h-4 w-8" />
-              <Skeleton className="size-9 rounded-full shrink-0" />
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-48" />
-              <Skeleton className="h-5 w-14 rounded-lg" />
-              <Skeleton className="h-5 w-10 rounded-lg" />
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="h-4 w-32" />
-              <Skeleton className="size-7 ml-auto" />
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Create User Dialog
+// (extracted to ./CreateUserDialog.tsx)
 // ═══════════════════════════════════════════════════════════════════════════════
-
-function CreateUserDialog({
-  open,
-  onOpenChange,
-}: {
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [role, setRole] = useState<UserRole>("user");
-  const { mutate: createUser, isPending } = useCreateUser();
-
-  const reset = () => {
-    setName("");
-    setEmail("");
-    setPassword("");
-    setRole("user");
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    createUser(
-      { name, email, password, role },
-      {
-        onSuccess: () => {
-          toast.success("用户创建成功", {
-            description: `${name} 已添加到系统中`,
-            icon: <CheckCircle2 className="h-4 w-4" />,
-          });
-          onOpenChange(false);
-          reset();
-        },
-        onError: (error: Error) => {
-          toast.error("创建失败", {
-            description: error.message || "请稍后重试",
-            icon: <AlertCircle className="h-4 w-4" />,
-          });
-        },
-      },
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold tracking-tight">
-            新建用户
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
-          <div className="space-y-2.5">
-            <Label htmlFor="create-name" className="text-sm font-medium">
-              姓名
-            </Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="create-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                placeholder="输入用户姓名"
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <div className="space-y-2.5">
-            <Label htmlFor="create-email" className="text-sm font-medium">
-              邮箱
-            </Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="create-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="user@example.com"
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <div className="space-y-2.5">
-            <Label htmlFor="create-password" className="text-sm font-medium">
-              密码
-            </Label>
-            <Input
-              id="create-password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              placeholder="至少 6 位字符"
-            />
-          </div>
-          <div className="space-y-2.5">
-            <Label className="text-sm font-medium">角色</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">
-                  <div className="flex items-center gap-2">
-                    <User className="h-3.5 w-3.5" />
-                    普通用户
-                  </div>
-                </SelectItem>
-                <SelectItem value="admin">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-3.5 w-3.5" />
-                    管理员
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter className="gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
-              取消
-            </Button>
-            <Button type="submit" disabled={isPending} className="min-w-20">
-              {isPending ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                "创建"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Edit User Dialog
+// (extracted to ./EditUserDialog.tsx)
 // ═══════════════════════════════════════════════════════════════════════════════
-
-function EditUserDialog({
-  user,
-  open,
-  onOpenChange,
-}: {
-  user: UserResponse | null;
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
-  const [name, setName] = useState(user?.name ?? "");
-  const [email, setEmail] = useState(user?.email ?? "");
-  const [role, setRole] = useState<UserRole>(
-    (user?.role as UserRole) ?? "user",
-  );
-  const [isActive, setIsActive] = useState(user?.is_active ?? true);
-  const { mutate: updateUser, isPending } = useUpdateUser();
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    updateUser(
-      { userId: user.id, data: { name, email, role, is_active: isActive } },
-      {
-        onSuccess: () => {
-          toast.success("用户信息已更新");
-          onOpenChange(false);
-        },
-        onError: (error: Error) => {
-          toast.error("更新失败", {
-            description: error.message || "请稍后重试",
-          });
-        },
-      },
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold tracking-tight">
-            编辑用户
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
-          <div className="space-y-2.5">
-            <Label htmlFor="edit-name" className="text-sm font-medium">
-              姓名
-            </Label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="edit-name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <div className="space-y-2.5">
-            <Label htmlFor="edit-email" className="text-sm font-medium">
-              邮箱
-            </Label>
-            <div className="relative">
-              <Mail className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                id="edit-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="pl-10"
-              />
-            </div>
-          </div>
-          <div className="space-y-2.5">
-            <Label className="text-sm font-medium">角色</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as UserRole)}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="user">
-                  <div className="flex items-center gap-2">
-                    <User className="h-3.5 w-3.5" />
-                    普通用户
-                  </div>
-                </SelectItem>
-                <SelectItem value="admin">
-                  <div className="flex items-center gap-2">
-                    <Shield className="h-3.5 w-3.5" />
-                    管理员
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-4 py-3">
-            <div className="flex items-center gap-3">
-              <div
-                className={`flex h-9 w-9 items-center justify-center rounded-lg ${isActive ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"
-                  }`}
-              >
-                {isActive ? (
-                  <CheckCircle2 className="h-4 w-4" />
-                ) : (
-                  <AlertCircle className="h-4 w-4" />
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-medium">账号状态</p>
-                <p className="text-xs text-muted-foreground">
-                  {isActive ? "用户可正常访问系统" : "用户已被停用"}
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="edit-active"
-              checked={isActive}
-              onCheckedChange={setIsActive}
-            />
-          </div>
-          <DialogFooter className="gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
-              取消
-            </Button>
-            <Button type="submit" disabled={isPending} className="min-w-20">
-              {isPending ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                "保存"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Reset Password Dialog
+// (extracted to ./ResetPasswordDialog.tsx)
 // ═══════════════════════════════════════════════════════════════════════════════
-
-function ResetPasswordDialog({
-  user,
-  open,
-  onOpenChange,
-}: {
-  user: UserResponse | null;
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
-  const [newPassword, setNewPassword] = useState("");
-  const { mutate: resetPassword, isPending } = useResetUserPassword();
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
-    resetPassword(
-      { userId: user.id, newPassword },
-      {
-        onSuccess: () => {
-          toast.success("密码重置成功");
-          onOpenChange(false);
-          setNewPassword("");
-        },
-        onError: (error: Error) => {
-          toast.error("重置失败", {
-            description: error.message || "请稍后重试",
-          });
-        },
-      },
-    );
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-semibold tracking-tight">
-            重置密码
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5 pt-2">
-          <div className="rounded-xl border bg-muted/30 p-4">
-            <p className="text-sm text-muted-foreground">目标用户</p>
-            <p className="mt-1 font-medium">{user?.name}</p>
-            <p className="text-sm text-muted-foreground">{user?.email}</p>
-          </div>
-          <div className="space-y-2.5">
-            <Label htmlFor="new-password" className="text-sm font-medium">
-              新密码
-            </Label>
-            <Input
-              id="new-password"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={6}
-              placeholder="至少 6 位字符"
-              autoFocus
-            />
-          </div>
-          <DialogFooter className="gap-2 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isPending}
-            >
-              取消
-            </Button>
-            <Button type="submit" disabled={isPending} className="min-w-20">
-              {isPending ? (
-                <RefreshCw className="h-4 w-4 animate-spin" />
-              ) : (
-                "重置"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Delete User Alert Dialog
+// (extracted to ./DeleteUserAlertDialog.tsx)
 // ═══════════════════════════════════════════════════════════════════════════════
-
-function DeleteUserAlertDialog({
-  user,
-  open,
-  onOpenChange,
-}: {
-  user: UserResponse | null;
-  open: boolean;
-  onOpenChange: (o: boolean) => void;
-}) {
-  const { mutate: deleteUser, isPending } = useDeleteUser();
-
-  const handleConfirm = () => {
-    if (!user) return;
-    deleteUser(user.id, {
-      onSuccess: () => {
-        toast.success("用户已删除");
-        onOpenChange(false);
-      },
-      onError: (error: Error) => {
-        toast.error("删除失败", {
-          description: error.message || "请稍后重试",
-        });
-      },
-    });
-  };
-
-  return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle className="text-xl font-semibold tracking-tight">
-            确认删除
-          </AlertDialogTitle>
-          <AlertDialogDescription className="pt-2">
-            确定要删除用户 <strong className="text-foreground">{user?.name}</strong> 吗？
-            <br />
-            <span className="text-muted-foreground">{user?.email}</span>
-            <p className="mt-3 text-sm text-destructive">
-              此操作不可撤销，用户的所有数据将被永久删除。
-            </p>
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="gap-2">
-          <AlertDialogCancel disabled={isPending}>取消</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleConfirm}
-            disabled={isPending}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            {isPending ? (
-              <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-            ) : null}
-            确认删除
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  );
-}
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Empty State Component
+// (extracted to ./UsersEmptyState.tsx)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function EmptyState({
-  search,
-  onCreate,
-}: {
-  search: string;
-  onCreate: () => void;
-}) {
-  return (
-    <div className="relative rounded-2xl border border-border/60 bg-card overflow-hidden">
-      {/* Top accent line */}
-      <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
-      <div className="flex h-72 items-center justify-center">
-        <div className="text-center">
-          <motion.div
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
-            className="relative mx-auto w-fit mb-5"
-          >
-            <div className="size-16 rounded-2xl bg-muted/50 flex items-center justify-center">
-              <Users2 className="size-6 text-muted-foreground/30" />
-            </div>
-          </motion.div>
-          <motion.p
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.15 }}
-            className="text-sm font-medium"
-          >
-            {search ? "未找到匹配用户" : "暂无用户"}
-          </motion.p>
-          <motion.p
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2 }}
-            className="text-sm text-muted-foreground/70 mt-1"
-          >
-            {search
-              ? "尝试使用其他关键词搜索，或清除搜索条件查看全部用户"
-              : "开始添加第一个用户来管理系统访问权限"}
-          </motion.p>
-          {!search && (
-            <motion.div
-              initial={{ y: 10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Button size="sm" className="mt-4 rounded-xl gap-2" onClick={onCreate}>
-                <Plus className="size-3.5" />
-                新建用户
-              </Button>
-            </motion.div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // Main Users Page
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -858,7 +276,7 @@ export function Users() {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
           >
-            <EmptyState search={search} onCreate={() => setCreateOpen(true)} />
+            <UsersEmptyState search={search} onCreate={() => setCreateOpen(true)} />
           </motion.div>
         )}
 
@@ -1040,7 +458,7 @@ export function Users() {
       {/* Footer: Stats + Pagination */}
       {!isLoading && !error && users.length > 0 && (
         <motion.div variants={itemVariants}>
-          <PaginationFooter
+          <ListFooter
             currentPage={page}
             totalPages={totalPages}
             total={totalItems}

@@ -10,15 +10,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PaginationFooter } from "@/components/shared/PaginationFooter";
-import { RepoGrid } from "@/components/repo";
+import { ListFooter } from "@/components/shared/ListFooter";
+import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useRepoList, PAGE_SIZE } from "@/hooks/use-repo-list";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import type { RepoProfile, RepoStatus } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { itemVariants } from "@/lib/animations/motion-config";
 
 const REPO_LIST_STATE_KEY = "repoListState";
 
@@ -129,17 +127,7 @@ export function RepositoriesConsole() {
       />
 
       {/* Filter bar */}
-      <motion.div
-        className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
-        variants={itemVariants}
-        whileHover={{
-          boxShadow: "0 4px 24px -6px rgba(0, 0, 0, 0.06)",
-        }}
-        transition={{ duration: 0.25 }}
-      >
-        {/* Subtle top accent line */}
-        <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
-
+      <RepositoryFilterShell>
         {/* Row 1: Search + Type + Sort + Order + Count */}
         <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
           {/* Search */}
@@ -255,7 +243,7 @@ export function RepositoriesConsole() {
             })}
           </div>
         </div>
-      </motion.div>
+      </RepositoryFilterShell>
 
       <RepoGrid
         repos={repositories}
@@ -266,7 +254,7 @@ export function RepositoriesConsole() {
       />
 
       {!isLoading && totalPages > 0 && (
-        <PaginationFooter
+        <ListFooter
           currentPage={repoListState.page}
           totalPages={totalPages}
           total={total}

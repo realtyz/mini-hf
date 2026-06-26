@@ -23,19 +23,19 @@ function generatePages(current: number, total: number): PageItem[] {
     }, []);
 }
 
-interface PaginatedNavigationProps {
+interface PagerProps {
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
   className?: string;
 }
 
-export function PaginatedNavigation({
+export function Pager({
   currentPage,
   totalPages,
   onPageChange,
   className,
-}: PaginatedNavigationProps) {
+}: PagerProps) {
   const pages = generatePages(currentPage, totalPages);
 
   return (

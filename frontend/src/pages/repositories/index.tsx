@@ -31,10 +31,8 @@ import type {
   RepoListParams,
   RepoStatus,
 } from "@/lib/api/types";
-import { RepoGrid } from "@/components/repo";
-import { PaginationFooter } from "@/components/shared/PaginationFooter";
-import { motion } from "framer-motion";
-import { itemVariants } from "@/lib/animations/motion-config";
+import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
+import { ListFooter } from "@/components/shared/ListFooter";
 
 const PAGE_SIZE = 16;
 
@@ -173,17 +171,7 @@ export function Repositories() {
         </Tabs>
 
         {/* 搜索和筛选 */}
-        <motion.div
-          className="relative rounded-2xl border border-border/60 bg-card overflow-hidden"
-          variants={itemVariants}
-          whileHover={{
-            boxShadow: "0 4px 24px -6px rgba(0, 0, 0, 0.06)",
-          }}
-          transition={{ duration: 0.25 }}
-        >
-          {/* Subtle top accent line */}
-          <div className="absolute top-0 left-4 right-4 h-px bg-linear-to-r from-transparent via-border/40 to-transparent" />
-
+        <RepositoryFilterShell>
           <div className="flex flex-wrap items-center gap-3 px-5 py-4">
             <div className="relative flex-1 min-w-50 max-w-sm">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground/50 pointer-events-none" />
@@ -235,7 +223,7 @@ export function Repositories() {
               个仓库
             </div>
           </div>
-        </motion.div>
+        </RepositoryFilterShell>
       </div>
 
       {/* 卡片列表 */}
@@ -251,7 +239,7 @@ export function Repositories() {
 
       {/* 分页 */}
       {total > 0 && (
-        <PaginationFooter
+        <ListFooter
           currentPage={page + 1}
           totalPages={totalPages}
           total={total}
