@@ -15,30 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { motion, AnimatePresence } from 'framer-motion'
 import { smoothTransition, prefersReducedMotion } from '@/lib/animations/motion-config'
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Spotlight Card — refined minimal surface
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export function SpotlightCard({
-  children,
-  className,
-}: {
-  children: React.ReactNode
-  className?: string
-}) {
-  return (
-    <div
-      className={cn(
-        'rounded-xl border border-border/50 bg-card shadow-sm transition-shadow duration-200',
-        'hover:shadow-md',
-        className
-      )}
-    >
-      {children}
-    </div>
-  )
-}
+import { SpotlightCard } from '@/components/shared/SpotlightCard'
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Form Field — polished input with focus ring and animated feedback
@@ -166,7 +143,7 @@ export function SettingsSection({
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...smoothTransition, delay }}
     >
-      <SpotlightCard className={className}>
+      <SpotlightCard variant="static" className={className}>
         <CardHeader className="pb-3 pt-5 px-5 sm:px-6">
           <div className="flex items-start gap-3">
             {icon && (

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { OTPInput } from "@/components/ui/otp-input";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { Logo } from "@/components/shared/Logo";
+import { SpotlightCard } from "@/components/shared/SpotlightCard";
 import {
   useLogin,
   useSendVerifyCode,
@@ -43,54 +44,6 @@ const springConfig = {
   snappy: { stiffness: 300, damping: 30 },
   bouncy: { stiffness: 100, damping: 10 },
 };
-
-// --- Spotlight Card Component ---
-function SpotlightCard({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isHovered, setIsHovered] = useState(false);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    setPosition({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    });
-  };
-
-  return (
-    <div
-      ref={ref}
-      onMouseMove={handleMouseMove}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      className={cn(
-        "group relative h-full overflow-hidden rounded-2xl border border-border/50",
-        "bg-card/95 backdrop-blur-xl shadow-[0_8px_30px_rgb(0,0,0,0.08),0_2px_8px_rgb(0,0,0,0.06)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.25),0_2px_8px_rgb(0,0,0,0.15)]",
-        className,
-      )}
-    >
-      {/* Spotlight effect - Liquid Glass style */}
-      <motion.div
-        className="pointer-events-none absolute -inset-px rounded-2xl opacity-0 transition-opacity duration-500"
-        animate={{ opacity: isHovered ? 1 : 0 }}
-        style={{
-          background: `radial-gradient(600px circle at ${position.x}px ${position.y}px, hsla(var(--primary-h), var(--primary-s), var(--primary-l), 0.08), transparent 40%)`,
-        }}
-      />
-      {/* Inner glow line */}
-      <div className="pointer-events-none absolute inset-0 rounded-2xl shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]" />
-      {children}
-    </div>
-  );
-}
 
 // --- Stagger Container ---
 function StaggerContainer({
