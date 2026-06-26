@@ -86,7 +86,7 @@ function AnimatedCounter({ value }: { value: number }) {
 }
 
 // Magnetic card with mouse tracking
-const StatCard = memo(function StatCard({
+const AnimatedStatCard = memo(function AnimatedStatCard({
   title,
   value,
   icon,
@@ -267,7 +267,7 @@ export function StatCards() {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card, index) => (
-        <StatCard
+        <AnimatedStatCard
           key={card.title}
           {...card}
           isLoading={isLoading}

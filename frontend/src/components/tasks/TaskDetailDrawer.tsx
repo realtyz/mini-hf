@@ -224,7 +224,7 @@ function InfoRow({
 }
 
 // Stat card component
-function StatCard({
+function TaskStatCard({
   label,
   value,
   sub,
@@ -342,13 +342,13 @@ function StorageStatsSection({
         {config.storageSectionTitle ?? ""}
       </SectionHeader>
       <div className="grid grid-cols-2 gap-3">
-        <StatCard
+        <TaskStatCard
           label={fileLabel}
           value={String(displayFileCount)}
           sub={`共 ${task.total_file_count} 个文件`}
           accent="bg-muted/40 border-border/40"
         />
-        <StatCard
+        <TaskStatCard
           label={sizeLabel}
           value={formatBytes(displayBytes)}
           sub={`共 ${formatBytes(task.total_storage)}`}
