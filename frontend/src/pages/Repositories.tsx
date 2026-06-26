@@ -32,7 +32,7 @@ import type {
   RepoStatus,
 } from "@/lib/api/types";
 import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
-import { PaginationFooter } from "@/components/shared/PaginationFooter";
+import { ListFooter } from "@/components/shared/ListFooter";
 
 const PAGE_SIZE = 16;
 
@@ -239,7 +239,7 @@ export function Repositories() {
 
       {/* 分页 */}
       {total > 0 && (
-        <PaginationFooter
+        <ListFooter
           currentPage={page + 1}
           totalPages={totalPages}
           total={total}

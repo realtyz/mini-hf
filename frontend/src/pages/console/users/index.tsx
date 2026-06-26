@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { PaginationFooter } from "@/components/shared/PaginationFooter";
+import { ListFooter } from "@/components/shared/ListFooter";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { cn } from "@/lib/utils";
@@ -458,7 +458,7 @@ export function Users() {
       {/* Footer: Stats + Pagination */}
       {!isLoading && !error && users.length > 0 && (
         <motion.div variants={itemVariants}>
-          <PaginationFooter
+          <ListFooter
             currentPage={page}
             totalPages={totalPages}
             total={totalItems}

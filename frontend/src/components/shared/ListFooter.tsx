@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
-import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
+import { Pager } from "@/components/shared/Pager";
 import { cn } from "@/lib/utils";
 
-interface PaginationFooterProps {
+interface ListFooterProps {
   currentPage: number;
   totalPages: number;
   total: number;
@@ -19,7 +19,7 @@ interface PaginationFooterProps {
  * Unified list footer: range summary on the left, page navigation on the right.
  * Replaces per-page hand-rolled footers so all list pages share one style.
  */
-export function PaginationFooter({
+export function ListFooter({
   currentPage,
   totalPages,
   total,
@@ -28,7 +28,7 @@ export function PaginationFooter({
   itemLabel = "条",
   note,
   className,
-}: PaginationFooterProps) {
+}: ListFooterProps) {
   const start = total === 0 ? 0 : Math.min((currentPage - 1) * pageSize + 1, total);
   const end = Math.min(currentPage * pageSize, total);
 
@@ -44,7 +44,7 @@ export function PaginationFooter({
         {note}
       </p>
       {totalPages > 1 && (
-        <PaginatedNavigation
+        <Pager
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={onPageChange}

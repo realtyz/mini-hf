@@ -12,7 +12,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
-import { PaginatedNavigation } from "@/components/shared/PaginatedNavigation";
+import { Pager } from "@/components/shared/Pager";
 import {
   Table,
   TableBody,
@@ -247,7 +247,7 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
             )}
           </p>
           {totalPages > 1 && (
-            <PaginatedNavigation
+            <Pager
               currentPage={currentPage}
               totalPages={totalPages}
               onPageChange={setCurrentPage}

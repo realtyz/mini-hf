@@ -10,7 +10,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { PaginationFooter } from "@/components/shared/PaginationFooter";
+import { ListFooter } from "@/components/shared/ListFooter";
 import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useRepoList, PAGE_SIZE } from "@/hooks/use-repo-list";
@@ -254,7 +254,7 @@ export function RepositoriesConsole() {
       />
 
       {!isLoading && totalPages > 0 && (
-        <PaginationFooter
+        <ListFooter
           currentPage={repoListState.page}
           totalPages={totalPages}
           total={total}

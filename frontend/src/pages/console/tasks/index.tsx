@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { Plus, RefreshCw, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { PaginationFooter } from "@/components/shared/PaginationFooter";
+import { ListFooter } from "@/components/shared/ListFooter";
 import {
   Table,
   TableBody,
@@ -298,7 +298,7 @@ export function Tasks() {
             exit={{ opacity: 0, y: 10 }}
             transition={{ delay: 0.2 }}
           >
-            <PaginationFooter
+            <ListFooter
               currentPage={page}
               totalPages={totalPages}
               total={total}
