@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { ChevronRight } from 'lucide-react'
-import { RepoTreeViewer } from '@/components/repo/RepoTreeViewer'
+import { RepoTreeViewer } from './RepoTreeViewer'
 import { formatBytes } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { SNAPSHOT_STATUS_CONFIG, type SnapshotStatusType } from '@/lib/constants/repo'
 import type { RepoDetailResponse, SnapshotStatus } from '@/lib/api/types'
-import { StatusEditDialog } from '@/components/shared/StatusEditDialog'
+import { StatusEditDialog } from './StatusEditDialog'
 import { useSetSnapshotStatus } from '@/hooks/api/use-repair-mutations'
 import { useAuthStore } from '@/stores/auth-store'
 
