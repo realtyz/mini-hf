@@ -40,12 +40,16 @@ import { TaskProgressBar } from "../TaskProgressBar";
 import { PreviewFileTree } from "../PreviewFileTree";
 import { FileProgressList } from "../FileProgressList";
 import { RetryTaskDialog } from "../RetryTaskDialog";
+import { SectionHeader } from "./SectionHeader";
+import { InfoRow } from "./InfoRow";
+import { TimelineItem } from "./TimelineItem";
+import { StatusAlertBanner } from "./StatusAlertBanner";
+import { StorageStatsSection } from "./StorageStatsSection";
 import { useTaskDetail } from "@/hooks/use-task-detail";
 import type { PreviewItem, TaskStatus, TaskResponse } from "@/lib/api/types";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
 import { useTaskActions } from "@/hooks/use-task-actions";
 import { useAuthStore } from "@/stores/auth-store";
-import { formatBytes } from "@/lib/utils";
 import { useState } from "react";
 
 interface TaskDetailDrawerProps {
@@ -175,188 +179,6 @@ function buildTimeline(t: TaskResponse): { label: string; value: string }[] {
   if (t.completed_at) items.push({ label: "完成时间", value: formatDate(t.completed_at) });
   items.push({ label: "更新时间", value: formatDate(t.updated_at) });
   return items;
-}
-
-// Section header with accent bar
-function SectionHeader({
-  children,
-  accent = "bg-primary",
-  badge,
-}: {
-  children: React.ReactNode;
-  accent?: string;
-  badge?: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center gap-2.5 mb-3">
-      <span className={`w-0.75 h-4 ${accent} rounded-full shrink-0`} />
-      <h4 className="text-[13px] font-semibold text-foreground tracking-tight">
-        {children}
-      </h4>
-      {badge && <span className="ml-auto">{badge}</span>}
-    </div>
-  );
-}
-
-// Info row for key-value display
-function InfoRow({
-  icon,
-  label,
-  children,
-}: {
-  icon?: React.ReactNode;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-start gap-3 py-2.5 border-b border-border/40 last:border-0">
-      {icon && (
-        <span className="mt-0.5 shrink-0 text-muted-foreground/60">{icon}</span>
-      )}
-      <span className="text-[13px] text-muted-foreground font-medium w-20 shrink-0 leading-5">
-        {label}
-      </span>
-      <div className="flex-1 text-[13px] text-foreground leading-5 min-w-0">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-// Stat card component
-function TaskStatCard({
-  label,
-  value,
-  sub,
-  accent,
-}: {
-  label: string;
-  value: string;
-  sub?: string;
-  accent: string;
-}) {
-  return (
-    <div
-      className={`relative overflow-hidden rounded-xl border ${accent} p-4 space-y-1`}
-    >
-      <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-widest">
-        {label}
-      </span>
-      <p className="text-xl font-bold text-foreground tabular-nums leading-tight">
-        {value}
-      </p>
-      {sub && (
-        <p className="text-[12px] text-muted-foreground truncate">{sub}</p>
-      )}
-    </div>
-  );
-}
-
-// Timeline item for dates
-function TimelineItem({
-  label,
-  value,
-  isLast = false,
-}: {
-  label: string;
-  value: string;
-  isLast?: boolean;
-}) {
-  return (
-    <div className="flex gap-3">
-      <div className="flex flex-col items-center">
-        <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 transition-colors duration-200 ${isLast ? "bg-foreground/40" : "bg-border"}`} />
-        {!isLast && <div className="w-px flex-1 bg-border/50 mt-1" />}
-      </div>
-      <div className={isLast ? "" : "pb-3"}>
-        <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider block">
-          {label}
-        </span>
-        <span className="text-[13px] text-foreground">{value}</span>
-      </div>
-    </div>
-  );
-}
-
-// 状态提示组件
-function StatusAlertBanner({ status }: { status: TaskStatus }) {
-  if (status === "canceling") {
-    return (
-      <Alert className="border-orange-200/60 bg-orange-50/60 dark:bg-orange-950/20 dark:border-orange-800/40 rounded-xl py-3">
-        <Clock className="h-4 w-4 text-orange-500 dark:text-orange-400 animate-pulse" />
-        <AlertDescription className="ml-2 text-orange-800 dark:text-orange-200 font-medium text-[13px]">
-          正在取消任务，请稍候...
-        </AlertDescription>
-      </Alert>
-    );
-  }
-  if (status === "pausing") {
-    return (
-      <Alert className="border-yellow-200/60 bg-yellow-50/60 dark:bg-yellow-950/20 dark:border-yellow-800/40 rounded-xl py-3">
-        <Clock className="h-4 w-4 text-yellow-500 dark:text-yellow-400 animate-pulse" />
-        <AlertDescription className="ml-2 text-yellow-800 dark:text-yellow-200 font-medium text-[13px]">
-          正在暂停任务，请稍候...
-        </AlertDescription>
-      </Alert>
-    );
-  }
-  return null;
-}
-
-// 存储/进度统计信息组件
-function StorageStatsSection({
-  task,
-  config,
-}: {
-  task: TaskResponse;
-  config: (typeof statusDisplayConfig)[TaskStatus];
-}) {
-  const isCompletedState = task.status === "completed";
-  const isFailedOrCancelled = task.status === "cancelled" || task.status === "failed";
-  const isTerminalState = isCompletedState || isFailedOrCancelled || task.status === "paused";
-  const isPendingState = ["pending_approval", "pending"].includes(task.status);
-
-  const displayFileCount =
-    isTerminalState && task.downloaded_file_count != null
-      ? task.downloaded_file_count
-      : task.required_file_count;
-  const displayBytes =
-    isTerminalState && task.downloaded_bytes != null
-      ? task.downloaded_bytes
-      : task.required_storage;
-
-  const fileLabel = isPendingState
-    ? "预计文件数"
-    : isTerminalState
-      ? "已下载文件"
-      : "文件数";
-  const sizeLabel = isPendingState
-    ? "预计大小"
-    : isTerminalState
-      ? "已下载大小"
-      : "存储大小";
-
-  return (
-    <section>
-      <SectionHeader accent={config.storageSectionColor ?? "bg-blue-500"}>
-        {config.storageSectionTitle ?? ""}
-      </SectionHeader>
-      <div className="grid grid-cols-2 gap-3">
-        <TaskStatCard
-          label={fileLabel}
-          value={String(displayFileCount)}
-          sub={`共 ${task.total_file_count} 个文件`}
-          accent="bg-muted/40 border-border/40"
-        />
-        <TaskStatCard
-          label={sizeLabel}
-          value={formatBytes(displayBytes)}
-          sub={`共 ${formatBytes(task.total_storage)}`}
-          accent="bg-muted/40 border-border/40"
-        />
-      </div>
-    </section>
-  );
 }
 
 export function TaskDetailDrawer({
