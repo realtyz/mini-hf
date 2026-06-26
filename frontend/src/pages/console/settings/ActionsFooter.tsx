@@ -1,5 +1,5 @@
-import { CheckCircle2, Loader2, RotateCcw, Save } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { CheckCircle2, Loader2, RotateCcw, Save } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 // Save-state indicator (private to ActionsFooter).
 function ChangeIndicator({ hasChanges }: { hasChanges: boolean }) {
@@ -20,15 +20,15 @@ function ChangeIndicator({ hasChanges }: { hasChanges: boolean }) {
         </>
       )}
     </div>
-  )
+  );
 }
 
 interface ActionsFooterProps {
-  hasChanges: boolean
-  isSaving: boolean
-  onSave: () => void
-  onReset: () => void
-  extra?: React.ReactNode
+  hasChanges: boolean;
+  isSaving: boolean;
+  onSave: () => void;
+  onReset: () => void;
+  extra?: React.ReactNode;
 }
 
 export function ActionsFooter({
@@ -70,5 +70,5 @@ export function ActionsFooter({
         </Button>
       </div>
     </div>
-  )
+  );
 }

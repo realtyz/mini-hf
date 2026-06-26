@@ -4,59 +4,81 @@ import {
   CloudDownload,
   AlertCircle,
   RefreshCw,
-} from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useRecentTasks } from '@/hooks/api/use-dashboard-queries'
-import { useTaskProgress } from '@/hooks/api/use-task-progress'
-import type { TaskResponse, TaskStatus } from '@/lib/api/types'
-import { formatBytes, formatDistanceToNow, cn } from '@/lib/utils'
-import { TASK_STATUS_CONFIG } from '@/lib/constants/task'
-import { Link } from 'react-router'
-import { motion, AnimatePresence } from 'framer-motion'
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useRecentTasks } from "@/hooks/api/use-dashboard-queries";
+import { useTaskProgress } from "@/hooks/api/use-task-progress";
+import type { TaskResponse, TaskStatus } from "@/lib/api/types";
+import { formatBytes, formatDistanceToNow, cn } from "@/lib/utils";
+import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
+import { Link } from "react-router";
+import { motion, AnimatePresence } from "framer-motion";
 
-const statusConfig = TASK_STATUS_CONFIG
+const statusConfig = TASK_STATUS_CONFIG;
 
 // 进度显示组件
-function TaskProgress({ taskId, status }: { taskId: number; status: TaskStatus }) {
-  const { data: progress } = useTaskProgress(taskId, status)
-  const config = statusConfig[status]
+function TaskProgress({
+  taskId,
+  status,
+}: {
+  taskId: number;
+  status: TaskStatus;
+}) {
+  const { data: progress } = useTaskProgress(taskId, status);
+  const config = statusConfig[status];
 
-  if (status === 'completed') {
+  if (status === "completed") {
     return (
       <div className="flex items-center gap-2">
-        <div className={cn('h-1.5 w-20 overflow-hidden rounded-full', config.progressBg)}>
-          <div className={cn('h-full w-full rounded-full', config.progressFill)} />
+        <div
+          className={cn(
+            "h-1.5 w-20 overflow-hidden rounded-full",
+            config.progressBg,
+          )}
+        >
+          <div
+            className={cn("h-full w-full rounded-full", config.progressFill)}
+          />
         </div>
-        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">100%</span>
+        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+          100%
+        </span>
       </div>
-    )
+    );
   }
 
-  if (status !== 'running' || !progress) {
-    return <span className="text-xs text-muted-foreground">-</span>
+  if (status !== "running" || !progress) {
+    return <span className="text-xs text-muted-foreground">-</span>;
   }
 
   return (
     <div className="flex items-center gap-2">
-      <div className={cn('h-1.5 w-20 overflow-hidden rounded-full', config.progressBg)}>
+      <div
+        className={cn(
+          "h-1.5 w-20 overflow-hidden rounded-full",
+          config.progressBg,
+        )}
+      >
         <motion.div
-          className={cn('h-full rounded-full', config.progressFill)}
+          className={cn("h-full rounded-full", config.progressFill)}
           initial={{ width: 0 }}
           animate={{ width: `${progress.progress_percent}%` }}
-          transition={{ duration: 0.5, ease: 'easeOut' }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
         />
       </div>
-      <span className="text-xs font-medium text-blue-600 dark:text-blue-400">{progress.progress_percent}%</span>
+      <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+        {progress.progress_percent}%
+      </span>
     </div>
-  )
+  );
 }
 
 // 单个任务项
 function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
-  const status = statusConfig[task.status]
+  const status = statusConfig[task.status];
 
   return (
     <motion.div
@@ -67,19 +89,31 @@ function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
       className="group relative"
     >
       {/* 背景渐变层 */}
-      <div className={cn(
-        'absolute inset-0 rounded-xl bg-linear-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300',
-        status.gradient
-      )} />
+      <div
+        className={cn(
+          "absolute inset-0 rounded-xl bg-linear-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300",
+          status.gradient,
+        )}
+      />
 
       <div className="relative flex items-center gap-4 p-4 rounded-xl border bg-card/50 backdrop-blur-sm group-hover:border-primary/20 group-hover:bg-card/80 transition-all duration-200 cursor-pointer">
         {/* Status indicator dot with pulse */}
         <div className="relative shrink-0">
-          <div className={cn('h-2.5 w-2.5 rounded-full', status.dotClass)} />
-          {task.status === 'running' && (
+          <div className={cn("h-2.5 w-2.5 rounded-full", status.dotClass)} />
+          {task.status === "running" && (
             <>
-              <div className={cn('absolute inset-0 h-2.5 w-2.5 rounded-full animate-ping opacity-40', status.dotClass)} />
-              <div className={cn('absolute inset-0 h-2.5 w-2.5 rounded-full animate-pulse opacity-20', status.dotClass)} />
+              <div
+                className={cn(
+                  "absolute inset-0 h-2.5 w-2.5 rounded-full animate-ping opacity-40",
+                  status.dotClass,
+                )}
+              />
+              <div
+                className={cn(
+                  "absolute inset-0 h-2.5 w-2.5 rounded-full animate-pulse opacity-20",
+                  status.dotClass,
+                )}
+              />
             </>
           )}
         </div>
@@ -87,9 +121,14 @@ function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
         {/* 任务信息 */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium truncate text-sm group-hover:text-foreground transition-colors">{task.repo_id}</span>
+            <span className="font-medium truncate text-sm group-hover:text-foreground transition-colors">
+              {task.repo_id}
+            </span>
             <Badge
-              className={cn('text-[11px] shrink-0 gap-1 font-medium px-2 py-0.5 border-0', status.badgeClass)}
+              className={cn(
+                "text-[11px] shrink-0 gap-1 font-medium px-2 py-0.5 border-0",
+                status.badgeClass,
+              )}
             >
               {status.icon}
               {status.label}
@@ -98,7 +137,7 @@ function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
           <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Database className="size-3" />
-              {task.repo_type === 'model' ? '模型' : '数据集'}
+              {task.repo_type === "model" ? "模型" : "数据集"}
             </span>
             <span className="text-muted-foreground/40">·</span>
             <span className="flex items-center gap-1">
@@ -119,7 +158,7 @@ function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
         <ArrowRight className="size-4 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-all duration-200 shrink-0" />
       </div>
     </motion.div>
-  )
+  );
 }
 
 // 加载状态
@@ -143,7 +182,7 @@ function TaskListSkeleton({ count = 10 }: { count?: number }) {
         </motion.div>
       ))}
     </div>
-  )
+  );
 }
 
 // 空状态
@@ -158,9 +197,11 @@ function EmptyState() {
         <CloudDownload className="size-6 text-slate-400 dark:text-slate-500" />
       </div>
       <p className="text-muted-foreground font-medium">暂无任务记录</p>
-      <p className="text-xs text-muted-foreground/60 mt-1">新创建的任务将显示在这里</p>
+      <p className="text-xs text-muted-foreground/60 mt-1">
+        新创建的任务将显示在这里
+      </p>
     </motion.div>
-  )
+  );
 }
 
 // 错误状态
@@ -175,7 +216,9 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         <AlertCircle className="size-6 text-rose-500 dark:text-rose-400" />
       </div>
       <p className="text-muted-foreground font-medium">任务列表加载失败</p>
-      <p className="text-xs text-muted-foreground/60 mt-1">请检查网络连接或稍后再试</p>
+      <p className="text-xs text-muted-foreground/60 mt-1">
+        请检查网络连接或稍后再试
+      </p>
       <Button
         variant="outline"
         size="sm"
@@ -186,13 +229,13 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
         重新加载
       </Button>
     </motion.div>
-  )
+  );
 }
 
 // 主组件
 export function RecentTasks() {
-  const { data: tasksData, isLoading, isError, refetch } = useRecentTasks(10)
-  const tasks = tasksData?.data || []
+  const { data: tasksData, isLoading, isError, refetch } = useRecentTasks(10);
+  const tasks = tasksData?.data || [];
 
   return (
     <motion.div
@@ -206,7 +249,9 @@ export function RecentTasks() {
 
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <div className="space-y-1.5">
-            <CardTitle className="text-base font-semibold tracking-tight">最近任务</CardTitle>
+            <CardTitle className="text-base font-semibold tracking-tight">
+              最近任务
+            </CardTitle>
             <p className="text-xs text-muted-foreground">
               按创建时间显示最近 7 天的任务
             </p>
@@ -243,7 +288,7 @@ export function RecentTasks() {
         </CardContent>
       </Card>
     </motion.div>
-  )
+  );
 }
 
-export default RecentTasks
+export default RecentTasks;

@@ -1,9 +1,9 @@
-import { useQuery } from '@tanstack/react-query'
-import api from '@/lib/api/client'
-import { queryKeys } from '@/lib/query/keys'
-import { STALE_TIMES } from '@/lib/query/client'
-import endpoints from '@/lib/api/endpoints'
-import type { TaskResponse, ApiResponse } from '@/lib/api/types'
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/api/client";
+import { queryKeys } from "@/lib/query/keys";
+import { STALE_TIMES } from "@/lib/query/client";
+import endpoints from "@/lib/api/endpoints";
+import type { TaskResponse, ApiResponse } from "@/lib/api/types";
 
 /**
  * 获取任务详情
@@ -14,24 +14,31 @@ export function useTaskDetail(taskId: number | null) {
   const { data, isLoading, error, refetch } = useQuery<TaskResponse>({
     queryKey: queryKeys.tasks.detail(taskId),
     queryFn: async () => {
-      if (!taskId) throw new Error('Task ID is required')
-      const response = await api.get<ApiResponse<TaskResponse>>(endpoints.task.detail(taskId))
-      return response.data
+      if (!taskId) throw new Error("Task ID is required");
+      const response = await api.get<ApiResponse<TaskResponse>>(
+        endpoints.task.detail(taskId),
+      );
+      return response.data;
     },
     enabled: !!taskId,
     refetchInterval: (query) => {
-      const status = query.state.data?.status
+      const status = query.state.data?.status;
       // 非终态任务每 3 秒轮询一次
-      const nonTerminalStatuses = ['pending_approval', 'pending', 'running', 'canceling']
+      const nonTerminalStatuses = [
+        "pending_approval",
+        "pending",
+        "running",
+        "canceling",
+      ];
       if (status && nonTerminalStatuses.includes(status)) {
-        return 3000
+        return 3000;
       }
-      return false
+      return false;
     },
     refetchOnWindowFocus: false,
     staleTime: STALE_TIMES.realtime,
     gcTime: 300000,
-  })
+  });
 
-  return { data, isLoading, error, refetch }
+  return { data, isLoading, error, refetch };
 }

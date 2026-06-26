@@ -84,7 +84,10 @@ function StatusDot({ color, isActive }: { color: string; isActive: boolean }) {
   return (
     <span className="relative flex size-2">
       <motion.span
-        className={cn("absolute inline-flex h-full w-full rounded-full opacity-75", color)}
+        className={cn(
+          "absolute inline-flex h-full w-full rounded-full opacity-75",
+          color,
+        )}
         animate={{
           scale: [1, 2, 1],
           opacity: [0.6, 0, 0.6],
@@ -130,7 +133,7 @@ export function TaskStatusBadge({
           size === "sm" ? "text-[11px] px-2 py-0.5" : "text-xs px-2.5 py-1",
           status === "running" &&
             "bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
-          className
+          className,
         )}
       >
         <AnimatePresence mode="wait">

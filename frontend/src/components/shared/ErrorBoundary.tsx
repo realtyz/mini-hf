@@ -1,41 +1,41 @@
-import { Component, type ErrorInfo, type ReactNode } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Component, type ErrorInfo, type ReactNode } from "react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface Props {
-  children: ReactNode
-  fallback?: ReactNode
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
-  hasError: boolean
-  error: Error | null
+  hasError: boolean;
+  error: Error | null;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
-    super(props)
-    this.state = { hasError: false, error: null }
+    super(props);
+    this.state = { hasError: false, error: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error }
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (import.meta.env.DEV) {
-      console.error('[ErrorBoundary] Uncaught error:', error, errorInfo)
+      console.error("[ErrorBoundary] Uncaught error:", error, errorInfo);
     }
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: null })
-  }
+    this.setState({ hasError: false, error: null });
+  };
 
   render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
-        return this.props.fallback
+        return this.props.fallback;
       }
 
       return (
@@ -58,7 +58,10 @@ export class ErrorBoundary extends Component<Props, State> {
                 <pre className="max-h-48 overflow-auto text-xs text-destructive whitespace-pre-wrap">
                   {this.state.error.message}
                   {this.state.error.stack && (
-                    <>{'\n\n'}{this.state.error.stack}</>
+                    <>
+                      {"\n\n"}
+                      {this.state.error.stack}
+                    </>
                   )}
                 </pre>
               </div>
@@ -73,9 +76,9 @@ export class ErrorBoundary extends Component<Props, State> {
             </Button>
           </div>
         </div>
-      )
+      );
     }
 
-    return this.props.children
+    return this.props.children;
   }
 }

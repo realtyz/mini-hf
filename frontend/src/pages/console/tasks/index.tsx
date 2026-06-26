@@ -23,7 +23,10 @@ import { useTaskActions } from "@/hooks/use-task-actions";
 import { useAuthStore } from "@/stores/auth-store";
 import type { TaskResponse, TaskStatus } from "@/lib/api/types";
 import { motion, AnimatePresence } from "framer-motion";
-import { containerVariants, itemVariants } from "@/lib/animations/motion-config";
+import {
+  containerVariants,
+  itemVariants,
+} from "@/lib/animations/motion-config";
 import { TaskFilterBar } from "./TaskFilterBar";
 import { TaskAlertBanner } from "./TaskAlertBanner";
 
@@ -49,7 +52,8 @@ export function Tasks() {
   });
 
   const pendingApprovalCount = usePendingApprovalCount();
-  const { pinTask, unpinTask, reviewTask, cancelTask, retryTask } = useTaskActions();
+  const { pinTask, unpinTask, reviewTask, cancelTask, retryTask } =
+    useTaskActions();
 
   const { paginatedTasks, total, totalPages } = useMemo(() => {
     return {
@@ -82,34 +86,43 @@ export function Tasks() {
   };
 
   const handlePinTask = useCallback(
-    (task: TaskResponse) => { pinTask.mutate(task.id); },
-    [pinTask]
+    (task: TaskResponse) => {
+      pinTask.mutate(task.id);
+    },
+    [pinTask],
   );
 
   const handleUnpinTask = useCallback(
-    (task: TaskResponse) => { unpinTask.mutate(task.id); },
-    [unpinTask]
+    (task: TaskResponse) => {
+      unpinTask.mutate(task.id);
+    },
+    [unpinTask],
   );
 
   const handleApproveTask = useCallback(
-    (task: TaskResponse) => { reviewTask.mutate({ taskId: task.id, approved: true }); },
-    [reviewTask]
+    (task: TaskResponse) => {
+      reviewTask.mutate({ taskId: task.id, approved: true });
+    },
+    [reviewTask],
   );
 
   const handleRejectTask = useCallback(
-    (task: TaskResponse) => { reviewTask.mutate({ taskId: task.id, approved: false }); },
-    [reviewTask]
+    (task: TaskResponse) => {
+      reviewTask.mutate({ taskId: task.id, approved: false });
+    },
+    [reviewTask],
   );
 
   const handleCancelTask = useCallback(
-    (task: TaskResponse) => { cancelTask.mutate(task.id); },
-    [cancelTask]
+    (task: TaskResponse) => {
+      cancelTask.mutate(task.id);
+    },
+    [cancelTask],
   );
 
-  const handleRetryTask = useCallback(
-    () => { refetch(); },
-    [refetch]
-  );
+  const handleRetryTask = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   return (
     <motion.div
@@ -125,7 +138,10 @@ export function Tasks() {
           subtitle="查看和管理模型/数据集下载任务"
           actions={
             <>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <Button
                   variant="outline"
                   size="sm"
@@ -136,7 +152,10 @@ export function Tasks() {
                   刷新
                 </Button>
               </motion.div>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <Button
                   size="sm"
                   className="gap-2 w-24 cursor-pointer"
@@ -155,7 +174,10 @@ export function Tasks() {
         visible={isAdmin && pendingApprovalCount > 0}
         pendingCount={pendingApprovalCount}
         isFilteringPending={status === "pending_approval"}
-        onFilterPending={() => { setStatus("pending_approval"); setPage(1); }}
+        onFilterPending={() => {
+          setStatus("pending_approval");
+          setPage(1);
+        }}
       />
 
       <TaskFilterBar
@@ -274,12 +296,29 @@ export function Tasks() {
                       onReject={handleRejectTask}
                       onCancel={handleCancelTask}
                       onRetry={handleRetryTask}
-                      isPinning={pinTask.isPending && pinTask.variables === task.id}
-                      isUnpinning={unpinTask.isPending && unpinTask.variables === task.id}
-                      isApproving={reviewTask.isPending && reviewTask.variables?.taskId === task.id && reviewTask.variables?.approved === true}
-                      isRejecting={reviewTask.isPending && reviewTask.variables?.taskId === task.id && reviewTask.variables?.approved === false}
-                      isCanceling={cancelTask.isPending && cancelTask.variables === task.id}
-                      isRetrying={retryTask.isPending && retryTask.variables?.taskId === task.id}
+                      isPinning={
+                        pinTask.isPending && pinTask.variables === task.id
+                      }
+                      isUnpinning={
+                        unpinTask.isPending && unpinTask.variables === task.id
+                      }
+                      isApproving={
+                        reviewTask.isPending &&
+                        reviewTask.variables?.taskId === task.id &&
+                        reviewTask.variables?.approved === true
+                      }
+                      isRejecting={
+                        reviewTask.isPending &&
+                        reviewTask.variables?.taskId === task.id &&
+                        reviewTask.variables?.approved === false
+                      }
+                      isCanceling={
+                        cancelTask.isPending && cancelTask.variables === task.id
+                      }
+                      isRetrying={
+                        retryTask.isPending &&
+                        retryTask.variables?.taskId === task.id
+                      }
                       index={index}
                     />
                   ))}

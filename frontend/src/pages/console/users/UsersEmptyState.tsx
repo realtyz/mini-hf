@@ -50,7 +50,11 @@ export function UsersEmptyState({ search, onCreate }: UsersEmptyStateProps) {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              <Button size="sm" className="mt-4 rounded-xl gap-2" onClick={onCreate}>
+              <Button
+                size="sm"
+                className="mt-4 rounded-xl gap-2"
+                onClick={onCreate}
+              >
                 <Plus className="size-3.5" />
                 新建用户
               </Button>

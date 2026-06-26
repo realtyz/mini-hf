@@ -1,13 +1,7 @@
 import { useState, useMemo, useLayoutEffect, useRef } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  RefreshCw,
-  Loader2,
-  Inbox,
-  Plus,
-  AlertCircle,
-} from "lucide-react";
+import { RefreshCw, Loader2, Inbox, Plus, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -44,7 +38,9 @@ export function TasksPublic() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // 用户手动选择的任务 ID（null 表示自动选择模式）
-  const [manuallySelectedId, setManuallySelectedId] = useState<number | null>(null);
+  const [manuallySelectedId, setManuallySelectedId] = useState<number | null>(
+    null,
+  );
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [countdown, setCountdown] = useState(COUNTDOWN_SECONDS);
   const countdownRef = useRef(COUNTDOWN_SECONDS);

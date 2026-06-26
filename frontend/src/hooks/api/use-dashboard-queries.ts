@@ -136,4 +136,3 @@ export function useRecentTasks(limit = 10, hours = 24 * 7) {
     staleTime: STALE_TIMES.list,
   });
 }
-

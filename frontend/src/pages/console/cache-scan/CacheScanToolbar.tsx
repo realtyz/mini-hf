@@ -1,13 +1,6 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { itemVariants } from "@/lib/animations/motion-config";
-import {
-  ScanSearch,
-  RefreshCw,
-  Search,
-  X,
-  Trash2,
-  Zap,
-} from "lucide-react";
+import { ScanSearch, RefreshCw, Search, X, Trash2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -70,7 +63,10 @@ export function CacheScanToolbar({
                 <>
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                      <motion.div
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
                         <Button
                           variant="default"
                           size="sm"
@@ -90,7 +86,8 @@ export function CacheScanToolbar({
                       <AlertDialogHeader>
                         <AlertDialogTitle>确认触发扫描</AlertDialogTitle>
                         <AlertDialogDescription>
-                          对 S3 存储进行全量扫描，按仓库归类并标记追踪状态。此操作可能需要几分钟。
+                          对 S3
+                          存储进行全量扫描，按仓库归类并标记追踪状态。此操作可能需要几分钟。
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -106,7 +103,10 @@ export function CacheScanToolbar({
               {selectedCount > 0 && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <motion.div
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
                       <Button
                         variant="outline"
                         size="sm"
@@ -115,7 +115,9 @@ export function CacheScanToolbar({
                       >
                         <Trash2 className="size-3.5" />
                         批量删除
-                        <span className="tabular-nums ml-0.5">({selectedCount})</span>
+                        <span className="tabular-nums ml-0.5">
+                          ({selectedCount})
+                        </span>
                       </Button>
                     </motion.div>
                   </AlertDialogTrigger>
@@ -131,7 +133,9 @@ export function CacheScanToolbar({
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                      <AlertDialogCancel disabled={isBatchDeleting}>取消</AlertDialogCancel>
+                      <AlertDialogCancel disabled={isBatchDeleting}>
+                        取消
+                      </AlertDialogCancel>
                       <AlertDialogAction
                         onClick={onBatchDelete}
                         disabled={isBatchDeleting}
@@ -143,7 +147,10 @@ export function CacheScanToolbar({
                   </AlertDialogContent>
                 </AlertDialog>
               )}
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <Button
                   variant="outline"
                   size="sm"

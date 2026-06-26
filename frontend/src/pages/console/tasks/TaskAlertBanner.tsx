@@ -45,7 +45,10 @@ export function TaskAlertBanner({
                 个任务等待审批
               </span>
               {!isFilteringPending && (
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <motion.div
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
                   <Button
                     variant="outline"
                     size="sm"

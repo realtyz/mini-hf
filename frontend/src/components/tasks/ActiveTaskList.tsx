@@ -13,12 +13,16 @@ interface ActiveTaskListProps {
 }
 
 const ACTIVE_STATUS_COLORS: Partial<Record<TaskStatus, string>> = {
-  running: "text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800",
-  pending_approval: "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800",
-  pending: "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700",
-}
+  running:
+    "text-blue-600 bg-blue-50 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800",
+  pending_approval:
+    "text-amber-600 bg-amber-50 border-amber-200 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-800",
+  pending:
+    "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700",
+};
 
-const DEFAULT_STATUS_COLOR = "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700"
+const DEFAULT_STATUS_COLOR =
+  "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700";
 
 function formatElapsed(ms: number | null): string {
   if (ms === null) return "-";
@@ -43,12 +47,18 @@ interface TaskListItemProps {
 
 function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
   const isRunning = task.status?.toLowerCase() === "running";
-  const startedAtMs = task.started_at ? new Date(task.started_at).getTime() : null;
+  const startedAtMs = task.started_at
+    ? new Date(task.started_at).getTime()
+    : null;
   const elapsedMs = useElapsedTimer(isRunning, startedAtMs);
   // Running tasks tick via the hook once it has a value; until then (and for
   // non-running tasks) fall back to a static snapshot, matching prior behavior.
   const elapsed = formatElapsed(
-    startedAtMs === null ? null : elapsedMs > 0 ? elapsedMs : elapsedSince(startedAtMs),
+    startedAtMs === null
+      ? null
+      : elapsedMs > 0
+        ? elapsedMs
+        : elapsedSince(startedAtMs),
   );
   const [isPressed, setIsPressed] = useState(false);
   const itemRef = useRef<HTMLDivElement>(null);
@@ -74,15 +84,21 @@ function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
       onMouseLeave={() => setIsPressed(false)}
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.04, ease: [0.16, 1, 0.3, 1] }}
+      transition={{
+        duration: 0.25,
+        delay: index * 0.04,
+        ease: [0.16, 1, 0.3, 1],
+      }}
       className={`
         group relative px-3 py-2 cursor-pointer transition-all duration-200 border-b last:border-b-0
         hover:bg-muted/40
         focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset
         ${isPressed ? "scale-[0.99] bg-muted/60" : ""}
-        ${isSelected
-          ? "bg-blue-50/70 border-l-[3px] border-l-blue-500 dark:bg-blue-950/30"
-          : "border-l-[3px] border-l-transparent hover:border-l-muted-foreground/30"}
+        ${
+          isSelected
+            ? "bg-blue-50/70 border-l-[3px] border-l-blue-500 dark:bg-blue-950/30"
+            : "border-l-[3px] border-l-transparent hover:border-l-muted-foreground/30"
+        }
       `}
     >
       <div className="flex items-center gap-2.5">
@@ -132,13 +148,16 @@ function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
           <div className="flex items-center gap-2 mt-0.5">
             <div className="flex items-center gap-1">
               <span
-                className={`inline-block w-1.5 h-1.5 rounded-full ${TASK_STATUS_CONFIG[task.status]?.dotClass ?? 'bg-slate-400'}`}
+                className={`inline-block w-1.5 h-1.5 rounded-full ${TASK_STATUS_CONFIG[task.status]?.dotClass ?? "bg-slate-400"}`}
               />
               <span className="text-[10px] font-medium text-muted-foreground">
                 {TASK_STATUS_CONFIG[task.status]?.label ?? task.status}
               </span>
             </div>
-            <span className="text-[10px] text-muted-foreground truncate max-w-16 font-mono" title={task.revision}>
+            <span
+              className="text-[10px] text-muted-foreground truncate max-w-16 font-mono"
+              title={task.revision}
+            >
               {task.revision}
             </span>
             {isRunning && (
@@ -190,7 +209,9 @@ export function ActiveTaskList({
           <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-muted/50">
             <Clock className="h-5 w-5 text-muted-foreground/60" />
           </div>
-          <p className="text-sm font-medium text-foreground">暂无进行中的任务</p>
+          <p className="text-sm font-medium text-foreground">
+            暂无进行中的任务
+          </p>
           <p className="text-xs mt-1">新任务将自动显示在这里</p>
         </div>
       </motion.div>

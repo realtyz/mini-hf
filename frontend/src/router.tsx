@@ -1,26 +1,28 @@
-import { lazy } from 'react'
-import type { RouteObject } from 'react-router'
-import LandingLayout from './layouts/LandingLayout'
-import LandingPage from './pages'
-import AuthPage from './pages/auth'
-import DocsPage from './pages/docs'
-import Repositories from './pages/repositories'
-import TasksPublic from './pages/tasks-public'
-import ConsoleLayout from './layouts/ConsoleLayout'
-import { ProtectedRoute } from './components/auth'
-import LazyLoad from './components/shared/LazyLoad'
+import { lazy } from "react";
+import type { RouteObject } from "react-router";
+import LandingLayout from "./layouts/LandingLayout";
+import LandingPage from "./pages";
+import AuthPage from "./pages/auth";
+import DocsPage from "./pages/docs";
+import Repositories from "./pages/repositories";
+import TasksPublic from "./pages/tasks-public";
+import ConsoleLayout from "./layouts/ConsoleLayout";
+import { ProtectedRoute } from "./components/auth";
+import LazyLoad from "./components/shared/LazyLoad";
 
-const Dashboard = lazy(() => import('./pages/console/dashboard'))
-const RepositoriesConsole = lazy(() => import('./pages/console/repositories'))
-const RepositoryDetail = lazy(() => import('./pages/console/repository-detail'))
-const Tasks = lazy(() => import('./pages/console/tasks'))
-const Settings = lazy(() => import('./pages/console/settings'))
-const Users = lazy(() => import('./pages/console/users'))
-const CacheScan = lazy(() => import('./pages/console/cache-scan'))
+const Dashboard = lazy(() => import("./pages/console/dashboard"));
+const RepositoriesConsole = lazy(() => import("./pages/console/repositories"));
+const RepositoryDetail = lazy(
+  () => import("./pages/console/repository-detail"),
+);
+const Tasks = lazy(() => import("./pages/console/tasks"));
+const Settings = lazy(() => import("./pages/console/settings"));
+const Users = lazy(() => import("./pages/console/users"));
+const CacheScan = lazy(() => import("./pages/console/cache-scan"));
 
 export const routes: RouteObject[] = [
   {
-    path: '/',
+    path: "/",
     element: <LandingLayout />,
     children: [
       {
@@ -28,40 +30,45 @@ export const routes: RouteObject[] = [
         element: <LandingPage />,
       },
       {
-        path: 'docs',
+        path: "docs",
         element: <DocsPage />,
       },
       {
-        path: 'docs/:slug',
+        path: "docs/:slug",
         element: <DocsPage />,
       },
       {
-        path: 'repositories',
+        path: "repositories",
         children: [
           { index: true, element: <Repositories /> },
-          { path: 'detail', element: <RepositoryDetail backPath="/repositories" showActions={false} /> },
+          {
+            path: "detail",
+            element: (
+              <RepositoryDetail backPath="/repositories" showActions={false} />
+            ),
+          },
         ],
       },
       {
-        path: 'tasks-public',
+        path: "tasks-public",
         element: <TasksPublic />,
       },
     ],
   },
   {
-    path: '/login',
+    path: "/login",
     element: <AuthPage />,
   },
   {
-    path: '/register',
+    path: "/register",
     element: <AuthPage />,
   },
   {
-    path: '/forgot-password',
+    path: "/forgot-password",
     element: <AuthPage />,
   },
   {
-    path: '/console',
+    path: "/console",
     element: (
       <ProtectedRoute>
         <ConsoleLayout />
@@ -70,35 +77,67 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <LazyLoad><Dashboard /></LazyLoad>,
+        element: (
+          <LazyLoad>
+            <Dashboard />
+          </LazyLoad>
+        ),
       },
       {
-        path: 'repositories',
+        path: "repositories",
         children: [
-          { index: true, element: <LazyLoad><RepositoriesConsole /></LazyLoad> },
-          { path: 'detail', element: <LazyLoad><RepositoryDetail /></LazyLoad> },
+          {
+            index: true,
+            element: (
+              <LazyLoad>
+                <RepositoriesConsole />
+              </LazyLoad>
+            ),
+          },
+          {
+            path: "detail",
+            element: (
+              <LazyLoad>
+                <RepositoryDetail />
+              </LazyLoad>
+            ),
+          },
         ],
       },
       {
-        path: 'tasks',
-        element: <LazyLoad><Tasks /></LazyLoad>,
+        path: "tasks",
+        element: (
+          <LazyLoad>
+            <Tasks />
+          </LazyLoad>
+        ),
       },
       {
-        path: 'cache-scan',
-        element: <LazyLoad><CacheScan /></LazyLoad>,
+        path: "cache-scan",
+        element: (
+          <LazyLoad>
+            <CacheScan />
+          </LazyLoad>
+        ),
       },
       {
-        path: 'settings',
-        element: <LazyLoad><Settings /></LazyLoad>,
+        path: "settings",
+        element: (
+          <LazyLoad>
+            <Settings />
+          </LazyLoad>
+        ),
       },
       {
-        path: 'users',
+        path: "users",
         element: (
           <ProtectedRoute requiredRole="admin">
-            <LazyLoad><Users /></LazyLoad>
+            <LazyLoad>
+              <Users />
+            </LazyLoad>
           </ProtectedRoute>
         ),
       },
     ],
   },
-]
+];

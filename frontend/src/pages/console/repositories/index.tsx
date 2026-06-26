@@ -1,6 +1,15 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { RefreshCw, Search, X, ArrowUp, ArrowDown, Database, Box, FileCode2 } from "lucide-react";
+import {
+  RefreshCw,
+  Search,
+  X,
+  ArrowUp,
+  ArrowDown,
+  Database,
+  Box,
+  FileCode2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,12 +44,12 @@ const STATUS_CONFIG: {
   label: string;
   dotColor: string;
 }[] = [
-    { value: "active", label: "活跃", dotColor: "bg-emerald-500" },
-    { value: "updating", label: "更新中", dotColor: "bg-blue-500" },
-    { value: "cleaning", label: "清理中", dotColor: "bg-violet-500" },
-    { value: "inactive", label: "不完整", dotColor: "bg-slate-400" },
-    { value: "cleaned", label: "已清理", dotColor: "bg-orange-500" },
-  ];
+  { value: "active", label: "活跃", dotColor: "bg-emerald-500" },
+  { value: "updating", label: "更新中", dotColor: "bg-blue-500" },
+  { value: "cleaning", label: "清理中", dotColor: "bg-violet-500" },
+  { value: "inactive", label: "不完整", dotColor: "bg-slate-400" },
+  { value: "cleaned", label: "已清理", dotColor: "bg-orange-500" },
+];
 
 // 默认选中的状态（不包含 inactive）
 const DEFAULT_STATUSES: RepoStatus[] = ["active", "updating", "cleaning"];
@@ -48,17 +57,15 @@ const DEFAULT_STATUSES: RepoStatus[] = ["active", "updating", "cleaning"];
 export function RepositoriesConsole() {
   const navigate = useNavigate();
 
-  const [repoListState, setRepoListState] = useSessionStorageState<RepoListState>(
-    REPO_LIST_STATE_KEY,
-    {
+  const [repoListState, setRepoListState] =
+    useSessionStorageState<RepoListState>(REPO_LIST_STATE_KEY, {
       repoType: "all",
       search: "",
       statuses: DEFAULT_STATUSES,
       sortBy: "cache_updated_at",
       sortOrder: "desc",
       page: 1,
-    }
-  );
+    });
 
   const [debouncedSearch, setDebouncedSearch] = useState(repoListState.search);
 
@@ -74,7 +81,8 @@ export function RepositoriesConsole() {
     skip: (repoListState.page - 1) * PAGE_SIZE,
     limit: PAGE_SIZE,
     search: debouncedSearch || undefined,
-    statuses: repoListState.statuses.length > 0 ? repoListState.statuses : undefined,
+    statuses:
+      repoListState.statuses.length > 0 ? repoListState.statuses : undefined,
     sort_by: repoListState.sortBy,
     sort_order: repoListState.sortOrder,
   });
@@ -98,7 +106,11 @@ export function RepositoriesConsole() {
   };
 
   const handleRepoTypeChange = (value: string) => {
-    setRepoListState((prev) => ({ ...prev, repoType: value as RepoListState["repoType"], page: 1 }));
+    setRepoListState((prev) => ({
+      ...prev,
+      repoType: value as RepoListState["repoType"],
+      page: 1,
+    }));
   };
 
   const handleViewDetail = (repo: RepoProfile) => {
@@ -152,7 +164,10 @@ export function RepositoriesConsole() {
           </div>
 
           {/* Repo type */}
-          <Select value={repoListState.repoType} onValueChange={handleRepoTypeChange}>
+          <Select
+            value={repoListState.repoType}
+            onValueChange={handleRepoTypeChange}
+          >
             <SelectTrigger className="w-32 h-9 rounded-xl border-border/60 text-[13px]">
               <SelectValue placeholder="仓库类型" />
             </SelectTrigger>
@@ -176,7 +191,10 @@ export function RepositoriesConsole() {
           </Select>
 
           {/* Sort */}
-          <Select value={repoListState.sortBy} onValueChange={(v) => updateState({ sortBy: v })}>
+          <Select
+            value={repoListState.sortBy}
+            onValueChange={(v) => updateState({ sortBy: v })}
+          >
             <SelectTrigger className="w-32 h-9 rounded-xl border-border/60 text-[13px]">
               <SelectValue placeholder="排序方式" />
             </SelectTrigger>
@@ -192,7 +210,11 @@ export function RepositoriesConsole() {
             variant="outline"
             size="icon"
             className="size-9 rounded-xl border-border/60"
-            onClick={() => updateState({ sortOrder: repoListState.sortOrder === "asc" ? "desc" : "asc" })}
+            onClick={() =>
+              updateState({
+                sortOrder: repoListState.sortOrder === "asc" ? "desc" : "asc",
+              })
+            }
             title={repoListState.sortOrder === "asc" ? "升序" : "降序"}
           >
             {repoListState.sortOrder === "asc" ? (

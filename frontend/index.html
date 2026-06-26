@@ -7,10 +7,14 @@
     <title>MiniHF - 局域网模型缓存仓库</title>
     <script src="/runtime-config.js"></script>
     <script>
-      (function() {
-        var theme = localStorage.getItem('vite-ui-theme');
-        if (theme === 'dark' || (theme !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-          document.documentElement.classList.add('dark');
+      (function () {
+        var theme = localStorage.getItem("vite-ui-theme");
+        if (
+          theme === "dark" ||
+          (theme !== "light" &&
+            window.matchMedia("(prefers-color-scheme: dark)").matches)
+        ) {
+          document.documentElement.classList.add("dark");
         }
       })();
     </script>

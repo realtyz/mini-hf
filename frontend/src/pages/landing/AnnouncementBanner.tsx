@@ -1,75 +1,88 @@
-import { useState, useCallback, useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, Info, AlertTriangle, AlertCircle, Pin, ChevronDown, ChevronUp } from 'lucide-react'
-import { usePublicAnnouncements } from '@/hooks/api'
-import type { AnnouncementType } from '@/lib/api/types'
+import { useState, useCallback, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  X,
+  Info,
+  AlertTriangle,
+  AlertCircle,
+  Pin,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import { usePublicAnnouncements } from "@/hooks/api";
+import type { AnnouncementType } from "@/lib/api/types";
 
-const DISMISSED_KEY = 'announcements_dismissed'
+const DISMISSED_KEY = "announcements_dismissed";
 
 interface AnnouncementBannerProps {
-  className?: string
+  className?: string;
 }
 
-const typeConfig: Record<AnnouncementType, {
-  icon: React.ReactNode
-  bgClass: string
-  textClass: string
-  borderClass: string
-}> = {
+const typeConfig: Record<
+  AnnouncementType,
+  {
+    icon: React.ReactNode;
+    bgClass: string;
+    textClass: string;
+    borderClass: string;
+  }
+> = {
   info: {
     icon: <Info className="h-4 w-4" />,
-    bgClass: 'bg-sky-50 dark:bg-sky-950/80',
-    textClass: 'text-sky-800 dark:text-sky-200',
-    borderClass: 'border-sky-300 dark:border-sky-700',
+    bgClass: "bg-sky-50 dark:bg-sky-950/80",
+    textClass: "text-sky-800 dark:text-sky-200",
+    borderClass: "border-sky-300 dark:border-sky-700",
   },
   warning: {
     icon: <AlertTriangle className="h-4 w-4" />,
-    bgClass: 'bg-amber-50 dark:bg-amber-950/80',
-    textClass: 'text-amber-800 dark:text-amber-200',
-    borderClass: 'border-amber-300 dark:border-amber-700',
+    bgClass: "bg-amber-50 dark:bg-amber-950/80",
+    textClass: "text-amber-800 dark:text-amber-200",
+    borderClass: "border-amber-300 dark:border-amber-700",
   },
   urgent: {
     icon: <AlertCircle className="h-4 w-4" />,
-    bgClass: 'bg-red-50 dark:bg-red-950/80',
-    textClass: 'text-red-800 dark:text-red-200',
-    borderClass: 'border-red-300 dark:border-red-700',
+    bgClass: "bg-red-50 dark:bg-red-950/80",
+    textClass: "text-red-800 dark:text-red-200",
+    borderClass: "border-red-300 dark:border-red-700",
   },
-}
+};
 
 function getDismissedIds(): number[] {
   try {
-    const raw = localStorage.getItem(DISMISSED_KEY)
-    if (!raw) return []
-    const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((id: unknown) => typeof id === 'number') : []
+    const raw = localStorage.getItem(DISMISSED_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed)
+      ? parsed.filter((id: unknown) => typeof id === "number")
+      : [];
   } catch {
-    return []
+    return [];
   }
 }
 
 export function AnnouncementBanner({ className }: AnnouncementBannerProps) {
-  const { data, isLoading } = usePublicAnnouncements()
-  const [dismissedIds, setDismissedIds] = useState<number[]>(getDismissedIds)
-  const [expanded, setExpanded] = useState(false)
+  const { data, isLoading } = usePublicAnnouncements();
+  const [dismissedIds, setDismissedIds] = useState<number[]>(getDismissedIds);
+  const [expanded, setExpanded] = useState(false);
 
   const visible = useMemo(() => {
-    if (!data?.data) return []
-    return data.data.filter(a => a.is_active && !dismissedIds.includes(a.id))
-  }, [data?.data, dismissedIds])
+    if (!data?.data) return [];
+    return data.data.filter((a) => a.is_active && !dismissedIds.includes(a.id));
+  }, [data?.data, dismissedIds]);
 
-  const displayed = expanded ? visible : visible.slice(0, 2)
-  const hasMore = visible.length > 2
+  const displayed = expanded ? visible : visible.slice(0, 2);
+  const hasMore = visible.length > 2;
 
   const dismiss = useCallback((id: number) => {
-    setDismissedIds(prev => {
-      const next = [...prev, id]
-      localStorage.setItem(DISMISSED_KEY, JSON.stringify(next))
-      return next
-    })
-  }, [])
+    setDismissedIds((prev) => {
+      const next = [...prev, id];
+      localStorage.setItem(DISMISSED_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
 
   if (isLoading || visible.length === 0) {
-    return null
+    return null;
   }
 
   return (
@@ -83,12 +96,13 @@ export function AnnouncementBanner({ className }: AnnouncementBannerProps) {
           <div className="flex flex-col py-2 gap-1.5">
             <AnimatePresence mode="popLayout">
               {displayed.map((announcement) => {
-                const config = typeConfig[announcement.announcement_type] || typeConfig.info
+                const config =
+                  typeConfig[announcement.announcement_type] || typeConfig.info;
                 return (
                   <motion.div
                     key={announcement.id}
                     initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
+                    animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
                     className={`
@@ -119,12 +133,12 @@ export function AnnouncementBanner({ className }: AnnouncementBannerProps) {
                       </button>
                     </div>
                   </motion.div>
-                )
+                );
               })}
             </AnimatePresence>
             {hasMore && (
               <button
-                onClick={() => setExpanded(prev => !prev)}
+                onClick={() => setExpanded((prev) => !prev)}
                 className="flex items-center justify-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-0.5"
               >
                 {expanded ? (
@@ -144,7 +158,7 @@ export function AnnouncementBanner({ className }: AnnouncementBannerProps) {
         </div>
       </div>
     </motion.div>
-  )
+  );
 }
 
-export default AnnouncementBanner
+export default AnnouncementBanner;

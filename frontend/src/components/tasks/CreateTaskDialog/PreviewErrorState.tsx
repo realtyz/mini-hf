@@ -1,15 +1,15 @@
-import { motion } from 'framer-motion'
-import { AlertCircle } from 'lucide-react'
+import { motion } from "framer-motion";
+import { AlertCircle } from "lucide-react";
 
 interface PreviewErrorStateProps {
-  message: string
+  message: string;
 }
 
 const contentVariants = {
   initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: -20 },
-}
+};
 
 export function PreviewErrorState({ message }: PreviewErrorStateProps) {
   return (
@@ -31,8 +31,8 @@ export function PreviewErrorState({ message }: PreviewErrorStateProps) {
       </motion.div>
       <h3 className="text-lg font-semibold text-destructive mb-2">预览失败</h3>
       <p className="text-sm text-muted-foreground text-center max-w-md">
-        {message || '获取仓库信息失败，请检查仓库ID和配置后重试'}
+        {message || "获取仓库信息失败，请检查仓库ID和配置后重试"}
       </p>
     </motion.div>
-  )
+  );
 }

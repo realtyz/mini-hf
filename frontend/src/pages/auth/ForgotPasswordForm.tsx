@@ -19,7 +19,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { OTPInput } from "@/components/ui/otp-input";
-import { useForgotPassword, useResetPassword } from "@/hooks/api/use-auth-queries";
+import {
+  useForgotPassword,
+  useResetPassword,
+} from "@/hooks/api/use-auth-queries";
 import { cn } from "@/lib/utils";
 import { PasswordStrengthIndicator } from "./PasswordStrengthIndicator";
 import { StaggerContainer, StaggerItem } from "./StaggerContainer";
@@ -261,7 +264,9 @@ export function ForgotPasswordForm() {
           <h1 className="text-xl font-bold tracking-tight">重置密码</h1>
         </StaggerItem>
         <StaggerItem>
-          <p className="text-xs text-muted-foreground">验证码已发送至：{email}</p>
+          <p className="text-xs text-muted-foreground">
+            验证码已发送至：{email}
+          </p>
         </StaggerItem>
       </StaggerContainer>
 
@@ -323,9 +328,7 @@ export function ForgotPasswordForm() {
             </motion.button>
           </div>
 
-          {newPassword && (
-            <PasswordStrengthIndicator password={newPassword} />
-          )}
+          {newPassword && <PasswordStrengthIndicator password={newPassword} />}
         </StaggerItem>
 
         <StaggerItem className="space-y-1.5">

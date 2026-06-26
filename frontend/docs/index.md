@@ -10,12 +10,10 @@ MiniHF 是一个 HuggingFace 模型/数据集缓存系统，适用于局域网�
 - 在离线环境中使用 HuggingFace 资源
 - 节省带宽，多人共享同一份缓存
 
-
 ## 前提条件
 
 - 您的网络环境可以访问 MiniHF 服务器
 - 已安装 Python 3.8+ 和 `huggingface_hub` 库
-
 
 ## 安装
 
@@ -24,7 +22,6 @@ MiniHF 是一个 HuggingFace 模型/数据集缓存系统，适用于局域网�
 ```bash
 pip install huggingface_hub
 ```
-
 
 ## 配置 MiniHF
 

@@ -173,7 +173,7 @@ function Logo({ collapsed = false }: { collapsed?: boolean }) {
       to="/console"
       className={cn(
         "group/logo relative flex items-center",
-        collapsed ? "justify-center" : "gap-3"
+        collapsed ? "justify-center" : "gap-3",
       )}
     >
       {/* Logo SVG - 悬停时放大+光晕效果 */}
@@ -188,18 +188,65 @@ function Logo({ collapsed = false }: { collapsed?: boolean }) {
           className="relative h-7 w-7 text-foreground drop-shadow-sm transition-all duration-300 group-hover/logo:drop-shadow-md"
         >
           {/* 外层立方体 - 代表缓存存储 */}
-          <path d="M16 2L4 9V23L16 30L28 23V9L16 2Z" fill="currentColor" opacity="0.15" />
-          <path d="M16 2L4 9V23L16 30L28 23V9L16 2Z" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+          <path
+            d="M16 2L4 9V23L16 30L28 23V9L16 2Z"
+            fill="currentColor"
+            opacity="0.15"
+          />
+          <path
+            d="M16 2L4 9V23L16 30L28 23V9L16 2Z"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
           {/* 内层立方体线条 */}
-          <path d="M16 17V30" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M16 17L4 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M16 17L28 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+          <path
+            d="M16 17V30"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M16 17L4 9"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+          <path
+            d="M16 17L28 9"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
           {/* 中心节点 - 代表 AI 模型 */}
           <circle cx="16" cy="17" r="3" fill="currentColor" />
           {/* 连接线 - 代表神经网络 */}
-          <line x1="16" y1="14" x2="16" y2="8" stroke="currentColor" strokeWidth="1" />
-          <line x1="18.5" y1="18.5" x2="23" y2="21" stroke="currentColor" strokeWidth="1" />
-          <line x1="13.5" y1="18.5" x2="9" y2="21" stroke="currentColor" strokeWidth="1" />
+          <line
+            x1="16"
+            y1="14"
+            x2="16"
+            y2="8"
+            stroke="currentColor"
+            strokeWidth="1"
+          />
+          <line
+            x1="18.5"
+            y1="18.5"
+            x2="23"
+            y2="21"
+            stroke="currentColor"
+            strokeWidth="1"
+          />
+          <line
+            x1="13.5"
+            y1="18.5"
+            x2="9"
+            y2="21"
+            stroke="currentColor"
+            strokeWidth="1"
+          />
           {/* 小节点 */}
           <circle cx="16" cy="8" r="1.5" fill="currentColor" opacity="0.6" />
           <circle cx="23" cy="21" r="1.5" fill="currentColor" opacity="0.6" />
@@ -207,12 +254,18 @@ function Logo({ collapsed = false }: { collapsed?: boolean }) {
         </svg>
       </div>
       {/* 文字 - 展开时显示 */}
-      <div className={cn(
-        "flex flex-col transition-all duration-200 overflow-hidden",
-        collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-      )}>
-        <span className="text-sm font-semibold tracking-tight text-foreground whitespace-nowrap">Mini-HF</span>
-        <span className="text-xs text-muted-foreground whitespace-nowrap">模型缓存中心</span>
+      <div
+        className={cn(
+          "flex flex-col transition-all duration-200 overflow-hidden",
+          collapsed ? "w-0 opacity-0" : "w-auto opacity-100",
+        )}
+      >
+        <span className="text-sm font-semibold tracking-tight text-foreground whitespace-nowrap">
+          Mini-HF
+        </span>
+        <span className="text-xs text-muted-foreground whitespace-nowrap">
+          模型缓存中心
+        </span>
       </div>
     </Link>
   );
@@ -328,7 +381,7 @@ function UserDropdown({ collapsed = false }: { collapsed?: boolean }) {
           variant="ghost"
           className={cn(
             "relative flex items-center gap-2.5 rounded-lg p-1.5 pr-3 hover:bg-accent transition-colors duration-200",
-            collapsed && "h-9 w-9 justify-center p-0"
+            collapsed && "h-9 w-9 justify-center p-0",
           )}
           aria-label="用户菜单"
         >
@@ -376,15 +429,24 @@ function UserDropdown({ collapsed = false }: { collapsed?: boolean }) {
             value={theme}
             onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}
           >
-            <DropdownMenuRadioItem value="light" className="text-xs cursor-pointer">
+            <DropdownMenuRadioItem
+              value="light"
+              className="text-xs cursor-pointer"
+            >
               <Sun className="mr-2 h-3.5 w-3.5" />
               浅色
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="dark" className="text-xs cursor-pointer">
+            <DropdownMenuRadioItem
+              value="dark"
+              className="text-xs cursor-pointer"
+            >
               <Moon className="mr-2 h-3.5 w-3.5" />
               深色
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="system" className="text-xs cursor-pointer">
+            <DropdownMenuRadioItem
+              value="system"
+              className="text-xs cursor-pointer"
+            >
               <Monitor className="mr-2 h-3.5 w-3.5" />
               跟随系统
             </DropdownMenuRadioItem>
@@ -431,7 +493,7 @@ function NavItem({ item }: { item: MenuItem }) {
         className={cn(
           "group/menu-button relative overflow-hidden rounded-md py-2 transition-colors duration-150",
           "hover:bg-accent/60 hover:text-accent-foreground",
-          isActive && "bg-accent/50 text-foreground font-medium"
+          isActive && "bg-accent/50 text-foreground font-medium",
         )}
       >
         <Link to={item.path} viewTransition className="relative">
@@ -439,13 +501,15 @@ function NavItem({ item }: { item: MenuItem }) {
           <div
             className={cn(
               "absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-r-full bg-foreground transition-opacity duration-200",
-              isActive ? "opacity-100" : "opacity-0"
+              isActive ? "opacity-100" : "opacity-0",
             )}
           />
           <Icon
             className={cn(
               "relative z-10 h-4 w-4 shrink-0 transition-colors duration-150",
-              isActive ? "text-foreground" : "text-muted-foreground group-hover/menu-button:text-foreground"
+              isActive
+                ? "text-foreground"
+                : "text-muted-foreground group-hover/menu-button:text-foreground",
             )}
           />
           <span className="relative z-10 truncate text-sm">{item.title}</span>
@@ -488,28 +552,26 @@ function ConsoleSidebar() {
 
   // 根据角色过滤菜单
   const filteredMenuGroups = useMemo(() => {
-    if (user?.role === 'admin') {
+    if (user?.role === "admin") {
       return menuGroups; // 管理员可见所有菜单
     }
     // 普通用户只能看到仪表盘和任务中心
-    return menuGroups.map(group => ({
-      ...group,
-      items: group.items.filter(item =>
-        item.path === '/console' || item.path === '/console/tasks'
-      ),
-    })).filter(group => group.items.length > 0);
+    return menuGroups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter(
+          (item) => item.path === "/console" || item.path === "/console/tasks",
+        ),
+      }))
+      .filter((group) => group.items.length > 0);
   }, [user?.role]);
 
   return (
-    <Sidebar
-      collapsible="icon"
-      className="border-r border-border"
-    >
+    <Sidebar collapsible="icon" className="border-r border-border">
       {/* 侧边栏头部 - Logo */}
-      <SidebarHeader className={cn(
-        "transition-all duration-200",
-        collapsed ? "p-2" : "p-4"
-      )}>
+      <SidebarHeader
+        className={cn("transition-all duration-200", collapsed ? "p-2" : "p-4")}
+      >
         <Logo collapsed={collapsed} />
       </SidebarHeader>
       <SidebarContent className="gap-6 px-3 py-4">
@@ -546,7 +608,7 @@ function BreadcrumbNav() {
   const location = useLocation();
 
   // 根据路径生成面包屑
-  const pathSegments = location.pathname.split('/').filter(Boolean);
+  const pathSegments = location.pathname.split("/").filter(Boolean);
   const breadcrumbMap: Record<string, string> = {
     console: "控制台",
     repositories: "仓库管理",
@@ -557,7 +619,7 @@ function BreadcrumbNav() {
   };
 
   // 获取当前页面标题
-  const currentPage = pathSegments[pathSegments.length - 1] || 'console';
+  const currentPage = pathSegments[pathSegments.length - 1] || "console";
   const currentPageTitle = breadcrumbMap[currentPage] || "控制台";
 
   return (
@@ -571,7 +633,9 @@ function BreadcrumbNav() {
       {pathSegments.length > 1 && (
         <>
           <span className="text-muted-foreground/30 select-none">/</span>
-          <span className="font-medium text-foreground">{currentPageTitle}</span>
+          <span className="font-medium text-foreground">
+            {currentPageTitle}
+          </span>
         </>
       )}
     </nav>
@@ -587,7 +651,7 @@ function ConsoleHeader() {
       className={cn(
         "sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-background/95 px-4 lg:px-6 backdrop-blur-sm",
         "transition-[width,height] duration-200 ease-linear",
-        "group-has-data-[collapsible=icon]/sidebar-wrapper:h-14"
+        "group-has-data-[collapsible=icon]/sidebar-wrapper:h-14",
       )}
     >
       {/* 左侧区域 */}
@@ -629,8 +693,10 @@ export function ConsoleLayout() {
             backgroundImage:
               "linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)",
             backgroundSize: "56px 56px",
-            maskImage: "radial-gradient(ellipse 65% 55% at 50% 30%, black 40%, transparent 85%)",
-            WebkitMaskImage: "radial-gradient(ellipse 65% 55% at 50% 30%, black 40%, transparent 85%)",
+            maskImage:
+              "radial-gradient(ellipse 65% 55% at 50% 30%, black 40%, transparent 85%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 65% 55% at 50% 30%, black 40%, transparent 85%)",
           }}
         />
         <ConsoleHeader />

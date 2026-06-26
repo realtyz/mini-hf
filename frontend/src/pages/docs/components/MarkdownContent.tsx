@@ -1,17 +1,17 @@
-import ReactMarkdown from 'react-markdown'
-import remarkGfm from 'remark-gfm'
-import rehypeSlug from 'rehype-slug'
-import rehypeAutolinkHeadings from 'rehype-autolink-headings'
-import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
-import bash from 'react-syntax-highlighter/dist/esm/languages/prism/bash'
-import python from 'react-syntax-highlighter/dist/esm/languages/prism/python'
-import json from 'react-syntax-highlighter/dist/esm/languages/prism/json'
-import typescript from 'react-syntax-highlighter/dist/esm/languages/prism/typescript'
-import javascript from 'react-syntax-highlighter/dist/esm/languages/prism/javascript'
-import atomDark from 'react-syntax-highlighter/dist/esm/styles/prism/atom-dark'
-import prismLight from 'react-syntax-highlighter/dist/esm/styles/prism/prism'
-import { useTheme } from '@/hooks/use-theme'
-import { cn } from '@/lib/utils'
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import rehypeSlug from "rehype-slug";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import { PrismLight as SyntaxHighlighter } from "react-syntax-highlighter";
+import bash from "react-syntax-highlighter/dist/esm/languages/prism/bash";
+import python from "react-syntax-highlighter/dist/esm/languages/prism/python";
+import json from "react-syntax-highlighter/dist/esm/languages/prism/json";
+import typescript from "react-syntax-highlighter/dist/esm/languages/prism/typescript";
+import javascript from "react-syntax-highlighter/dist/esm/languages/prism/javascript";
+import atomDark from "react-syntax-highlighter/dist/esm/styles/prism/atom-dark";
+import prismLight from "react-syntax-highlighter/dist/esm/styles/prism/prism";
+import { useTheme } from "@/hooks/use-theme";
+import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -19,35 +19,46 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 
-SyntaxHighlighter.registerLanguage('bash', bash)
-SyntaxHighlighter.registerLanguage('python', python)
-SyntaxHighlighter.registerLanguage('json', json)
-SyntaxHighlighter.registerLanguage('typescript', typescript)
-SyntaxHighlighter.registerLanguage('javascript', javascript)
+SyntaxHighlighter.registerLanguage("bash", bash);
+SyntaxHighlighter.registerLanguage("python", python);
+SyntaxHighlighter.registerLanguage("json", json);
+SyntaxHighlighter.registerLanguage("typescript", typescript);
+SyntaxHighlighter.registerLanguage("javascript", javascript);
 
 interface MarkdownContentProps {
-  content: string
-  className?: string
+  content: string;
+  className?: string;
 }
 
 export function MarkdownContent({ content, className }: MarkdownContentProps) {
-  const { resolvedTheme } = useTheme()
-  const currentTheme = resolvedTheme
-  const syntaxStyle = currentTheme === 'dark' ? atomDark : prismLight
+  const { resolvedTheme } = useTheme();
+  const currentTheme = resolvedTheme;
+  const syntaxStyle = currentTheme === "dark" ? atomDark : prismLight;
 
   return (
-    <div className={cn('prose prose-slate max-w-none dark:prose-invert', className)}>
+    <div
+      className={cn(
+        "prose prose-slate max-w-none dark:prose-invert",
+        className,
+      )}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[
           rehypeSlug,
-          [rehypeAutolinkHeadings, { behavior: 'wrap', properties: { className: ['anchor-link'] } }],
+          [
+            rehypeAutolinkHeadings,
+            { behavior: "wrap", properties: { className: ["anchor-link"] } },
+          ],
         ]}
         components={{
           h1: ({ children, ...props }) => (
-            <h1 className="mb-4 mt-8 text-3xl font-bold tracking-tight" {...props}>
+            <h1
+              className="mb-4 mt-8 text-3xl font-bold tracking-tight"
+              {...props}
+            >
               {children}
             </h1>
           ),
@@ -60,7 +71,10 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
             </h2>
           ),
           h3: ({ children, ...props }) => (
-            <h3 className="mb-3 mt-8 text-xl font-semibold tracking-tight" {...props}>
+            <h3
+              className="mb-3 mt-8 text-xl font-semibold tracking-tight"
+              {...props}
+            >
               {children}
             </h3>
           ),
@@ -107,8 +121,8 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
             </blockquote>
           ),
           code: ({ className, children, ...props }) => {
-            const match = /language-(\w+)/.exec(className || '')
-            const language = match ? match[1] : ''
+            const match = /language-(\w+)/.exec(className || "");
+            const language = match ? match[1] : "";
 
             if (!language) {
               return (
@@ -118,7 +132,7 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
                 >
                   {children}
                 </code>
-              )
+              );
             }
 
             return (
@@ -128,15 +142,15 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
                   style={syntaxStyle}
                   customStyle={{
                     margin: 0,
-                    padding: '1rem',
-                    fontSize: '0.875rem',
-                    lineHeight: '1.5',
+                    padding: "1rem",
+                    fontSize: "0.875rem",
+                    lineHeight: "1.5",
                   }}
                 >
-                  {String(children).replace(/\n$/, '')}
+                  {String(children).replace(/\n$/, "")}
                 </SyntaxHighlighter>
               </div>
-            )
+            );
           },
           table: ({ children }) => (
             <div className="my-6 overflow-x-auto">
@@ -151,13 +165,15 @@ export function MarkdownContent({ content, className }: MarkdownContentProps) {
           ),
           td: ({ children }) => <TableCell>{children}</TableCell>,
           hr: () => <hr className="my-8 border-border" />,
-          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+          strong: ({ children }) => (
+            <strong className="font-semibold">{children}</strong>
+          ),
         }}
       >
         {content}
       </ReactMarkdown>
     </div>
-  )
+  );
 }
 
-export default MarkdownContent
+export default MarkdownContent;

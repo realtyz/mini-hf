@@ -35,13 +35,15 @@ export function CleanupConfirmDialog({
       <AlertDialogContent className="sm:max-w-106.25">
         <AlertDialogHeader>
           <AlertDialogTitle className="text-left">
-            {isBatch ? '确认批量删除仓库' : '确认删除仓库'}
+            {isBatch ? "确认批量删除仓库" : "确认删除仓库"}
           </AlertDialogTitle>
           <AlertDialogDescription className="text-left">
             {isBatch ? (
               <>
                 您即将删除{" "}
-                <span className="font-semibold text-foreground">{count} 个仓库</span>
+                <span className="font-semibold text-foreground">
+                  {count} 个仓库
+                </span>
                 。此操作将删除所有缓存的文件、版本数据和数据库记录，所有数据将永久丢失！
               </>
             ) : (

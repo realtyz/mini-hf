@@ -19,9 +19,17 @@ export function SpotlightCard({
   variant = "interactive",
 }: SpotlightCardProps) {
   if (variant === "static") {
-    return <StaticSpotlightCard className={className}>{children}</StaticSpotlightCard>;
+    return (
+      <StaticSpotlightCard className={className}>
+        {children}
+      </StaticSpotlightCard>
+    );
   }
-  return <InteractiveSpotlightCard className={className}>{children}</InteractiveSpotlightCard>;
+  return (
+    <InteractiveSpotlightCard className={className}>
+      {children}
+    </InteractiveSpotlightCard>
+  );
 }
 
 function StaticSpotlightCard({

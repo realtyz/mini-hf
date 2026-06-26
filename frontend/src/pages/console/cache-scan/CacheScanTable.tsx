@@ -82,7 +82,15 @@ interface CacheScanTableProps {
   onSort: (field: SortField) => void;
 }
 
-function SortIcon({ field, sortField, sortDirection }: { field: SortField; sortField: SortField | null; sortDirection: SortDirection }) {
+function SortIcon({
+  field,
+  sortField,
+  sortDirection,
+}: {
+  field: SortField;
+  sortField: SortField | null;
+  sortDirection: SortDirection;
+}) {
   if (sortField !== field) {
     return (
       <span className="inline-flex flex-col ml-1 opacity-0 group-hover/sort:opacity-40 transition-opacity">
@@ -126,7 +134,11 @@ function SortableHeader({
       <span className="text-[11px] font-semibold tracking-wider uppercase select-none">
         {label}
       </span>
-      <SortIcon field={field} sortField={sortField} sortDirection={sortDirection} />
+      <SortIcon
+        field={field}
+        sortField={sortField}
+        sortDirection={sortDirection}
+      />
     </button>
   );
 }
@@ -147,8 +159,10 @@ export function CacheScanTable({
   onSort,
 }: CacheScanTableProps) {
   const navigate = useNavigate();
-  const allSelected = repos.length > 0 && repos.every((r) => selectedIds.has(r.repo_id));
-  const someSelected = repos.some((r) => selectedIds.has(r.repo_id)) && !allSelected;
+  const allSelected =
+    repos.length > 0 && repos.every((r) => selectedIds.has(r.repo_id));
+  const someSelected =
+    repos.some((r) => selectedIds.has(r.repo_id)) && !allSelected;
 
   return (
     <motion.div
@@ -308,7 +322,11 @@ export function CacheScanTable({
                             )}
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent side="bottom" align="start" className="rounded-lg">
+                        <TooltipContent
+                          side="bottom"
+                          align="start"
+                          className="rounded-lg"
+                        >
                           <p className="text-xs font-mono">
                             点击复制: {repo.repo_id}
                           </p>
@@ -333,7 +351,9 @@ export function CacheScanTable({
 
                 <TableCell className="py-3 text-center">
                   <Badge
-                    variant={repo.category === "tracked" ? "secondary" : "outline"}
+                    variant={
+                      repo.category === "tracked" ? "secondary" : "outline"
+                    }
                     className={cn(
                       "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
                       repo.category === "tracked"
@@ -361,8 +381,7 @@ export function CacheScanTable({
                       </TooltipTrigger>
                       <TooltipContent className="rounded-lg">
                         <p className="text-xs font-mono tabular-nums">
-                          {repo.cached_size.toLocaleString("zh-CN")}{" "}
-                          字节
+                          {repo.cached_size.toLocaleString("zh-CN")} 字节
                         </p>
                       </TooltipContent>
                     </Tooltip>
@@ -426,7 +445,11 @@ export function CacheScanTable({
                         <GripHorizontal className="size-3.5 text-muted-foreground/60" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-44 rounded-xl" sideOffset={4}>
+                    <DropdownMenuContent
+                      align="end"
+                      className="w-44 rounded-xl"
+                      sideOffset={4}
+                    >
                       <DropdownMenuItem
                         onClick={() => onCopy(repo.repo_id)}
                         className="text-[13px] cursor-pointer rounded-lg"

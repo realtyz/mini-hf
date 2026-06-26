@@ -1,15 +1,15 @@
 export interface DocMeta {
-  slug: string
-  title: string
-  order: number
+  slug: string;
+  title: string;
+  order: number;
 }
 
 export interface DocMetaData {
-  docs: DocMeta[]
+  docs: DocMeta[];
 }
 
 export interface TocItem {
-  id: string
-  text: string
-  level: number
+  id: string;
+  text: string;
+  level: number;
 }

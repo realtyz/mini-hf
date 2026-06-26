@@ -1,36 +1,42 @@
-import { useMemo } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Check, CheckCircle2 } from 'lucide-react'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { SelectableFileTree } from '../SelectableFileTree'
-import { formatBytes } from '@/lib/utils'
-import type { TaskPreviewData } from '@/lib/api/types'
+import { useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Check, CheckCircle2 } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SelectableFileTree } from "../SelectableFileTree";
+import { formatBytes } from "@/lib/utils";
+import type { TaskPreviewData } from "@/lib/api/types";
 
 interface PreviewResultStepProps {
-  previewData: TaskPreviewData
-  selectedFiles: Set<string>
-  onSelectionChange: (files: Set<string>) => void
-  createError: string | null
+  previewData: TaskPreviewData;
+  selectedFiles: Set<string>;
+  onSelectionChange: (files: Set<string>) => void;
+  createError: string | null;
 }
 
 const contentVariants = {
   initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: -20 },
-}
+};
 
-export function PreviewResultStep({ previewData, selectedFiles, onSelectionChange, createError }: PreviewResultStepProps) {
+export function PreviewResultStep({
+  previewData,
+  selectedFiles,
+  onSelectionChange,
+  createError,
+}: PreviewResultStepProps) {
   const selectedStats = useMemo(() => {
-    let count = 0, size = 0
+    let count = 0,
+      size = 0;
     for (const item of previewData.items ?? []) {
-      if (item.type === 'file' && selectedFiles.has(item.path)) {
-        count++
-        size += item.size
+      if (item.type === "file" && selectedFiles.has(item.path)) {
+        count++;
+        size += item.size;
       }
     }
-    return { count, size }
-  }, [selectedFiles, previewData])
+    return { count, size };
+  }, [selectedFiles, previewData]);
 
   if (previewData.all_required_cached) {
     return (
@@ -51,9 +57,16 @@ export function PreviewResultStep({ previewData, selectedFiles, onSelectionChang
           >
             <CheckCircle2 className="w-10 h-10 text-blue-500" />
           </motion.div>
-          <h3 className="text-lg font-semibold text-foreground mb-2">所有文件已缓存</h3>
+          <h3 className="text-lg font-semibold text-foreground mb-2">
+            所有文件已缓存
+          </h3>
           <p className="text-sm text-muted-foreground text-center max-w-md mb-4">
-            仓库 <span className="font-medium text-foreground">{previewData.repo_id}</span> 的所有 {previewData.total_file_count} 个文件已在本地缓存中，无需重复下载。
+            仓库{" "}
+            <span className="font-medium text-foreground">
+              {previewData.repo_id}
+            </span>{" "}
+            的所有 {previewData.total_file_count}{" "}
+            个文件已在本地缓存中，无需重复下载。
           </p>
           {previewData.cached_commit_hash && (
             <code className="font-mono text-xs bg-muted/60 px-3 py-1.5 rounded text-muted-foreground">
@@ -77,7 +90,7 @@ export function PreviewResultStep({ previewData, selectedFiles, onSelectionChang
           )}
         </AnimatePresence>
       </motion.div>
-    )
+    );
   }
 
   return (
@@ -114,12 +127,20 @@ export function PreviewResultStep({ previewData, selectedFiles, onSelectionChang
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-emerald-700 dark:text-emerald-300">
                     <span className="flex items-center gap-1.5">
                       <span className="font-medium">{selectedStats.count}</span>
-                      <span className="text-emerald-600/70 dark:text-emerald-400/70">个文件已选</span>
+                      <span className="text-emerald-600/70 dark:text-emerald-400/70">
+                        个文件已选
+                      </span>
                     </span>
-                    <span className="text-emerald-400 dark:text-emerald-500">·</span>
+                    <span className="text-emerald-400 dark:text-emerald-500">
+                      ·
+                    </span>
                     <span className="flex items-center gap-1.5">
-                      <span className="font-medium">{formatBytes(selectedStats.size)}</span>
-                      <span className="text-emerald-600/70 dark:text-emerald-400/70">所需空间</span>
+                      <span className="font-medium">
+                        {formatBytes(selectedStats.size)}
+                      </span>
+                      <span className="text-emerald-600/70 dark:text-emerald-400/70">
+                        所需空间
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -141,7 +162,9 @@ export function PreviewResultStep({ previewData, selectedFiles, onSelectionChang
             <div className="grid grid-cols-2 gap-3">
               <div className="group relative p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                 <div className="text-xs text-muted-foreground mb-1">仓库</div>
-                <p className="font-medium text-sm truncate">{previewData.repo_id}</p>
+                <p className="font-medium text-sm truncate">
+                  {previewData.repo_id}
+                </p>
               </div>
               <div className="group relative p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                 <div className="text-xs text-muted-foreground mb-1">版本</div>
@@ -150,15 +173,25 @@ export function PreviewResultStep({ previewData, selectedFiles, onSelectionChang
               <div className="group relative p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                 <div className="text-xs text-muted-foreground mb-1">文件数</div>
                 <p className="text-sm">
-                  <span className="font-medium text-primary">{selectedStats.count}</span>
-                  <span className="text-muted-foreground"> / {previewData.total_file_count}</span>
+                  <span className="font-medium text-primary">
+                    {selectedStats.count}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    / {previewData.total_file_count}
+                  </span>
                 </p>
               </div>
               <div className="group relative p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                 <div className="text-xs text-muted-foreground mb-1">大小</div>
                 <p className="text-sm">
-                  <span className="font-medium text-primary">{formatBytes(selectedStats.size)}</span>
-                  <span className="text-muted-foreground"> / {formatBytes(previewData.total_storage)}</span>
+                  <span className="font-medium text-primary">
+                    {formatBytes(selectedStats.size)}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {" "}
+                    / {formatBytes(previewData.total_storage)}
+                  </span>
                 </p>
               </div>
             </div>
@@ -211,5 +244,5 @@ export function PreviewResultStep({ previewData, selectedFiles, onSelectionChang
         )}
       </AnimatePresence>
     </motion.div>
-  )
+  );
 }

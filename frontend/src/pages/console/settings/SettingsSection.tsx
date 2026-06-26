@@ -4,19 +4,22 @@ import {
   CardHeader,
   CardTitle,
   CardFooter,
-} from '@/components/ui/card'
-import { SpotlightCard } from '@/components/shared/SpotlightCard'
-import { motion } from 'framer-motion'
-import { smoothTransition, prefersReducedMotion } from '@/lib/animations/motion-config'
+} from "@/components/ui/card";
+import { SpotlightCard } from "@/components/shared/SpotlightCard";
+import { motion } from "framer-motion";
+import {
+  smoothTransition,
+  prefersReducedMotion,
+} from "@/lib/animations/motion-config";
 
 interface SettingsSectionProps {
-  icon?: React.ReactNode
-  title: string
-  description: string
-  children: React.ReactNode
-  footer?: React.ReactNode
-  className?: string
-  delay?: number
+  icon?: React.ReactNode;
+  title: string;
+  description: string;
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+  className?: string;
+  delay?: number;
 }
 
 export function SettingsSection({
@@ -43,8 +46,12 @@ export function SettingsSection({
               </div>
             )}
             <div className="flex-1 space-y-0.5 pt-0.5">
-              <CardTitle className="text-base font-semibold tracking-tight">{title}</CardTitle>
-              <CardDescription className="text-[13px] leading-relaxed">{description}</CardDescription>
+              <CardTitle className="text-base font-semibold tracking-tight">
+                {title}
+              </CardTitle>
+              <CardDescription className="text-[13px] leading-relaxed">
+                {description}
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -56,5 +63,5 @@ export function SettingsSection({
         )}
       </SpotlightCard>
     </motion.div>
-  )
+  );
 }

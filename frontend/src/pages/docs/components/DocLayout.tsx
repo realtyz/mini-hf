@@ -1,45 +1,45 @@
-import { useState, useEffect } from 'react'
-import { ChevronLeft } from 'lucide-react'
-import { Link, useOutletContext } from 'react-router'
-import { cn } from '@/lib/utils'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { DocSidebar } from './DocSidebar'
-import { TableOfContents } from './TableOfContents'
-import { MarkdownContent } from './MarkdownContent'
-import { getDocList, loadDocContent, extractToc } from '../docs.utils'
-import type { DocMeta, TocItem } from '../docs.types'
+import { useState, useEffect } from "react";
+import { ChevronLeft } from "lucide-react";
+import { Link, useOutletContext } from "react-router";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { DocSidebar } from "./DocSidebar";
+import { TableOfContents } from "./TableOfContents";
+import { MarkdownContent } from "./MarkdownContent";
+import { getDocList, loadDocContent, extractToc } from "../docs.utils";
+import type { DocMeta, TocItem } from "../docs.types";
 
 interface DocLayoutProps {
-  slug: string
+  slug: string;
 }
 
 interface OutletContext {
-  sidebarOpen: boolean
-  setSidebarOpen: (open: boolean) => void
+  sidebarOpen: boolean;
+  setSidebarOpen: (open: boolean) => void;
 }
 
 export function DocLayout({ slug }: DocLayoutProps) {
-  const [docs] = useState<DocMeta[]>(getDocList())
-  const [content, setContent] = useState<string>('')
-  const [toc, setToc] = useState<TocItem[]>([])
-  const [loading, setLoading] = useState(true)
-  const { sidebarOpen, setSidebarOpen } = useOutletContext<OutletContext>()
+  const [docs] = useState<DocMeta[]>(getDocList());
+  const [content, setContent] = useState<string>("");
+  const [toc, setToc] = useState<TocItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { sidebarOpen, setSidebarOpen } = useOutletContext<OutletContext>();
 
   useEffect(() => {
     const loadContent = async () => {
-      setLoading(true)
+      setLoading(true);
       try {
-        const rawContent = await loadDocContent(slug)
-        setContent(rawContent)
-        setToc(extractToc(rawContent))
+        const rawContent = await loadDocContent(slug);
+        setContent(rawContent);
+        setToc(extractToc(rawContent));
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadContent()
-    window.scrollTo(0, 0)
-  }, [slug])
+    loadContent();
+    window.scrollTo(0, 0);
+  }, [slug]);
 
   return (
     <>
@@ -56,8 +56,8 @@ export function DocLayout({ slug }: DocLayoutProps) {
         {/* Left Sidebar - Navigation */}
         <aside
           className={cn(
-            'fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-background pt-14 transition-transform lg:static lg:translate-x-0',
-            sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            "fixed inset-y-0 left-0 z-50 w-64 transform border-r bg-background pt-14 transition-transform lg:static lg:translate-x-0",
+            sidebarOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
           <ScrollArea className="h-full py-4">
@@ -100,7 +100,7 @@ export function DocLayout({ slug }: DocLayoutProps) {
         </aside>
       </div>
     </>
-  )
+  );
 }
 
-export default DocLayout
+export default DocLayout;

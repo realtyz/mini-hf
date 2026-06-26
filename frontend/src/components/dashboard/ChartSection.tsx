@@ -1,34 +1,34 @@
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
+} from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
-} from '@/components/ui/chart'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useTaskTrends } from '@/hooks/api/use-dashboard-queries'
-import { cn } from '@/lib/utils'
-import { motion } from 'framer-motion'
-import { useState } from 'react'
+} from "@/components/ui/chart";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useTaskTrends } from "@/hooks/api/use-dashboard-queries";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { useState } from "react";
 
 // Color palette for terminal task states only:
 // emerald=completed, red=failed/cancelled
 const chartConfig = {
   completed: {
-    label: '已完成',
-    color: 'hsl(160, 84%, 39%)', // emerald-500
+    label: "已完成",
+    color: "hsl(160, 84%, 39%)", // emerald-500
   },
   failed: {
-    label: '失败/取消',
-    color: 'hsl(0, 84%, 60%)', // red-500
+    label: "失败/取消",
+    color: "hsl(0, 84%, 60%)", // red-500
   },
-} as const
+} as const;
 
 // Legend item component with hover interaction
 function LegendItem({
@@ -37,30 +37,30 @@ function LegendItem({
   isActive,
   onToggle,
 }: {
-  color: string
-  label: string
-  isActive: boolean
-  onToggle: () => void
+  color: string;
+  label: string;
+  isActive: boolean;
+  onToggle: () => void;
 }) {
   return (
     <button
       onClick={onToggle}
       className={cn(
-        'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-all duration-200',
-        'hover:bg-muted/50',
-        isActive ? 'opacity-100' : 'opacity-40'
+        "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs transition-all duration-200",
+        "hover:bg-muted/50",
+        isActive ? "opacity-100" : "opacity-40",
       )}
     >
       <span
         className="h-2 w-2 rounded-full transition-transform duration-200"
         style={{
           backgroundColor: color,
-          transform: isActive ? 'scale(1)' : 'scale(0.8)',
+          transform: isActive ? "scale(1)" : "scale(0.8)",
         }}
       />
       <span className="text-muted-foreground">{label}</span>
     </button>
-  )
+  );
 }
 
 // Summary stat badge
@@ -69,9 +69,9 @@ function StatBadge({
   value,
   color,
 }: {
-  label: string
-  value: number
-  color: string
+  label: string;
+  value: number;
+  color: string;
 }) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50">
@@ -82,19 +82,19 @@ function StatBadge({
       <span className="text-xs text-muted-foreground">{label}</span>
       <span className="text-sm font-semibold">{value}</span>
     </div>
-  )
+  );
 }
 
 export function ChartSection() {
-  const { trends, isLoading } = useTaskTrends()
+  const { trends, isLoading } = useTaskTrends();
   const [activeBars, setActiveBars] = useState<Record<string, boolean>>({
     completed: true,
     failed: true,
-  })
+  });
 
   const toggleBar = (key: string) => {
-    setActiveBars((prev) => ({ ...prev, [key]: !prev[key] }))
-  }
+    setActiveBars((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // Calculate totals for summary
   const totals = trends.reduce(
@@ -102,8 +102,8 @@ export function ChartSection() {
       completed: acc.completed + day.completed,
       failed: acc.failed + day.failed,
     }),
-    { completed: 0, failed: 0 }
-  )
+    { completed: 0, failed: 0 },
+  );
 
   if (isLoading) {
     return (
@@ -116,7 +116,7 @@ export function ChartSection() {
           <Skeleton className="h-70 w-full" />
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -141,13 +141,13 @@ export function ChartSection() {
                 color="hsl(160, 84%, 39%)"
                 label="完成"
                 isActive={activeBars.completed}
-                onToggle={() => toggleBar('completed')}
+                onToggle={() => toggleBar("completed")}
               />
               <LegendItem
                 color="hsl(0, 84%, 60%)"
                 label="失败/取消"
                 isActive={activeBars.failed}
-                onToggle={() => toggleBar('failed')}
+                onToggle={() => toggleBar("failed")}
               />
             </div>
           </div>
@@ -189,17 +189,17 @@ export function ChartSection() {
                 tickLine={false}
                 axisLine={false}
                 tickMargin={12}
-                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
               />
               <YAxis
                 tickLine={false}
                 axisLine={false}
                 tickMargin={8}
                 allowDecimals={false}
-                tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }}
               />
               <ChartTooltip
-                cursor={{ fill: 'hsl(var(--muted))', opacity: 0.3 }}
+                cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
                 content={
                   <ChartTooltipContent
                     indicator="dot"
@@ -228,7 +228,7 @@ export function ChartSection() {
         </CardContent>
       </Card>
     </motion.div>
-  )
+  );
 }
 
-export default ChartSection
+export default ChartSection;

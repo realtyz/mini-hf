@@ -1,6 +1,6 @@
-import { useState } from 'react'
-import { Pencil } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { useState } from "react";
+import { Pencil } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,31 +9,31 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 
 interface StatusOption {
-  value: string
-  label: string
+  value: string;
+  label: string;
 }
 
 interface StatusEditDialogProps {
   /** The current status value */
-  currentStatus: string
+  currentStatus: string;
   /** Available status options to choose from */
-  options: StatusOption[]
+  options: StatusOption[];
   /** Display label for the entity being modified (e.g. "仓库状态", "版本状态") */
-  entityLabel: string
+  entityLabel: string;
   /** Called when the user confirms the new status */
-  onConfirm: (newStatus: string) => void
+  onConfirm: (newStatus: string) => void;
   /** Whether the mutation is pending */
-  isPending?: boolean
+  isPending?: boolean;
 }
 
 export function StatusEditDialog({
@@ -43,23 +43,24 @@ export function StatusEditDialog({
   onConfirm,
   isPending = false,
 }: StatusEditDialogProps) {
-  const [open, setOpen] = useState(false)
-  const [selected, setSelected] = useState<string>('')
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string>("");
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      setSelected('')
+      setSelected("");
     }
-    setOpen(nextOpen)
-  }
+    setOpen(nextOpen);
+  };
 
   const handleConfirm = () => {
-    if (!selected || selected === currentStatus) return
-    onConfirm(selected)
-    setOpen(false)
-  }
+    if (!selected || selected === currentStatus) return;
+    onConfirm(selected);
+    setOpen(false);
+  };
 
-  const currentLabel = options.find((o) => o.value === currentStatus)?.label ?? currentStatus
+  const currentLabel =
+    options.find((o) => o.value === currentStatus)?.label ?? currentStatus;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -75,7 +76,8 @@ export function StatusEditDialog({
         <DialogHeader>
           <DialogTitle>修改{entityLabel}</DialogTitle>
           <DialogDescription>
-            当前状态：<span className="font-medium text-foreground">{currentLabel}</span>
+            当前状态：
+            <span className="font-medium text-foreground">{currentLabel}</span>
           </DialogDescription>
         </DialogHeader>
         <div className="py-4">
@@ -110,5 +112,5 @@ export function StatusEditDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

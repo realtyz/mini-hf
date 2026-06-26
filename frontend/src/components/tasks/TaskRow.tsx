@@ -1,4 +1,4 @@
-import { memo, useState, useCallback } from 'react'
+import { memo, useState, useCallback } from "react";
 import {
   Box,
   Database,
@@ -10,106 +10,109 @@ import {
   X,
   Ban,
   RotateCcw,
-} from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { TaskStatusBadge } from '@/components/tasks/TaskStatusBadge'
-import { TableCell } from '@/components/ui/table'
-import { Button } from '@/components/ui/button'
+} from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
+import { TableCell } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
-import { RetryTaskDialog } from '@/components/tasks/RetryTaskDialog'
-import { formatBytes } from '@/lib/utils'
-import type { TaskResponse } from '@/lib/api/types'
-import { cn } from '@/lib/utils'
-import { motion } from 'framer-motion'
-import { useAuthStore } from '@/stores/auth-store'
-import type { ReactNode } from 'react'
+} from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { RetryTaskDialog } from "@/components/tasks/RetryTaskDialog";
+import { formatBytes } from "@/lib/utils";
+import type { TaskResponse } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
+import { useAuthStore } from "@/stores/auth-store";
+import type { ReactNode } from "react";
 
 export interface TaskRowProps {
-  task: TaskResponse
-  onViewDetail: (task: TaskResponse) => void
-  onPin?: (task: TaskResponse) => void
-  onUnpin?: (task: TaskResponse) => void
-  onApprove?: (task: TaskResponse) => void
-  onReject?: (task: TaskResponse) => void
-  onCancel?: (task: TaskResponse) => void
-  onRetry?: (task: TaskResponse) => void
-  isPinning?: boolean
-  isUnpinning?: boolean
-  isApproving?: boolean
-  isRejecting?: boolean
-  isCanceling?: boolean
-  isRetrying?: boolean
-  index?: number
+  task: TaskResponse;
+  onViewDetail: (task: TaskResponse) => void;
+  onPin?: (task: TaskResponse) => void;
+  onUnpin?: (task: TaskResponse) => void;
+  onApprove?: (task: TaskResponse) => void;
+  onReject?: (task: TaskResponse) => void;
+  onCancel?: (task: TaskResponse) => void;
+  onRetry?: (task: TaskResponse) => void;
+  isPinning?: boolean;
+  isUnpinning?: boolean;
+  isApproving?: boolean;
+  isRejecting?: boolean;
+  isCanceling?: boolean;
+  isRetrying?: boolean;
+  index?: number;
 }
 
-const FINAL_STATUSES = ['completed', 'failed', 'cancelled']
+const FINAL_STATUSES = ["completed", "failed", "cancelled"];
 
 function isWithin7Days(completedAt: string | null): boolean {
-  if (!completedAt) return false
-  const completedDate = new Date(completedAt)
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  return completedDate >= sevenDaysAgo
+  if (!completedAt) return false;
+  const completedDate = new Date(completedAt);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  return completedDate >= sevenDaysAgo;
 }
 
-type DialogType = 'cancel' | 'retry' | 'approve' | 'reject'
+type DialogType = "cancel" | "retry" | "approve" | "reject";
 
 interface DialogConfig {
-  title: string
-  confirmLabel: string
-  confirmVariant?: 'default' | 'destructive'
-  getDescription: (task: TaskResponse) => ReactNode
+  title: string;
+  confirmLabel: string;
+  confirmVariant?: "default" | "destructive";
+  getDescription: (task: TaskResponse) => ReactNode;
 }
 
 const DIALOG_CONFIGS: Record<DialogType, DialogConfig> = {
   cancel: {
-    title: '确认取消任务',
-    confirmLabel: '确认取消',
-    confirmVariant: 'destructive',
+    title: "确认取消任务",
+    confirmLabel: "确认取消",
+    confirmVariant: "destructive",
     getDescription: (task) => (
       <>
-        确定要取消任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+        确定要取消任务 <strong className="text-foreground">#{task.id}</strong>{" "}
+        吗？
         <p className="mt-2 text-sm">
           仓库：<span className="font-medium">{task.repo_id}</span>
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {task.status === 'pending_approval'
-            ? '取消后任务将被标记为已取消，需要重新创建任务。'
-            : '任务正在排队中，取消后需要重新创建任务。'}
+          {task.status === "pending_approval"
+            ? "取消后任务将被标记为已取消，需要重新创建任务。"
+            : "任务正在排队中，取消后需要重新创建任务。"}
         </p>
       </>
     ),
   },
   retry: {
-    title: '确认重试任务',
-    confirmLabel: '确认重试',
+    title: "确认重试任务",
+    confirmLabel: "确认重试",
     getDescription: (task) => (
       <>
-        确定要重试任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+        确定要重试任务 <strong className="text-foreground">#{task.id}</strong>{" "}
+        吗？
         <p className="mt-2 text-sm">
           仓库：<span className="font-medium">{task.repo_id}</span>
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          {task.status === 'failed'
-            ? '原任务执行失败，新任务将自动审批通过，无需管理员审核。'
-            : '原任务已被取消，新任务将自动审批通过，无需管理员审核。'}
+          {task.status === "failed"
+            ? "原任务执行失败，新任务将自动审批通过，无需管理员审核。"
+            : "原任务已被取消，新任务将自动审批通过，无需管理员审核。"}
         </p>
       </>
     ),
   },
   approve: {
-    title: '确认批准任务',
-    confirmLabel: '确认批准',
+    title: "确认批准任务",
+    confirmLabel: "确认批准",
     getDescription: (task) => (
       <>
-        确认要批准任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+        确认要批准任务 <strong className="text-foreground">#{task.id}</strong>{" "}
+        吗？
         <p className="mt-2 text-sm">
           仓库：<span className="font-medium">{task.repo_id}</span>
         </p>
@@ -120,12 +123,13 @@ const DIALOG_CONFIGS: Record<DialogType, DialogConfig> = {
     ),
   },
   reject: {
-    title: '确认拒绝任务',
-    confirmLabel: '确认拒绝',
-    confirmVariant: 'destructive',
+    title: "确认拒绝任务",
+    confirmLabel: "确认拒绝",
+    confirmVariant: "destructive",
     getDescription: (task) => (
       <>
-        确认要拒绝任务 <strong className="text-foreground">#{task.id}</strong> 吗？
+        确认要拒绝任务 <strong className="text-foreground">#{task.id}</strong>{" "}
+        吗？
         <p className="mt-2 text-sm">
           仓库：<span className="font-medium">{task.repo_id}</span>
         </p>
@@ -135,21 +139,30 @@ const DIALOG_CONFIGS: Record<DialogType, DialogConfig> = {
       </>
     ),
   },
-}
+};
 
-const DIALOG_DISABLED: Record<DialogType, keyof Pick<TaskRowProps, 'isCanceling' | 'isRetrying' | 'isApproving' | 'isRejecting'>> = {
-  cancel: 'isCanceling',
-  retry: 'isRetrying',
-  approve: 'isApproving',
-  reject: 'isRejecting',
-}
+const DIALOG_DISABLED: Record<
+  DialogType,
+  keyof Pick<
+    TaskRowProps,
+    "isCanceling" | "isRetrying" | "isApproving" | "isRejecting"
+  >
+> = {
+  cancel: "isCanceling",
+  retry: "isRetrying",
+  approve: "isApproving",
+  reject: "isRejecting",
+};
 
-const DIALOG_HANDLER: Record<DialogType, keyof Pick<TaskRowProps, 'onCancel' | 'onRetry' | 'onApprove' | 'onReject'>> = {
-  cancel: 'onCancel',
-  retry: 'onRetry',
-  approve: 'onApprove',
-  reject: 'onReject',
-}
+const DIALOG_HANDLER: Record<
+  DialogType,
+  keyof Pick<TaskRowProps, "onCancel" | "onRetry" | "onApprove" | "onReject">
+> = {
+  cancel: "onCancel",
+  retry: "onRetry",
+  approve: "onApprove",
+  reject: "onReject",
+};
 
 export const TaskRow = memo(function TaskRow({
   task,
@@ -168,44 +181,44 @@ export const TaskRow = memo(function TaskRow({
   isRetrying,
   index = 0,
 }: TaskRowProps) {
-  const { user } = useAuthStore()
-  const isAdmin = user?.role === 'admin'
-  const isFinalStatus = FINAL_STATUSES.includes(task.status)
-  const isPinned = !!task.pinned_at && !isFinalStatus
-  const isRunning = task.status === 'running'
+  const { user } = useAuthStore();
+  const isAdmin = user?.role === "admin";
+  const isFinalStatus = FINAL_STATUSES.includes(task.status);
+  const isPinned = !!task.pinned_at && !isFinalStatus;
+  const isRunning = task.status === "running";
 
-  const [dialogType, setDialogType] = useState<DialogType | null>(null)
+  const [dialogType, setDialogType] = useState<DialogType | null>(null);
 
   const canCancel =
-    (task.status === 'pending_approval' || task.status === 'pending') &&
-    (isAdmin || task.creator_user_id === user?.id)
+    (task.status === "pending_approval" || task.status === "pending") &&
+    (isAdmin || task.creator_user_id === user?.id);
 
   const canRetry =
-    (task.status === 'failed' || task.status === 'cancelled') &&
+    (task.status === "failed" || task.status === "cancelled") &&
     isWithin7Days(task.completed_at) &&
-    (isAdmin || task.creator_user_id === user?.id)
+    (isAdmin || task.creator_user_id === user?.id);
 
-  const canApproveOrReject = isAdmin && task.status === 'pending_approval'
-  const canPin = isAdmin && task.status === 'pending' && !isPinned
-  const canUnpin = isAdmin && task.status === 'pending' && isPinned
+  const canApproveOrReject = isAdmin && task.status === "pending_approval";
+  const canPin = isAdmin && task.status === "pending" && !isPinned;
+  const canUnpin = isAdmin && task.status === "pending" && isPinned;
 
   const handleDialogConfirm = useCallback(() => {
-    if (!dialogType) return
-    const handlerKey = DIALOG_HANDLER[dialogType]
-    const handlers = { onCancel, onRetry, onApprove, onReject }
-    const handler = handlers[handlerKey]
-    setDialogType(null)
-    handler?.(task)
-  }, [dialogType, task, onCancel, onRetry, onApprove, onReject])
+    if (!dialogType) return;
+    const handlerKey = DIALOG_HANDLER[dialogType];
+    const handlers = { onCancel, onRetry, onApprove, onReject };
+    const handler = handlers[handlerKey];
+    setDialogType(null);
+    handler?.(task);
+  }, [dialogType, task, onCancel, onRetry, onApprove, onReject]);
 
-  const dialogConfig = dialogType ? DIALOG_CONFIGS[dialogType] : null
-  const disabledKey = dialogType ? DIALOG_DISABLED[dialogType] : null
+  const dialogConfig = dialogType ? DIALOG_CONFIGS[dialogType] : null;
+  const disabledKey = dialogType ? DIALOG_DISABLED[dialogType] : null;
   const isDialogDisabled = disabledKey
     ? (() => {
-        const props = { isCanceling, isRetrying, isApproving, isRejecting }
-        return !!props[disabledKey]
+        const props = { isCanceling, isRetrying, isApproving, isRejecting };
+        return !!props[disabledKey];
       })()
-    : false
+    : false;
 
   return (
     <motion.tr
@@ -219,7 +232,7 @@ export const TaskRow = memo(function TaskRow({
       className={cn(
         "group border-b border-border/30 last:border-0 transition-all duration-150",
         "hover:bg-muted/20",
-        isRunning && "animate-pulse-bg"
+        isRunning && "animate-pulse-bg",
       )}
     >
       <TableCell className="py-3 pl-5 text-center">
@@ -301,11 +314,15 @@ export const TaskRow = memo(function TaskRow({
               <MoreHorizontal className="size-3.5 text-muted-foreground/60" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40 rounded-xl" sideOffset={4}>
+          <DropdownMenuContent
+            align="end"
+            className="w-40 rounded-xl"
+            sideOffset={4}
+          >
             <DropdownMenuItem
               onClick={(e) => {
-                e.stopPropagation()
-                onViewDetail(task)
+                e.stopPropagation();
+                onViewDetail(task);
               }}
               className="text-[13px] cursor-pointer rounded-lg"
             >
@@ -318,8 +335,8 @@ export const TaskRow = memo(function TaskRow({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={(e) => {
-                    e.stopPropagation()
-                    setDialogType('approve')
+                    e.stopPropagation();
+                    setDialogType("approve");
                   }}
                   disabled={isApproving}
                   className="text-[13px] cursor-pointer rounded-lg"
@@ -329,8 +346,8 @@ export const TaskRow = memo(function TaskRow({
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={(e) => {
-                    e.stopPropagation()
-                    setDialogType('reject')
+                    e.stopPropagation();
+                    setDialogType("reject");
                   }}
                   disabled={isRejecting}
                   className="text-[13px] cursor-pointer text-destructive focus:text-destructive rounded-lg"
@@ -347,8 +364,8 @@ export const TaskRow = memo(function TaskRow({
                 {canPin && (
                   <DropdownMenuItem
                     onClick={(e) => {
-                      e.stopPropagation()
-                      onPin?.(task)
+                      e.stopPropagation();
+                      onPin?.(task);
                     }}
                     disabled={isPinning}
                     className="text-[13px] cursor-pointer rounded-lg"
@@ -360,8 +377,8 @@ export const TaskRow = memo(function TaskRow({
                 {canUnpin && (
                   <DropdownMenuItem
                     onClick={(e) => {
-                      e.stopPropagation()
-                      onUnpin?.(task)
+                      e.stopPropagation();
+                      onUnpin?.(task);
                     }}
                     disabled={isUnpinning}
                     className="text-[13px] cursor-pointer rounded-lg"
@@ -378,8 +395,8 @@ export const TaskRow = memo(function TaskRow({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={(e) => {
-                    e.stopPropagation()
-                    setDialogType('cancel')
+                    e.stopPropagation();
+                    setDialogType("cancel");
                   }}
                   disabled={isCanceling}
                   className="text-[13px] cursor-pointer text-destructive focus:text-destructive rounded-lg"
@@ -395,8 +412,8 @@ export const TaskRow = memo(function TaskRow({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={(e) => {
-                    e.stopPropagation()
-                    setDialogType('retry')
+                    e.stopPropagation();
+                    setDialogType("retry");
                   }}
                   disabled={isRetrying}
                   className="text-[13px] cursor-pointer rounded-lg"
@@ -409,25 +426,31 @@ export const TaskRow = memo(function TaskRow({
           </DropdownMenuContent>
         </DropdownMenu>
 
-        {dialogType === 'retry' ? (
+        {dialogType === "retry" ? (
           <RetryTaskDialog
             open={true}
-            onOpenChange={(open) => { if (!open) setDialogType(null) }}
+            onOpenChange={(open) => {
+              if (!open) setDialogType(null);
+            }}
             taskId={task.id}
             repoId={task.repo_id}
             revision={task.revision}
             onRetrySuccess={() => {
-              setDialogType(null)
-              onRetry?.(task)
+              setDialogType(null);
+              onRetry?.(task);
             }}
           />
         ) : (
           <ConfirmDialog
             open={dialogType !== null}
-            onOpenChange={(open) => { if (!open) setDialogType(null) }}
-            title={dialogConfig?.title ?? ''}
-            description={dialogConfig ? dialogConfig.getDescription(task) : null}
-            confirmLabel={dialogConfig?.confirmLabel ?? ''}
+            onOpenChange={(open) => {
+              if (!open) setDialogType(null);
+            }}
+            title={dialogConfig?.title ?? ""}
+            description={
+              dialogConfig ? dialogConfig.getDescription(task) : null
+            }
+            confirmLabel={dialogConfig?.confirmLabel ?? ""}
             confirmVariant={dialogConfig?.confirmVariant}
             onConfirm={handleDialogConfirm}
             disabled={isDialogDisabled}
@@ -435,5 +458,5 @@ export const TaskRow = memo(function TaskRow({
         )}
       </TableCell>
     </motion.tr>
-  )
-})
+  );
+});

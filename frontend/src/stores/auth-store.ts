@@ -1,8 +1,8 @@
-import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
-import type { UserResponse } from '@/lib/api/types'
-import { config } from '@/lib/runtime-config'
-import endpoints from '@/lib/api/endpoints'
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+import type { UserResponse } from "@/lib/api/types";
+import { config } from "@/lib/runtime-config";
+import endpoints from "@/lib/api/endpoints";
 
 /**
  * 认证状态管理
@@ -15,20 +15,20 @@ import endpoints from '@/lib/api/endpoints'
 
 interface AuthState {
   // State
-  token: string | null
-  refreshToken: string | null
-  user: UserResponse | null
-  isAuthenticated: boolean
-  tokenExpiresAt: number | null // 过期时间戳（毫秒）
+  token: string | null;
+  refreshToken: string | null;
+  user: UserResponse | null;
+  isAuthenticated: boolean;
+  tokenExpiresAt: number | null; // 过期时间戳（毫秒）
 
   // Actions
-  login: (accessToken: string, refreshToken: string, expiresIn: number) => void
-  logout: () => void
-  serverLogout: () => Promise<void>
-  setUser: (user: UserResponse) => void
-  setToken: (token: string, expiresIn: number, refreshToken?: string) => void
-  isTokenExpired: () => boolean
-  isTokenAboutToExpire: (bufferSeconds?: number) => boolean
+  login: (accessToken: string, refreshToken: string, expiresIn: number) => void;
+  logout: () => void;
+  serverLogout: () => Promise<void>;
+  setUser: (user: UserResponse) => void;
+  setToken: (token: string, expiresIn: number, refreshToken?: string) => void;
+  isTokenExpired: () => boolean;
+  isTokenAboutToExpire: (bufferSeconds?: number) => boolean;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -56,27 +56,27 @@ export const useAuthStore = create<AuthState>()(
           user: null,
           isAuthenticated: false,
           tokenExpiresAt: null,
-        })
+        });
       },
 
       serverLogout: async () => {
-        const { token, refreshToken } = get()
+        const { token, refreshToken } = get();
         if (refreshToken && token) {
           try {
             const headers: Record<string, string> = {
               Authorization: `Bearer ${refreshToken}`,
-              'Content-Type': 'application/json',
-            }
+              "Content-Type": "application/json",
+            };
             await fetch(`${config.API_BASE_URL}${endpoints.auth.logout}`, {
-              method: 'POST',
+              method: "POST",
               headers,
               body: JSON.stringify({ access_token: token }),
-            })
+            });
           } catch {
             // Server logout is best-effort; clear local state regardless
           }
         }
-        get().logout()
+        get().logout();
       },
 
       setUser: (user) =>
@@ -92,19 +92,19 @@ export const useAuthStore = create<AuthState>()(
         }),
 
       isTokenExpired: () => {
-        const { tokenExpiresAt } = get()
-        if (!tokenExpiresAt) return true
-        return Date.now() >= tokenExpiresAt
+        const { tokenExpiresAt } = get();
+        if (!tokenExpiresAt) return true;
+        return Date.now() >= tokenExpiresAt;
       },
 
       isTokenAboutToExpire: (bufferSeconds = 60) => {
-        const { tokenExpiresAt } = get()
-        if (!tokenExpiresAt) return true
-        return Date.now() >= tokenExpiresAt - bufferSeconds * 1000
+        const { tokenExpiresAt } = get();
+        if (!tokenExpiresAt) return true;
+        return Date.now() >= tokenExpiresAt - bufferSeconds * 1000;
       },
     }),
     {
-      name: 'auth-storage', // localStorage key
+      name: "auth-storage", // localStorage key
       storage: createJSONStorage(() => localStorage),
       // 持久化 token 相关状态，用户信息不持久化
       partialize: (state) => ({
@@ -116,13 +116,13 @@ export const useAuthStore = create<AuthState>()(
       // 重新水化后验证状态一致性
       onRehydrateStorage: () => (state) => {
         if (state) {
-          const hasToken = !!state.token
+          const hasToken = !!state.token;
           if (hasToken !== state.isAuthenticated) {
             // 使用 setState 触发响应式更新，避免直接 mutation
-            useAuthStore.setState({ isAuthenticated: hasToken })
+            useAuthStore.setState({ isAuthenticated: hasToken });
           }
         }
       },
-    }
-  )
-)
+    },
+  ),
+);

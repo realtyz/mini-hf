@@ -82,7 +82,10 @@ export function OTPInput({
   const handlePaste = useCallback(
     (e: React.ClipboardEvent) => {
       e.preventDefault();
-      const pastedData = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, length);
+      const pastedData = e.clipboardData
+        .getData("text")
+        .replace(/\D/g, "")
+        .slice(0, length);
       onChange(pastedData);
 
       // 聚焦到粘贴内容末尾或最后一个输入框
@@ -104,10 +107,15 @@ export function OTPInput({
   }, []);
 
   // 将 value 转换为数组，每个元素对应一个输入框
-  const valueArray = value.split("").concat(Array(length - value.length).fill(""));
+  const valueArray = value
+    .split("")
+    .concat(Array(length - value.length).fill(""));
 
   return (
-    <div className={cn("flex gap-2 justify-center", className)} onPaste={handlePaste}>
+    <div
+      className={cn("flex gap-2 justify-center", className)}
+      onPaste={handlePaste}
+    >
       {valueArray.map((digit, index) => (
         <input
           key={index}

@@ -1,45 +1,46 @@
-import { memo, useCallback, useMemo, useState } from 'react'
-import { toast } from 'sonner'
-import { isEqual } from 'lodash-es'
-import { Skeleton } from '@/components/ui/skeleton'
-import { SettingsSection } from './SettingsSection'
-import { ActionsFooter } from './ActionsFooter'
-import { ConfigField } from './ConfigField'
-import { useBatchUpdateConfigs } from '@/hooks/api'
-import type { ConfigCategorySchema, ConfigFieldSchema } from '@/lib/api/types'
+import { memo, useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { isEqual } from "lodash-es";
+import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsSection } from "./SettingsSection";
+import { ActionsFooter } from "./ActionsFooter";
+import { ConfigField } from "./ConfigField";
+import { useBatchUpdateConfigs } from "@/hooks/api";
+import type { ConfigCategorySchema, ConfigFieldSchema } from "@/lib/api/types";
 
 interface ConfigFormEngineProps {
-  category: ConfigCategorySchema
-  actionSlot?: (form: Record<string, unknown>) => React.ReactNode
+  category: ConfigCategorySchema;
+  actionSlot?: (form: Record<string, unknown>) => React.ReactNode;
 }
 
 function valueFromField(field: ConfigFieldSchema): unknown {
-  if (field.sensitive) return ''
-  if (field.value !== undefined && field.value !== null && field.value !== '') return field.value
-  return field.default ?? ''
+  if (field.sensitive) return "";
+  if (field.value !== undefined && field.value !== null && field.value !== "")
+    return field.value;
+  return field.default ?? "";
 }
 
 function serializeValue(value: unknown, field: ConfigFieldSchema): string {
-  if (value === null || value === undefined) return ''
+  if (value === null || value === undefined) return "";
 
   switch (field.type) {
-    case 'json': {
-      if (field.ui.widget === 'hf_endpoint_list' && Array.isArray(value)) {
-        value = value.filter((e: string) => e.trim() !== '')
+    case "json": {
+      if (field.ui.widget === "hf_endpoint_list" && Array.isArray(value)) {
+        value = value.filter((e: string) => e.trim() !== "");
       }
-      return JSON.stringify(value)
+      return JSON.stringify(value);
     }
-    case 'bool':
-      return Boolean(value).toString()
-    case 'int':
-      return String(Number(value))
-    case 'float':
-      return String(Number(value))
-    case 'password':
-    case 'string':
-    case 'select':
+    case "bool":
+      return Boolean(value).toString();
+    case "int":
+      return String(Number(value));
+    case "float":
+      return String(Number(value));
+    case "password":
+    case "string":
+    case "select":
     default:
-      return String(value)
+      return String(value);
   }
 }
 
@@ -55,23 +56,30 @@ function FormSkeleton() {
         <Skeleton className="h-16 w-full rounded-lg" />
       </div>
     </div>
-  )
+  );
 }
 
-export const ConfigFormEngine = memo(function ConfigFormEngine({ category, actionSlot }: ConfigFormEngineProps) {
+export const ConfigFormEngine = memo(function ConfigFormEngine({
+  category,
+  actionSlot,
+}: ConfigFormEngineProps) {
   const initialValues = useMemo(
-    () => Object.fromEntries(category.fields.map((field) => [field.key, valueFromField(field)])),
-    [category.fields]
-  )
-  const [form, setForm] = useState<Record<string, unknown>>(initialValues)
-  const [originalForm, setOriginalForm] = useState<Record<string, unknown>>(initialValues)
-  const batchUpdate = useBatchUpdateConfigs()
+    () =>
+      Object.fromEntries(
+        category.fields.map((field) => [field.key, valueFromField(field)]),
+      ),
+    [category.fields],
+  );
+  const [form, setForm] = useState<Record<string, unknown>>(initialValues);
+  const [originalForm, setOriginalForm] =
+    useState<Record<string, unknown>>(initialValues);
+  const batchUpdate = useBatchUpdateConfigs();
 
-  const hasChanges = !isEqual(form, originalForm)
+  const hasChanges = !isEqual(form, originalForm);
 
   const setField = useCallback((key: string, value: unknown) => {
-    setForm((prev) => ({ ...prev, [key]: value }))
-  }, [])
+    setForm((prev) => ({ ...prev, [key]: value }));
+  }, []);
 
   const save = useCallback(async () => {
     try {
@@ -81,27 +89,32 @@ export const ConfigFormEngine = memo(function ConfigFormEngine({ category, actio
           value: serializeValue(form[field.key], field),
           category: category.id,
         })),
-      })
-      setOriginalForm(form)
-      toast.success('配置已保存')
+      });
+      setOriginalForm(form);
+      toast.success("配置已保存");
     } catch (err: unknown) {
       const message =
-        (err as { message?: string })?.message ?? '保存失败，请稍后再试'
-      toast.error(message)
+        (err as { message?: string })?.message ?? "保存失败，请稍后再试";
+      toast.error(message);
     }
-  }, [batchUpdate, category.fields, category.id, form])
+  }, [batchUpdate, category.fields, category.id, form]);
 
   const reset = useCallback(() => {
-    setForm(originalForm)
-    toast.info('已恢复为上次保存的配置')
-  }, [originalForm])
+    setForm(originalForm);
+    toast.info("已恢复为上次保存的配置");
+  }, [originalForm]);
 
   if (!category.fields.length) {
     return (
-      <SettingsSection title={category.label} description={category.description}>
-        <p className="py-8 text-center text-sm text-muted-foreground">此分类暂无配置项</p>
+      <SettingsSection
+        title={category.label}
+        description={category.description}
+      >
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          此分类暂无配置项
+        </p>
       </SettingsSection>
-    )
+    );
   }
 
   return (
@@ -128,9 +141,13 @@ export const ConfigFormEngine = memo(function ConfigFormEngine({ category, actio
           />
         ))}
       </div>
-      {actionSlot ? <div className="mt-5 pt-4 border-t border-border/30">{actionSlot(form)}</div> : null}
+      {actionSlot ? (
+        <div className="mt-5 pt-4 border-t border-border/30">
+          {actionSlot(form)}
+        </div>
+      ) : null}
     </SettingsSection>
-  )
-})
+  );
+});
 
-export { FormSkeleton }
+export { FormSkeleton };

@@ -89,9 +89,7 @@ function UserDropdown({ isInConsole = false }: UserDropdownProps) {
             </AvatarFallback>
           </Avatar>
           <div className="hidden md:flex flex-col items-start text-left">
-            <span className="text-xs font-medium leading-none">
-              {userName}
-            </span>
+            <span className="text-xs font-medium leading-none">{userName}</span>
             <span className="text-[11px] text-muted-foreground leading-none mt-0.5">
               {userRole}
             </span>
@@ -134,15 +132,24 @@ function UserDropdown({ isInConsole = false }: UserDropdownProps) {
             value={theme}
             onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}
           >
-            <DropdownMenuRadioItem value="light" className="text-xs cursor-pointer">
+            <DropdownMenuRadioItem
+              value="light"
+              className="text-xs cursor-pointer"
+            >
               <Sun className="mr-2 h-3.5 w-3.5" />
               浅色
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="dark" className="text-xs cursor-pointer">
+            <DropdownMenuRadioItem
+              value="dark"
+              className="text-xs cursor-pointer"
+            >
               <Moon className="mr-2 h-3.5 w-3.5" />
               深色
             </DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="system" className="text-xs cursor-pointer">
+            <DropdownMenuRadioItem
+              value="system"
+              className="text-xs cursor-pointer"
+            >
               <Monitor className="mr-2 h-3.5 w-3.5" />
               跟随系统
             </DropdownMenuRadioItem>
@@ -228,10 +235,11 @@ export function Header({
                   to={item.href}
                   viewTransition
                   onClick={handleClick}
-                  className={`relative flex items-center gap-2 rounded-lg px-4 py-2 transition-all duration-200 ease-out ${active
+                  className={`relative flex items-center gap-2 rounded-lg px-4 py-2 transition-all duration-200 ease-out ${
+                    active
                       ? "text-primary font-semibold"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                    }`}
+                  }`}
                 >
                   {active && (
                     <span className="absolute inset-0 rounded-lg bg-primary/10 shadow-sm transition-all duration-200" />
@@ -293,10 +301,11 @@ export function Header({
                     <Link
                       key={item.href}
                       to={item.href}
-                      className={`flex items-center gap-3 text-base font-medium rounded-lg px-4 py-3 transition-all duration-200 ${active
+                      className={`flex items-center gap-3 text-base font-medium rounded-lg px-4 py-3 transition-all duration-200 ${
+                        active
                           ? "bg-primary text-primary-foreground shadow-sm"
                           : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
-                        }`}
+                      }`}
                       onClick={handleClick}
                       viewTransition
                     >

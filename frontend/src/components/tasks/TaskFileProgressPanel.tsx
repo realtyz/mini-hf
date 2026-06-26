@@ -1,5 +1,17 @@
 import { motion } from "framer-motion";
-import { Box, Database, Smile, Globe, FileDown, Inbox, Loader2, Settings, HardDrive, FileText, AlertTriangle } from "lucide-react";
+import {
+  Box,
+  Database,
+  Smile,
+  Globe,
+  FileDown,
+  Inbox,
+  Loader2,
+  Settings,
+  HardDrive,
+  FileText,
+  AlertTriangle,
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -16,24 +28,54 @@ interface TaskFileProgressPanelProps {
 function getStatusInfo(status: string | undefined) {
   switch (status?.toLowerCase()) {
     case "running":
-      return { label: "进行中", icon: Loader2, color: "text-blue-500", bgColor: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" };
+      return {
+        label: "进行中",
+        icon: Loader2,
+        color: "text-blue-500",
+        bgColor:
+          "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+      };
     case "pending":
     case "pending_approval":
-      return { label: "等待中", icon: Settings, color: "text-slate-500", bgColor: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" };
+      return {
+        label: "等待中",
+        icon: Settings,
+        color: "text-slate-500",
+        bgColor:
+          "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
+      };
     case "completed":
-      return { label: "已完成", icon: Smile, color: "text-emerald-500", bgColor: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300" };
+      return {
+        label: "已完成",
+        icon: Smile,
+        color: "text-emerald-500",
+        bgColor:
+          "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+      };
     case "failed":
-      return { label: "失败", icon: Settings, color: "text-red-500", bgColor: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300" };
+      return {
+        label: "失败",
+        icon: Settings,
+        color: "text-red-500",
+        bgColor: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
+      };
     default:
-      return { label: "处理中", icon: Loader2, color: "text-blue-500", bgColor: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300" };
+      return {
+        label: "处理中",
+        icon: Loader2,
+        color: "text-blue-500",
+        bgColor:
+          "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
+      };
   }
 }
 
 export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
-  const { data: progressData, isLoading, error } = useTaskProgress(
-    task?.id ?? null,
-    task?.status
-  );
+  const {
+    data: progressData,
+    isLoading,
+    error,
+  } = useTaskProgress(task?.id ?? null, task?.status);
 
   const progressInfo = progressData;
   const files = progressInfo?.files ?? [];
@@ -47,25 +89,27 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
     ? Math.round(progressInfo.progress_percent)
     : task?.total_file_count
       ? Math.round(
-          ((task.downloaded_file_count ?? 0) /
-            task.total_file_count) *
-            100
+          ((task.downloaded_file_count ?? 0) / task.total_file_count) * 100,
         )
       : 0;
 
   // 文件进度（三层：已下载 / 请求 / 仓库总量）
-  const downloadedFiles = progressInfo?.downloaded_files ?? task?.downloaded_file_count ?? 0;
+  const downloadedFiles =
+    progressInfo?.downloaded_files ?? task?.downloaded_file_count ?? 0;
   const requiredFiles = task?.required_file_count ?? 0;
   const totalFiles = task?.total_file_count ?? 0;
 
   // 存储进度（三层：已下载 / 请求 / 仓库总量）
-  const downloadedBytes = progressInfo?.downloaded_bytes ?? task?.downloaded_bytes ?? 0;
+  const downloadedBytes =
+    progressInfo?.downloaded_bytes ?? task?.downloaded_bytes ?? 0;
   const requiredBytes = task?.required_storage ?? 0;
   const totalBytes = task?.total_storage ?? 0;
 
   // 进度百分比
-  const storageProgress = requiredBytes > 0 ? Math.round((downloadedBytes / requiredBytes) * 100) : 0;
-  const fileProgress = requiredFiles > 0 ? Math.round((downloadedFiles / requiredFiles) * 100) : 0;
+  const storageProgress =
+    requiredBytes > 0 ? Math.round((downloadedBytes / requiredBytes) * 100) : 0;
+  const fileProgress =
+    requiredFiles > 0 ? Math.round((downloadedFiles / requiredFiles) * 100) : 0;
 
   // 失败文件统计
   const failedFileCount = files.filter((f) => f.status === "failed").length;
@@ -77,8 +121,12 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted/50 mb-4">
             <Inbox className="h-7 w-7 text-muted-foreground/50" />
           </div>
-          <p className="text-sm font-medium text-foreground">选择左侧任务查看文件进度</p>
-          <p className="text-xs text-muted-foreground mt-1">点击任务卡片以查看详情</p>
+          <p className="text-sm font-medium text-foreground">
+            选择左侧任务查看文件进度
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            点击任务卡片以查看详情
+          </p>
         </CardContent>
       </Card>
     );
@@ -99,10 +147,7 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
           ) : (
             <Globe className="h-4 w-4 text-blue-500 shrink-0" />
           )}
-          <span
-            className="font-medium truncate"
-            title={task.repo_id}
-          >
+          <span className="font-medium truncate" title={task.repo_id}>
             {task.repo_id}
           </span>
           <Badge
@@ -163,10 +208,17 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
               indicatorClassName="bg-blue-500"
             />
             <div className="text-xs">
-              <span className="font-medium tabular-nums">{formatBytes(downloadedBytes)}</span>
-              <span className="text-muted-foreground"> / {formatBytes(requiredBytes)}</span>
+              <span className="font-medium tabular-nums">
+                {formatBytes(downloadedBytes)}
+              </span>
+              <span className="text-muted-foreground">
+                {" "}
+                / {formatBytes(requiredBytes)}
+              </span>
               {requiredBytes < totalBytes && (
-                <span className="text-muted-foreground ml-1 text-[10px]">(仓库 {formatBytes(totalBytes)})</span>
+                <span className="text-muted-foreground ml-1 text-[10px]">
+                  (仓库 {formatBytes(totalBytes)})
+                </span>
               )}
             </div>
           </div>
@@ -183,16 +235,22 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
               indicatorClassName="bg-emerald-500"
             />
             <div className="text-xs">
-              <span className="font-medium tabular-nums">{downloadedFiles}</span>
+              <span className="font-medium tabular-nums">
+                {downloadedFiles}
+              </span>
               <span className="text-muted-foreground"> / {requiredFiles}</span>
               {requiredFiles < totalFiles && (
-                <span className="text-muted-foreground ml-1 text-[10px]">(仓库共 {totalFiles} 个)</span>
+                <span className="text-muted-foreground ml-1 text-[10px]">
+                  (仓库共 {totalFiles} 个)
+                </span>
               )}
             </div>
             {failedFileCount > 0 && (
               <div className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 mt-0.5">
                 <AlertTriangle className="h-3 w-3 shrink-0" />
-                <span className="tabular-nums">{failedFileCount} 个文件失败</span>
+                <span className="tabular-nums">
+                  {failedFileCount} 个文件失败
+                </span>
               </div>
             )}
           </div>
@@ -202,9 +260,7 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
       <CardContent className="min-w-0 flex-1 min-h-0 flex flex-col">
         <div className="flex items-center gap-2 mb-4 pb-4 border-b min-w-0 shrink-0">
           <FileDown className="h-4 w-4 text-muted-foreground shrink-0" />
-          <CardTitle className="text-sm font-medium">
-            文件进度详情
-          </CardTitle>
+          <CardTitle className="text-sm font-medium">文件进度详情</CardTitle>
           {isRunning && !progressData && (
             <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-2 shrink-0" />
           )}

@@ -17,7 +17,7 @@ export function buildTree(
     size: number;
     is_cached: boolean | null;
     required?: boolean;
-  }>
+  }>,
 ): Map<string, TreeNode> {
   const root = new Map<string, TreeNode>();
 
@@ -64,7 +64,7 @@ export function buildTree(
 
 export function getChildrenAtPath(
   root: Map<string, TreeNode>,
-  path: string
+  path: string,
 ): Map<string, TreeNode> | null {
   if (!path) return root;
 
@@ -84,7 +84,7 @@ export function getChildrenAtPath(
 
 export function getFilesInDirectory(
   dirPath: string,
-  items: PreviewItem[]
+  items: PreviewItem[],
 ): string[] {
   return items
     .filter((i) => i.type === "file" && i.path.startsWith(dirPath + "/"))
@@ -94,7 +94,7 @@ export function getFilesInDirectory(
 export function getDirectorySelectionState(
   dirPath: string,
   selectedPaths: Set<string>,
-  items: PreviewItem[]
+  items: PreviewItem[],
 ): "all" | "none" | "some" {
   const files = getFilesInDirectory(dirPath, items);
   if (files.length === 0) return "none";

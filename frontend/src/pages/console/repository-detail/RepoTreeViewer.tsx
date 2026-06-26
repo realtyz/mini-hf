@@ -165,7 +165,10 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
   if (error) {
     return (
       <div className="border border-border/60 rounded-lg py-10 flex flex-col items-center justify-center">
-        <SearchX className="size-4 text-muted-foreground/60 mb-2" strokeWidth={1.5} />
+        <SearchX
+          className="size-4 text-muted-foreground/60 mb-2"
+          strokeWidth={1.5}
+        />
         <p className="text-xs font-mono text-muted-foreground mb-3">加载失败</p>
         <Button
           variant="ghost"
@@ -182,7 +185,10 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
   if (allItems.length === 0) {
     return (
       <div className="border border-border/60 rounded-lg py-10 flex flex-col items-center justify-center">
-        <File className="size-4 text-muted-foreground/40 mb-2" strokeWidth={1.5} />
+        <File
+          className="size-4 text-muted-foreground/40 mb-2"
+          strokeWidth={1.5}
+        />
         <p className="text-xs font-mono text-muted-foreground">暂无文件</p>
       </div>
     );
@@ -244,7 +250,10 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
       >
         {sortedChildren.length === 0 ? (
           <div className="h-full min-h-32 flex flex-col items-center justify-center text-muted-foreground">
-            <Folder className="size-4 text-muted-foreground/30 mb-2" strokeWidth={1.5} />
+            <Folder
+              className="size-4 text-muted-foreground/30 mb-2"
+              strokeWidth={1.5}
+            />
             <p className="text-xs font-mono">此目录为空</p>
           </div>
         ) : (
@@ -359,7 +368,9 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
           {dirCount} 目录 · {fileCount} 文件
         </span>
         <span className="tabular-nums">
-          <span className="text-foreground/80 normal-case">{repoFileStats.cached}</span>
+          <span className="text-foreground/80 normal-case">
+            {repoFileStats.cached}
+          </span>
           <span className="opacity-60"> / {repoFileStats.total} 已缓存</span>
         </span>
       </div>

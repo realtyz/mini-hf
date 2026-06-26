@@ -1,9 +1,9 @@
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Skeleton } from '@/components/ui/skeleton'
-import { motion } from 'framer-motion'
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { motion } from "framer-motion";
 
 interface RepoCardSkeletonProps {
-  index?: number
+  index?: number;
 }
 
 export function RepoCardSkeleton({ index = 0 }: RepoCardSkeletonProps) {
@@ -56,5 +56,5 @@ export function RepoCardSkeleton({ index = 0 }: RepoCardSkeletonProps) {
         </CardContent>
       </Card>
     </motion.div>
-  )
+  );
 }

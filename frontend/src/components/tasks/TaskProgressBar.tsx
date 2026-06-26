@@ -36,9 +36,11 @@ export function TaskProgressBar({
           {speedBytesPerSec !== null && speedBytesPerSec > 0 && (
             <span>速度: {formatBytes(speedBytesPerSec)}/s</span>
           )}
-          {etaSeconds !== undefined && etaSeconds !== null && etaSeconds > 0 && (
-            <span>预计剩余: {formatDuration(etaSeconds)}</span>
-          )}
+          {etaSeconds !== undefined &&
+            etaSeconds !== null &&
+            etaSeconds > 0 && (
+              <span>预计剩余: {formatDuration(etaSeconds)}</span>
+            )}
         </div>
       )}
     </div>

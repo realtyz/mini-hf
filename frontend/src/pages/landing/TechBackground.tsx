@@ -61,7 +61,13 @@ const CTA_STREAKS_V: StreakV[] = [
   { left: "92%", height: "20%", duration: "7s", delay: "5s" },
 ];
 
-function HStreak({ top, width, duration, delay, primary }: StreakH & { primary: StreakColor }) {
+function HStreak({
+  top,
+  width,
+  duration,
+  delay,
+  primary,
+}: StreakH & { primary: StreakColor }) {
   const { h, s, l } = primary;
   return (
     <div
@@ -84,7 +90,13 @@ function HStreak({ top, width, duration, delay, primary }: StreakH & { primary: 
   );
 }
 
-function VStreak({ left, height, duration, delay, primary }: StreakV & { primary: StreakColor }) {
+function VStreak({
+  left,
+  height,
+  duration,
+  delay,
+  primary,
+}: StreakV & { primary: StreakColor }) {
   const { h, s, l } = primary;
   return (
     <div

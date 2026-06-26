@@ -1,9 +1,4 @@
-import {
-  Database,
-  File,
-  HardDrive,
-  Download,
-} from "lucide-react";
+import { Database, File, HardDrive, Download } from "lucide-react";
 import {
   Card,
   CardDescription,

@@ -10,8 +10,7 @@ export const landingContent = {
   },
   hero: {
     headline: "局域网 HuggingFace 缓存代理",
-    subheadline:
-      "企业级模型缓存，为 AI 团队赋能，为网络基建减负。",
+    subheadline: "企业级模型缓存，为 AI 团队赋能，为网络基建减负。",
     primaryCta: "开始使用",
     secondaryCta: "查看文档",
   },

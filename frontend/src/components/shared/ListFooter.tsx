@@ -29,17 +29,25 @@ export function ListFooter({
   note,
   className,
 }: ListFooterProps) {
-  const start = total === 0 ? 0 : Math.min((currentPage - 1) * pageSize + 1, total);
+  const start =
+    total === 0 ? 0 : Math.min((currentPage - 1) * pageSize + 1, total);
   const end = Math.min(currentPage * pageSize, total);
 
   return (
-    <div className={cn("flex flex-wrap items-center justify-between gap-3", className)}>
+    <div
+      className={cn(
+        "flex flex-wrap items-center justify-between gap-3",
+        className,
+      )}
+    >
       <p className="text-[13px] text-muted-foreground/60 tabular-nums">
         <span className="font-medium text-foreground/80">
           {start.toLocaleString()}–{end.toLocaleString()}
         </span>
         <span className="mx-1 text-muted-foreground/40">/</span>
-        <span className="font-medium text-foreground/80">{total.toLocaleString()}</span>
+        <span className="font-medium text-foreground/80">
+          {total.toLocaleString()}
+        </span>
         <span className="ml-1">{itemLabel}</span>
         {note}
       </p>

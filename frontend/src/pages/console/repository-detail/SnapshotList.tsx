@@ -1,49 +1,54 @@
-import { useState } from 'react'
-import { ChevronRight } from 'lucide-react'
-import { RepoTreeViewer } from './RepoTreeViewer'
-import { formatBytes } from '@/lib/utils'
-import { cn } from '@/lib/utils'
-import { SNAPSHOT_STATUS_CONFIG, type SnapshotStatusType } from '@/lib/constants/repo'
-import type { RepoDetailResponse, SnapshotStatus } from '@/lib/api/types'
-import { StatusEditDialog } from './StatusEditDialog'
-import { useSetSnapshotStatus } from '@/hooks/api/use-repair-mutations'
-import { useAuthStore } from '@/stores/auth-store'
+import { useState } from "react";
+import { ChevronRight } from "lucide-react";
+import { RepoTreeViewer } from "./RepoTreeViewer";
+import { formatBytes } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import {
+  SNAPSHOT_STATUS_CONFIG,
+  type SnapshotStatusType,
+} from "@/lib/constants/repo";
+import type { RepoDetailResponse, SnapshotStatus } from "@/lib/api/types";
+import { StatusEditDialog } from "./StatusEditDialog";
+import { useSetSnapshotStatus } from "@/hooks/api/use-repair-mutations";
+import { useAuthStore } from "@/stores/auth-store";
 
 interface SnapshotListProps {
-  snapshots: RepoDetailResponse['data']['snapshots']
-  repoId: string
+  snapshots: RepoDetailResponse["data"]["snapshots"];
+  repoId: string;
 }
 
 const SNAPSHOT_STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: 'active', label: '活跃' },
-  { value: 'inactive', label: '未完成' },
-  { value: 'archived', label: '已归档' },
-]
+  { value: "active", label: "活跃" },
+  { value: "inactive", label: "未完成" },
+  { value: "archived", label: "已归档" },
+];
 
 // Single-accent palette: emerald for live, amber for in-flight, muted for archived.
 const SNAPSHOT_DOT_CLASS: Record<SnapshotStatusType, string> = {
-  active: 'bg-emerald-500',
-  inactive: 'bg-amber-500',
-  archived: 'bg-muted-foreground/30',
-}
+  active: "bg-emerald-500",
+  inactive: "bg-amber-500",
+  archived: "bg-muted-foreground/30",
+};
 
 export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
-  const [expandedSnapshots, setExpandedSnapshots] = useState<Set<number>>(new Set())
-  const user = useAuthStore((s) => s.user)
-  const isAdmin = user?.role === 'admin'
-  const setSnapshotStatus = useSetSnapshotStatus()
+  const [expandedSnapshots, setExpandedSnapshots] = useState<Set<number>>(
+    new Set(),
+  );
+  const user = useAuthStore((s) => s.user);
+  const isAdmin = user?.role === "admin";
+  const setSnapshotStatus = useSetSnapshotStatus();
 
   const toggleSnapshot = (snapshotId: number) => {
     setExpandedSnapshots((prev) => {
-      const next = new Set(prev)
+      const next = new Set(prev);
       if (next.has(snapshotId)) {
-        next.delete(snapshotId)
+        next.delete(snapshotId);
       } else {
-        next.add(snapshotId)
+        next.add(snapshotId);
       }
-      return next
-    })
-  }
+      return next;
+    });
+  };
 
   return (
     <section>
@@ -64,19 +69,24 @@ export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
       ) : (
         <div className="border-y border-border/60">
           {snapshots.map((snapshot, idx) => {
-            const isExpanded = expandedSnapshots.has(snapshot.id)
-            const statusKey = (snapshot.status as SnapshotStatusType) in SNAPSHOT_STATUS_CONFIG
-              ? (snapshot.status as SnapshotStatusType)
-              : 'archived'
-            const statusLabel = SNAPSHOT_STATUS_CONFIG[statusKey].label
-            const isLast = idx === snapshots.length - 1
+            const isExpanded = expandedSnapshots.has(snapshot.id);
+            const statusKey =
+              (snapshot.status as SnapshotStatusType) in SNAPSHOT_STATUS_CONFIG
+                ? (snapshot.status as SnapshotStatusType)
+                : "archived";
+            const statusLabel = SNAPSHOT_STATUS_CONFIG[statusKey].label;
+            const isLast = idx === snapshots.length - 1;
 
-            const total = snapshot.total_size ?? 0
-            const cached = snapshot.cached_size ?? 0
-            const ratio = total > 0 ? Math.min(1, Math.max(0, cached / total)) : 0
+            const total = snapshot.total_size ?? 0;
+            const cached = snapshot.cached_size ?? 0;
+            const ratio =
+              total > 0 ? Math.min(1, Math.max(0, cached / total)) : 0;
 
             return (
-              <div key={snapshot.id} className={cn(!isLast && 'border-b border-border/60')}>
+              <div
+                key={snapshot.id}
+                className={cn(!isLast && "border-b border-border/60")}
+              >
                 {/* Row — keep as div so admin pencil button doesn't nest in a button */}
                 <div
                   role="button"
@@ -84,18 +94,18 @@ export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
                   aria-expanded={isExpanded}
                   onClick={() => toggleSnapshot(snapshot.id)}
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault()
-                      toggleSnapshot(snapshot.id)
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleSnapshot(snapshot.id);
                     }
                   }}
                   className="flex items-center gap-5 px-2 py-4 cursor-pointer select-none group hover:bg-muted/30 transition-colors outline-none focus-visible:bg-muted/40"
                 >
                   <ChevronRight
                     className={cn(
-                      'size-3.5 shrink-0 text-muted-foreground/40 transition-all duration-200',
-                      'group-hover:text-muted-foreground/80',
-                      isExpanded && 'rotate-90 text-foreground/70'
+                      "size-3.5 shrink-0 text-muted-foreground/40 transition-all duration-200",
+                      "group-hover:text-muted-foreground/80",
+                      isExpanded && "rotate-90 text-foreground/70",
                     )}
                   />
 
@@ -118,18 +128,20 @@ export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
                       >
                         <div
                           className={cn(
-                            'h-full transition-[width] duration-300',
+                            "h-full transition-[width] duration-300",
                             ratio >= 1
-                              ? 'bg-emerald-500/80'
+                              ? "bg-emerald-500/80"
                               : ratio > 0
-                                ? 'bg-foreground/70'
-                                : 'bg-transparent'
+                                ? "bg-foreground/70"
+                                : "bg-transparent",
                           )}
                           style={{ width: `${ratio * 100}%` }}
                         />
                       </div>
                       <div className="text-[11px] font-mono tabular-nums text-muted-foreground/70 min-w-31.5 text-right">
-                        <span className="text-foreground/90">{formatBytes(cached)}</span>
+                        <span className="text-foreground/90">
+                          {formatBytes(cached)}
+                        </span>
                         <span className="mx-1 text-muted-foreground/30">/</span>
                         <span>{formatBytes(total)}</span>
                       </div>
@@ -138,12 +150,22 @@ export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
 
                   {/* Status: dot + label, no pill */}
                   <div className="flex items-center gap-1.5 shrink-0 min-w-13">
-                    <span className={cn('size-1.5 rounded-full', SNAPSHOT_DOT_CLASS[statusKey])} />
-                    <span className="text-[12px] text-foreground/80">{statusLabel}</span>
+                    <span
+                      className={cn(
+                        "size-1.5 rounded-full",
+                        SNAPSHOT_DOT_CLASS[statusKey],
+                      )}
+                    />
+                    <span className="text-[12px] text-foreground/80">
+                      {statusLabel}
+                    </span>
                   </div>
 
                   {isAdmin && (
-                    <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div
+                      className="shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <StatusEditDialog
                         currentStatus={snapshot.status}
                         options={SNAPSHOT_STATUS_OPTIONS}
@@ -164,21 +186,24 @@ export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
                 {/* Expanded file tree */}
                 <div
                   className={cn(
-                    'grid transition-[grid-template-rows] duration-250 ease-out',
-                    isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                    "grid transition-[grid-template-rows] duration-250 ease-out",
+                    isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
                   )}
                 >
                   <div className="overflow-hidden">
                     <div className="px-2 pb-5 pt-1">
-                      <RepoTreeViewer repoId={repoId} commitHash={snapshot.commit_hash} />
+                      <RepoTreeViewer
+                        repoId={repoId}
+                        commitHash={snapshot.commit_hash}
+                      />
                     </div>
                   </div>
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       )}
     </section>
-  )
+  );
 }

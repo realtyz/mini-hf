@@ -1,8 +1,14 @@
-import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Loader2, Check, CheckCircle2, RotateCcw, AlertTriangle } from 'lucide-react'
-import { toast } from 'sonner'
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Loader2,
+  Check,
+  CheckCircle2,
+  RotateCcw,
+  AlertTriangle,
+} from "lucide-react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -10,34 +16,34 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
-import { Button } from '@/components/ui/button'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { SelectableFileTree } from '@/components/tasks/SelectableFileTree'
-import { useTaskActions } from '@/hooks/use-task-actions'
-import { queryKeys } from '@/lib/query/keys'
-import { formatBytes } from '@/lib/utils'
-import api from '@/lib/api/client'
-import endpoints from '@/lib/api/endpoints'
-import type { TaskPreviewResponse } from '@/lib/api/types'
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { SelectableFileTree } from "@/components/tasks/SelectableFileTree";
+import { useTaskActions } from "@/hooks/use-task-actions";
+import { queryKeys } from "@/lib/query/keys";
+import { formatBytes } from "@/lib/utils";
+import api from "@/lib/api/client";
+import endpoints from "@/lib/api/endpoints";
+import type { TaskPreviewResponse } from "@/lib/api/types";
 
 interface RetryTaskDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  taskId: number
-  repoId: string
-  revision: string
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  taskId: number;
+  repoId: string;
+  revision: string;
   /** Called after a successful retry to refresh parent lists */
-  onRetrySuccess?: () => void
+  onRetrySuccess?: () => void;
 }
 
-type Step = 'loading' | 'preview' | 'retrying'
+type Step = "loading" | "preview" | "retrying";
 
 const contentVariants = {
   initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: -20 },
-}
+};
 
 export function RetryTaskDialog({
   open,
@@ -47,91 +53,97 @@ export function RetryTaskDialog({
   revision,
   onRetrySuccess,
 }: RetryTaskDialogProps) {
-  const [retryingStep, setRetryingStep] = useState<Step>('preview')
-  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set())
+  const [retryingStep, setRetryingStep] = useState<Step>("preview");
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
-  const { retryTask } = useTaskActions()
+  const { retryTask } = useTaskActions();
 
   // Fetch retry preview — only when dialog is open with a valid taskId
   const previewQuery = useQuery({
     queryKey: queryKeys.tasks.retryPreview(taskId),
     queryFn: async () => {
-      const response = await api.get<TaskPreviewResponse>(endpoints.task.retryPreview(taskId))
-      return response.data
+      const response = await api.get<TaskPreviewResponse>(
+        endpoints.task.retryPreview(taskId),
+      );
+      return response.data;
     },
     enabled: open && taskId > 0,
     staleTime: 0, // Always refetch when dialog opens
-  })
+  });
 
-  const previewData = previewQuery.data ?? null
-  const previewError = previewQuery.error ? (previewQuery.error as { message?: string }).message ?? '获取重试预览失败' : null
+  const previewData = previewQuery.data ?? null;
+  const previewError = previewQuery.error
+    ? ((previewQuery.error as { message?: string }).message ??
+      "获取重试预览失败")
+    : null;
 
   // Pre-select all non-cached files when preview data arrives
   const defaultSelected = useMemo(() => {
-    if (!previewData) return new Set<string>()
+    if (!previewData) return new Set<string>();
     return new Set(
       (previewData.items ?? [])
-        .filter((item) => item.type === 'file' && !item.is_cached)
-        .map((item) => item.path)
-    )
-  }, [previewData])
+        .filter((item) => item.type === "file" && !item.is_cached)
+        .map((item) => item.path),
+    );
+  }, [previewData]);
 
   // Use user selection if they've interacted, otherwise default
-  const effectiveSelected = selectedFiles.size > 0 || previewData === null
-    ? selectedFiles
-    : defaultSelected
+  const effectiveSelected =
+    selectedFiles.size > 0 || previewData === null
+      ? selectedFiles
+      : defaultSelected;
 
   // Computed stats based on current selection — only files that will actually
   // be downloaded. Cached files are excluded since they won't be re-fetched.
   const selectedStats = useMemo(() => {
-    let count = 0
-    let size = 0
+    let count = 0;
+    let size = 0;
     for (const item of previewData?.items ?? []) {
-      if (item.type !== 'file') continue
-      if (item.is_cached) continue
+      if (item.type !== "file") continue;
+      if (item.is_cached) continue;
       if (effectiveSelected.has(item.path)) {
-        count++
-        size += item.size
+        count++;
+        size += item.size;
       }
     }
-    return { count, size }
-  }, [effectiveSelected, previewData])
+    return { count, size };
+  }, [effectiveSelected, previewData]);
 
   const handleRetry = () => {
-    setRetryingStep('retrying')
+    setRetryingStep("retrying");
     retryTask.mutate(
       { taskId, selectedFiles: [...effectiveSelected] },
       {
         onSuccess: () => {
-          toast.success('重试任务已创建', {
+          toast.success("重试任务已创建", {
             description: `仓库 ${repoId} 的重试任务已提交`,
-          })
-          onRetrySuccess?.()
-          handleClose()
+          });
+          onRetrySuccess?.();
+          handleClose();
         },
         onError: (error) => {
-          toast.error('重试失败', {
-            description: error instanceof Error ? error.message : '请稍后重试',
-          })
-          setRetryingStep('preview')
+          toast.error("重试失败", {
+            description: error instanceof Error ? error.message : "请稍后重试",
+          });
+          setRetryingStep("preview");
         },
-      }
-    )
-  }
+      },
+    );
+  };
 
   const handleClose = () => {
-    setRetryingStep('preview')
-    setSelectedFiles(new Set())
-    retryTask.reset()
-    onOpenChange(false)
-  }
+    setRetryingStep("preview");
+    setSelectedFiles(new Set());
+    retryTask.reset();
+    onOpenChange(false);
+  };
 
-  const isStep = previewQuery.isLoading ? 'loading' : retryingStep
-  const isRetrying = retryingStep === 'retrying'
-  const allCached = previewData?.all_required_cached ?? false
+  const isStep = previewQuery.isLoading ? "loading" : retryingStep;
+  const isRetrying = retryingStep === "retrying";
+  const allCached = previewData?.all_required_cached ?? false;
   const nonCachedCount = (previewData?.items ?? []).filter(
-    (item) => item.type === 'file' && !item.is_cached
-  ).length
+    (item) => item.type === "file" && !item.is_cached,
+  ).length;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -154,7 +166,7 @@ export function RetryTaskDialog({
 
         <div className="flex-1 min-h-0 overflow-hidden">
           <AnimatePresence mode="wait">
-            {isStep === 'loading' ? (
+            {isStep === "loading" ? (
               <motion.div
                 key="loading"
                 variants={contentVariants}
@@ -166,7 +178,9 @@ export function RetryTaskDialog({
               >
                 <div className="flex flex-col items-center gap-3">
                   <Loader2 className="size-8 animate-spin text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">正在检查文件缓存状态...</p>
+                  <p className="text-sm text-muted-foreground">
+                    正在检查文件缓存状态...
+                  </p>
                 </div>
               </motion.div>
             ) : previewError ? (
@@ -183,7 +197,9 @@ export function RetryTaskDialog({
                   <AlertTriangle className="size-8 text-destructive" />
                 </div>
                 <h3 className="text-lg font-semibold mb-2">获取重试预览失败</h3>
-                <p className="text-sm text-muted-foreground text-center max-w-md">{previewError}</p>
+                <p className="text-sm text-muted-foreground text-center max-w-md">
+                  {previewError}
+                </p>
               </motion.div>
             ) : allCached ? (
               <motion.div
@@ -203,10 +219,16 @@ export function RetryTaskDialog({
                   >
                     <CheckCircle2 className="w-10 h-10 text-blue-500" />
                   </motion.div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">所有文件已缓存</h3>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    所有文件已缓存
+                  </h3>
                   <p className="text-sm text-muted-foreground text-center max-w-md mb-4">
-                    仓库 <span className="font-medium text-foreground">{repoId}</span> 的所有{' '}
-                    {previewData?.required_file_count ?? 0} 个文件已在本地缓存中，无需重新下载。
+                    仓库{" "}
+                    <span className="font-medium text-foreground">
+                      {repoId}
+                    </span>{" "}
+                    的所有 {previewData?.required_file_count ?? 0}{" "}
+                    个文件已在本地缓存中，无需重新下载。
                   </p>
                   {previewData?.cached_commit_hash && (
                     <code className="font-mono text-xs bg-muted/60 px-3 py-1.5 rounded text-muted-foreground">
@@ -251,15 +273,23 @@ export function RetryTaskDialog({
                             </p>
                             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-amber-700 dark:text-amber-300">
                               <span className="flex items-center gap-1.5">
-                                <span className="font-medium">{selectedStats.count}</span>
+                                <span className="font-medium">
+                                  {selectedStats.count}
+                                </span>
                                 <span className="text-amber-600/70 dark:text-amber-400/70">
                                   / {nonCachedCount} 个文件待下载
                                 </span>
                               </span>
-                              <span className="text-amber-400 dark:text-amber-500">·</span>
+                              <span className="text-amber-400 dark:text-amber-500">
+                                ·
+                              </span>
                               <span className="flex items-center gap-1.5">
-                                <span className="font-medium">{formatBytes(selectedStats.size)}</span>
-                                <span className="text-amber-600/70 dark:text-amber-400/70">所需空间</span>
+                                <span className="font-medium">
+                                  {formatBytes(selectedStats.size)}
+                                </span>
+                                <span className="text-amber-600/70 dark:text-amber-400/70">
+                                  所需空间
+                                </span>
                               </span>
                             </div>
                           </div>
@@ -313,15 +343,13 @@ export function RetryTaskDialog({
           <Button variant="outline" onClick={handleClose} disabled={isRetrying}>
             取消
           </Button>
-          {isStep === 'loading' ? (
+          {isStep === "loading" ? (
             <Button disabled>
               <Loader2 className="mr-2 size-4 animate-spin" />
               检查中...
             </Button>
           ) : previewError || allCached ? (
-            <Button onClick={handleClose}>
-              关闭
-            </Button>
+            <Button onClick={handleClose}>关闭</Button>
           ) : (
             <Button
               onClick={handleRetry}
@@ -344,7 +372,7 @@ export function RetryTaskDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
-export default RetryTaskDialog
+export default RetryTaskDialog;

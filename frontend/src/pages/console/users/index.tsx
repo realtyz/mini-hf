@@ -1,5 +1,8 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { containerVariants, itemVariants } from "@/lib/animations/motion-config";
+import {
+  containerVariants,
+  itemVariants,
+} from "@/lib/animations/motion-config";
 import { useState, useMemo, useEffect } from "react";
 import { debounce } from "lodash-es";
 import {
@@ -69,7 +72,6 @@ function formatDateTime(iso: string) {
 // (extracted to ./UsersTableSkeleton.tsx)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-
 // ═══════════════════════════════════════════════════════════════════════════════
 // Create User Dialog
 // (extracted to ./CreateUserDialog.tsx)
@@ -115,7 +117,7 @@ export function Users() {
         setEmailSearch(value);
         setPage(1); // 搜索时重置到第一页
       }, 500),
-    []
+    [],
   );
 
   const { data, isLoading, error, refetch } = useUsers({
@@ -170,7 +172,10 @@ export function Users() {
           subtitle="管理系统用户账号和权限"
           actions={
             <>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <Button
                   variant="outline"
                   size="sm"
@@ -178,12 +183,21 @@ export function Users() {
                   onClick={() => refetch()}
                   disabled={isLoading}
                 >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                  <RefreshCw
+                    className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                  />
                   刷新
                 </Button>
               </motion.div>
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button size="sm" className="gap-2 w-24 cursor-pointer" onClick={() => setCreateOpen(true)}>
+              <motion.div
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Button
+                  size="sm"
+                  className="gap-2 w-24 cursor-pointer"
+                  onClick={() => setCreateOpen(true)}
+                >
                   <Plus className="h-4 w-4" />
                   新建用户
                 </Button>
@@ -276,7 +290,10 @@ export function Users() {
             exit={{ opacity: 0, scale: 0.95 }}
             transition={{ duration: 0.3 }}
           >
-            <UsersEmptyState search={search} onCreate={() => setCreateOpen(true)} />
+            <UsersEmptyState
+              search={search}
+              onCreate={() => setCreateOpen(true)}
+            />
           </motion.div>
         )}
 
@@ -375,7 +392,9 @@ export function Users() {
                       </TableCell>
                       <TableCell className="py-3 text-center">
                         <Badge
-                          variant={user.role === "admin" ? "secondary" : "outline"}
+                          variant={
+                            user.role === "admin" ? "secondary" : "outline"
+                          }
                           className={cn(
                             "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
                             user.role === "admin"
@@ -426,12 +445,22 @@ export function Users() {
                               <GripHorizontal className="size-3.5 text-muted-foreground/60" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40 rounded-xl" sideOffset={4}>
-                            <DropdownMenuItem onClick={() => handleEdit(user)} className="text-[13px] cursor-pointer rounded-lg">
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-40 rounded-xl"
+                            sideOffset={4}
+                          >
+                            <DropdownMenuItem
+                              onClick={() => handleEdit(user)}
+                              className="text-[13px] cursor-pointer rounded-lg"
+                            >
                               <Pencil className="size-3.5 mr-2.5" />
                               编辑
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleResetPassword(user)} className="text-[13px] cursor-pointer rounded-lg">
+                            <DropdownMenuItem
+                              onClick={() => handleResetPassword(user)}
+                              className="text-[13px] cursor-pointer rounded-lg"
+                            >
                               <KeyRound className="size-3.5 mr-2.5" />
                               重置密码
                             </DropdownMenuItem>
@@ -465,7 +494,11 @@ export function Users() {
             pageSize={PAGE_SIZE}
             onPageChange={setPage}
             itemLabel="个用户"
-            note={search ? <span className="text-muted-foreground/40">（筛选中）</span> : undefined}
+            note={
+              search ? (
+                <span className="text-muted-foreground/40">（筛选中）</span>
+              ) : undefined
+            }
           />
         </motion.div>
       )}

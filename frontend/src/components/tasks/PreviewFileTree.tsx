@@ -14,9 +14,9 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
   const [currentPath, setCurrentPath] = useState<string>("");
 
   // 从 repoId 中提取 repo_name（最后一个 / 后的部分）
-  const repoName = repoId.split('/').pop() || repoId;
+  const repoName = repoId.split("/").pop() || repoId;
 
-  const allRequired = items.every(i => i.type !== "file" || i.required);
+  const allRequired = items.every((i) => i.type !== "file" || i.required);
 
   const tree = useMemo(() => buildTree(items), [items]);
 
@@ -94,7 +94,7 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
                 key={item.path}
                 className={`flex items-center justify-between px-3 py-2 text-sm hover:bg-muted/30 transition-colors group min-w-0 overflow-hidden ${item.is_cached === true ? "opacity-75" : ""}`}
                 style={{
-                  animationDelay: `${index * 20}ms`
+                  animationDelay: `${index * 20}ms`,
                 }}
               >
                 <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
@@ -113,16 +113,20 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
                     </>
                   ) : (
                     <>
-                      <div className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${
-                        item.required
-                          ? "bg-primary/10 dark:bg-primary/20 group-hover:bg-primary/20 dark:group-hover:bg-primary/30"
-                          : "bg-muted/50 group-hover:bg-muted/80"
-                      }`}>
-                        <File className={`h-3.5 w-3.5 transition-colors ${
+                      <div
+                        className={`w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors ${
                           item.required
-                            ? "text-primary"
-                            : "text-muted-foreground/40"
-                        }`} />
+                            ? "bg-primary/10 dark:bg-primary/20 group-hover:bg-primary/20 dark:group-hover:bg-primary/30"
+                            : "bg-muted/50 group-hover:bg-muted/80"
+                        }`}
+                      >
+                        <File
+                          className={`h-3.5 w-3.5 transition-colors ${
+                            item.required
+                              ? "text-primary"
+                              : "text-muted-foreground/40"
+                          }`}
+                        />
                       </div>
                       <span
                         className={`truncate font-mono text-xs transition-colors w-full min-w-0 ${
@@ -142,14 +146,17 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
                       Cached
                     </Badge>
                   )}
-                  {item.type === "file" && item.required && !allRequired && item.is_cached !== true && (
-                    <Badge
-                      variant="outline"
-                      className="text-[10px] h-5 px-1.5 shrink-0 bg-primary/5 border-primary/30 text-primary hover:bg-primary/10 transition-colors"
-                    >
-                      Required
-                    </Badge>
-                  )}
+                  {item.type === "file" &&
+                    item.required &&
+                    !allRequired &&
+                    item.is_cached !== true && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px] h-5 px-1.5 shrink-0 bg-primary/5 border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                      >
+                        Required
+                      </Badge>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 ml-2">
@@ -175,11 +182,15 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
       <div className="bg-muted/20 px-3 py-2 border-t flex justify-between shrink-0">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Folder className="h-3 w-3 text-amber-500/70" />
-          <span>{sortedChildren.filter((i) => i.type === "directory").length} 个目录</span>
+          <span>
+            {sortedChildren.filter((i) => i.type === "directory").length} 个目录
+          </span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <File className="h-3 w-3 text-primary/70" />
-          <span>{sortedChildren.filter((i) => i.type === "file").length} 个文件</span>
+          <span>
+            {sortedChildren.filter((i) => i.type === "file").length} 个文件
+          </span>
         </div>
       </div>
     </div>

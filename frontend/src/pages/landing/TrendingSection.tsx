@@ -1,10 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -79,7 +74,9 @@ function TrendingCard({ repo, index }: { repo: TrendingRepo; index: number }) {
               <CardTitle className="text-sm font-semibold leading-snug group-hover:text-primary transition-colors break-all">
                 {repo.repo_id}
               </CardTitle>
-              <p className="text-xs text-muted-foreground mt-1">{repo.author}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {repo.author}
+              </p>
             </div>
             <a
               href={`https://huggingface.co/${repo.repo_id}`}
@@ -106,7 +103,10 @@ function TrendingCard({ repo, index }: { repo: TrendingRepo; index: number }) {
           <div className="flex items-center gap-2 flex-wrap">
             <RepoTypeBadge type={repo.repo_type} />
             {repo.pipeline_tag && (
-              <Badge variant="info" className="text-[11px] px-2 py-0 h-5 font-medium">
+              <Badge
+                variant="info"
+                className="text-[11px] px-2 py-0 h-5 font-medium"
+              >
                 {repo.pipeline_tag}
               </Badge>
             )}
@@ -171,11 +171,11 @@ export function TrendingSection() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {isLoading
               ? Array.from({ length: 9 }).map((_, i) => (
-                <TrendingCardSkeleton key={i} />
-              ))
+                  <TrendingCardSkeleton key={i} />
+                ))
               : data?.map((repo, i) => (
-                <TrendingCard key={repo.repo_id} repo={repo} index={i} />
-              ))}
+                  <TrendingCard key={repo.repo_id} repo={repo} index={i} />
+                ))}
           </div>
         )}
 

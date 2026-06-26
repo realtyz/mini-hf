@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback } from "react";
 
 /**
  * 将状态持久化到 sessionStorage 的 hook。
@@ -6,31 +6,31 @@ import { useState, useCallback } from 'react'
  */
 export function useSessionStorageState<T>(
   key: string,
-  defaultValue: T
+  defaultValue: T,
 ): [T, (value: T | ((prev: T) => T)) => void] {
   const [state, setState] = useState<T>(() => {
     try {
-      const stored = sessionStorage.getItem(key)
-      return stored ? (JSON.parse(stored) as T) : defaultValue
+      const stored = sessionStorage.getItem(key);
+      return stored ? (JSON.parse(stored) as T) : defaultValue;
     } catch {
-      return defaultValue
+      return defaultValue;
     }
-  })
+  });
 
   const setPersistedState = useCallback(
     (value: T | ((prev: T) => T)) => {
       setState((prev) => {
-        const next = value instanceof Function ? value(prev) : value
+        const next = value instanceof Function ? value(prev) : value;
         try {
-          sessionStorage.setItem(key, JSON.stringify(next))
+          sessionStorage.setItem(key, JSON.stringify(next));
         } catch {
           // sessionStorage 不可用时静默失败
         }
-        return next
-      })
+        return next;
+      });
     },
-    [key]
-  )
+    [key],
+  );
 
-  return [state, setPersistedState]
+  return [state, setPersistedState];
 }

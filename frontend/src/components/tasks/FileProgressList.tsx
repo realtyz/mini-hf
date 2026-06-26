@@ -1,6 +1,17 @@
 import { useState, useMemo, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { CheckCircle2, Loader2, XCircle, Pause, UploadCloud, ChevronDown, ChevronRight, FileWarning, Inbox, WifiOff } from "lucide-react";
+import {
+  CheckCircle2,
+  Loader2,
+  XCircle,
+  Pause,
+  UploadCloud,
+  ChevronDown,
+  ChevronRight,
+  FileWarning,
+  Inbox,
+  WifiOff,
+} from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { FileProgressItem } from "@/lib/api/types";
 
@@ -57,7 +68,10 @@ const FileProgressRow = memo(function FileProgressRow({
     file.status === "completed"
       ? 100
       : file.total_bytes > 0
-        ? Math.min(100, Math.round((file.downloaded_bytes / file.total_bytes) * 100))
+        ? Math.min(
+            100,
+            Math.round((file.downloaded_bytes / file.total_bytes) * 100),
+          )
         : 0;
 
   const isActive =
@@ -74,7 +88,9 @@ const FileProgressRow = memo(function FileProgressRow({
       case "reconnecting":
         return <WifiOff className="h-4 w-4 text-amber-500" />;
       case "uploading":
-        return <UploadCloud className="h-4 w-4 text-violet-500 animate-bounce" />;
+        return (
+          <UploadCloud className="h-4 w-4 text-violet-500 animate-bounce" />
+        );
       case "failed":
         return <XCircle className="h-4 w-4 text-red-500" />;
       case "pending":
@@ -121,7 +137,9 @@ const FileProgressRow = memo(function FileProgressRow({
         <Progress
           value={progress}
           className="h-1.5 bg-muted w-full"
-          indicatorClassName={PROGRESS_COLOR[file.status] ?? PROGRESS_COLOR.pending}
+          indicatorClassName={
+            PROGRESS_COLOR[file.status] ?? PROGRESS_COLOR.pending
+          }
         />
         {file.status === "reconnecting" ? (
           <div className="text-xs mt-1 font-medium text-amber-600 dark:text-amber-400">
@@ -130,7 +148,9 @@ const FileProgressRow = memo(function FileProgressRow({
         ) : isActive && file.speed_bytes_per_sec ? (
           <div
             className={`text-xs mt-1 font-medium tabular-nums ${
-              file.status === "uploading" ? "text-violet-600 dark:text-violet-400" : "text-blue-600 dark:text-blue-400"
+              file.status === "uploading"
+                ? "text-violet-600 dark:text-violet-400"
+                : "text-blue-600 dark:text-blue-400"
             }`}
           >
             {formatSpeed(file.speed_bytes_per_sec)}
@@ -145,21 +165,48 @@ const FileProgressRow = memo(function FileProgressRow({
           </div>
         ) : null}
       </div>
-      <span className={`text-xs shrink-0 tabular-nums w-9 text-right ${
-        file.status === "completed" ? "text-muted-foreground" : "text-foreground font-medium"
-      }`}>
+      <span
+        className={`text-xs shrink-0 tabular-nums w-9 text-right ${
+          file.status === "completed"
+            ? "text-muted-foreground"
+            : "text-foreground font-medium"
+        }`}
+      >
         {progress}%
       </span>
     </div>
   );
 });
 
-const STATUS_LABELS: Record<string, { label: string; color: string; barColor: string }> = {
-  completed: { label: "已完成", color: "bg-emerald-500", barColor: "bg-emerald-500" },
-  downloading: { label: "下载中", color: "bg-blue-500", barColor: "bg-blue-500" },
-  reconnecting: { label: "重连中", color: "bg-amber-500", barColor: "bg-amber-500" },
-  uploading: { label: "上传中", color: "bg-violet-500", barColor: "bg-violet-500" },
-  pending: { label: "等待中", color: "bg-slate-300 dark:bg-slate-600", barColor: "bg-slate-200 dark:bg-slate-700" },
+const STATUS_LABELS: Record<
+  string,
+  { label: string; color: string; barColor: string }
+> = {
+  completed: {
+    label: "已完成",
+    color: "bg-emerald-500",
+    barColor: "bg-emerald-500",
+  },
+  downloading: {
+    label: "下载中",
+    color: "bg-blue-500",
+    barColor: "bg-blue-500",
+  },
+  reconnecting: {
+    label: "重连中",
+    color: "bg-amber-500",
+    barColor: "bg-amber-500",
+  },
+  uploading: {
+    label: "上传中",
+    color: "bg-violet-500",
+    barColor: "bg-violet-500",
+  },
+  pending: {
+    label: "等待中",
+    color: "bg-slate-300 dark:bg-slate-600",
+    barColor: "bg-slate-200 dark:bg-slate-700",
+  },
   failed: { label: "失败", color: "bg-red-500", barColor: "bg-red-500" },
 };
 
@@ -174,7 +221,8 @@ function FileProgressSummary({ files }: { files: FileProgressItem[] }) {
       totalBytes += f.total_bytes;
       downloadedBytes += f.downloaded_bytes;
     }
-    const overallProgress = totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0;
+    const overallProgress =
+      totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0;
     return { byStatus, totalBytes, downloadedBytes, overallProgress };
   }, [files]);
 
@@ -184,7 +232,11 @@ function FileProgressSummary({ files }: { files: FileProgressItem[] }) {
     for (const [status, { barColor }] of Object.entries(STATUS_LABELS)) {
       const count = stats.byStatus[status] ?? 0;
       if (count > 0) {
-        segments.push({ status, width: (count / files.length) * 100, color: barColor });
+        segments.push({
+          status,
+          width: (count / files.length) * 100,
+          color: barColor,
+        });
       }
     }
     return segments;
@@ -198,16 +250,24 @@ function FileProgressSummary({ files }: { files: FileProgressItem[] }) {
     >
       <div className="flex items-center gap-2 mb-4 text-muted-foreground">
         <FileWarning className="h-4 w-4" />
-        <span className="text-xs">文件数量过多（{files.length.toLocaleString()} 个），仅展示汇总统计</span>
+        <span className="text-xs">
+          文件数量过多（{files.length.toLocaleString()} 个），仅展示汇总统计
+        </span>
       </div>
 
       {/* Overall progress */}
       <div className="w-full max-w-xs mb-5">
         <div className="flex items-center justify-between text-xs text-muted-foreground mb-1.5">
           <span>总进度</span>
-          <span className="tabular-nums font-medium text-foreground">{stats.overallProgress}%</span>
+          <span className="tabular-nums font-medium text-foreground">
+            {stats.overallProgress}%
+          </span>
         </div>
-        <Progress value={stats.overallProgress} className="h-2 bg-muted" indicatorClassName="bg-blue-500" />
+        <Progress
+          value={stats.overallProgress}
+          className="h-2 bg-muted"
+          indicatorClassName="bg-blue-500"
+        />
         <div className="text-xs text-muted-foreground mt-1.5 text-center tabular-nums">
           {formatBytes(stats.downloadedBytes)} / {formatBytes(stats.totalBytes)}
         </div>
@@ -231,9 +291,13 @@ function FileProgressSummary({ files }: { files: FileProgressItem[] }) {
           if (count === 0) return null;
           return (
             <div key={status} className="flex flex-col items-center gap-1">
-              <span className="text-lg font-bold tabular-nums">{count.toLocaleString()}</span>
+              <span className="text-lg font-bold tabular-nums">
+                {count.toLocaleString()}
+              </span>
               <div className="flex items-center gap-1.5">
-                <span className={`inline-block h-2 w-2 rounded-full ${color}`} />
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${color}`}
+                />
                 <span className="text-xs text-muted-foreground">{label}</span>
               </div>
             </div>
@@ -273,7 +337,11 @@ export function FileProgressList({
         active.push(f);
       }
     }
-    return { activeFiles: active, failedFiles: failed, completedFiles: completed };
+    return {
+      activeFiles: active,
+      failedFiles: failed,
+      completedFiles: completed,
+    };
   }, [files]);
 
   if (files.length === 0) {
@@ -311,9 +379,7 @@ export function FileProgressList({
             ease: [0.16, 1, 0.3, 1],
           }}
         >
-          <FileProgressRow
-            file={file}
-          />
+          <FileProgressRow file={file} />
         </motion.div>
       ))}
 
@@ -344,10 +410,7 @@ export function FileProgressList({
                 className="overflow-hidden"
               >
                 {failedFiles.map((file) => (
-                  <FileProgressRow
-                    key={`${taskId}-${file.path}`}
-                    file={file}
-                  />
+                  <FileProgressRow key={`${taskId}-${file.path}`} file={file} />
                 ))}
               </motion.div>
             )}
@@ -382,10 +445,7 @@ export function FileProgressList({
                 className="overflow-hidden"
               >
                 {completedFiles.map((file) => (
-                  <FileProgressRow
-                    key={`${taskId}-${file.path}`}
-                    file={file}
-                  />
+                  <FileProgressRow key={`${taskId}-${file.path}`} file={file} />
                 ))}
               </motion.div>
             )}

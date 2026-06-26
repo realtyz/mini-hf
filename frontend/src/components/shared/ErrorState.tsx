@@ -1,15 +1,20 @@
-import { AlertCircle } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { motion } from 'framer-motion'
+import { AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 interface ErrorStateProps {
-  message?: string
-  description?: string
-  onRetry?: () => void
-  retryLabel?: string
+  message?: string;
+  description?: string;
+  onRetry?: () => void;
+  retryLabel?: string;
 }
 
-export function ErrorState({ message = '加载失败', description, onRetry, retryLabel = '重试' }: ErrorStateProps) {
+export function ErrorState({
+  message = "加载失败",
+  description,
+  onRetry,
+  retryLabel = "重试",
+}: ErrorStateProps) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -32,12 +37,17 @@ export function ErrorState({ message = '加载失败', description, onRetry, ret
         )}
         {onRetry && (
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button variant="outline" size="sm" className="mt-3" onClick={onRetry}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={onRetry}
+            >
               {retryLabel}
             </Button>
           </motion.div>
         )}
       </div>
     </motion.div>
-  )
+  );
 }

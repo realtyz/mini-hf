@@ -1,20 +1,20 @@
-import type { ReactNode } from 'react'
-import { Inbox, Plus } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { motion } from 'framer-motion'
+import type { ReactNode } from "react";
+import { Inbox, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { motion } from "framer-motion";
 
 interface EmptyStateProps {
-  icon?: ReactNode
-  message?: string
-  description?: string
-  actionLabel?: string
-  onAction?: () => void
-  children?: ReactNode
+  icon?: ReactNode;
+  message?: string;
+  description?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  children?: ReactNode;
 }
 
 export function EmptyState({
   icon,
-  message = '暂无数据',
+  message = "暂无数据",
   description,
   actionLabel,
   onAction,
@@ -63,7 +63,12 @@ export function EmptyState({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <Button size="sm" variant="outline" className="mt-4" onClick={onAction}>
+            <Button
+              size="sm"
+              variant="outline"
+              className="mt-4"
+              onClick={onAction}
+            >
               <Plus className="mr-1.5 size-3.5" />
               {actionLabel}
             </Button>
@@ -72,5 +77,5 @@ export function EmptyState({
         {children}
       </div>
     </motion.div>
-  )
+  );
 }

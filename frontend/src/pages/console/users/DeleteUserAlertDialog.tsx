@@ -49,7 +49,8 @@ export function DeleteUserAlertDialog({
             确认删除
           </AlertDialogTitle>
           <AlertDialogDescription className="pt-2">
-            确定要删除用户 <strong className="text-foreground">{user?.name}</strong> 吗？
+            确定要删除用户{" "}
+            <strong className="text-foreground">{user?.name}</strong> 吗？
             <br />
             <span className="text-muted-foreground">{user?.email}</span>
             <p className="mt-3 text-sm text-destructive">

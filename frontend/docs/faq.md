@@ -65,6 +65,7 @@ os.environ["HF_ENDPOINT"] = "{{HF_ENDPOINT}}"
 ### Q: 可以下载特定版本吗？
 
 可以。在创建任务时，在「版本/分支」字段中指定：
+
 - 分支名（如 `main`）
 - Tag 名（如 `v1.0.0`）
 - Commit hash（如 `a0a0a0a`）

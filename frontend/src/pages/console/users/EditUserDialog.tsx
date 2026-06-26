@@ -132,8 +132,11 @@ export function EditUserDialog({
           <div className="flex items-center justify-between rounded-xl border bg-muted/30 px-4 py-3">
             <div className="flex items-center gap-3">
               <div
-                className={`flex h-9 w-9 items-center justify-center rounded-lg ${isActive ? "bg-emerald-100 text-emerald-600" : "bg-slate-100 text-slate-500"
-                  }`}
+                className={`flex h-9 w-9 items-center justify-center rounded-lg ${
+                  isActive
+                    ? "bg-emerald-100 text-emerald-600"
+                    : "bg-slate-100 text-slate-500"
+                }`}
               >
                 {isActive ? (
                   <CheckCircle2 className="h-4 w-4" />

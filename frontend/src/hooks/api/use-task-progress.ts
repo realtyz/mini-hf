@@ -1,10 +1,14 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery } from "@tanstack/react-query";
 
-import { queryKeys } from '@/lib/query/keys'
-import { STALE_TIMES } from '@/lib/query/client'
-import api from '@/lib/api/client'
-import endpoints from '@/lib/api/endpoints'
-import type { TaskProgressData, TaskStatus, ApiResponse } from '@/lib/api/types'
+import { queryKeys } from "@/lib/query/keys";
+import { STALE_TIMES } from "@/lib/query/client";
+import api from "@/lib/api/client";
+import endpoints from "@/lib/api/endpoints";
+import type {
+  TaskProgressData,
+  TaskStatus,
+  ApiResponse,
+} from "@/lib/api/types";
 
 /**
  * 获取任务文件级进度
@@ -15,38 +19,38 @@ import type { TaskProgressData, TaskStatus, ApiResponse } from '@/lib/api/types'
  */
 export function useTaskProgress(
   taskId: number | null,
-  taskStatus: TaskStatus | undefined
+  taskStatus: TaskStatus | undefined,
 ) {
   // 使用宽松比较，处理大小写不一致问题
-  const isRunning = taskStatus?.toLowerCase() === 'running'
+  const isRunning = taskStatus?.toLowerCase() === "running";
 
   return useQuery<TaskProgressData>({
     queryKey: queryKeys.tasks.progress(taskId),
     queryFn: async () => {
       if (!taskId) {
-        throw new Error('Task ID is required')
+        throw new Error("Task ID is required");
       }
       const response = await api.get<ApiResponse<TaskProgressData>>(
-        endpoints.task.progress(taskId)
-      )
-      return response.data
+        endpoints.task.progress(taskId),
+      );
+      return response.data;
     },
     enabled: !!taskId && isRunning,
     refetchInterval: () => {
       // 使用传入的 taskStatus 判断，确保第一次就能正确轮询
       // 第一次请求时 query.state.data 为 undefined，不能依赖它判断
-      return isRunning ? 3000 : false
+      return isRunning ? 3000 : false;
     },
     staleTime: STALE_TIMES.realtime,
     retry: (failureCount, error) => {
       // 404 错误不重试（任务未开始或已完成）
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { status?: number } }
+      if (error && typeof error === "object" && "response" in error) {
+        const axiosError = error as { response?: { status?: number } };
         if (axiosError.response?.status === 404) {
-          return false
+          return false;
         }
       }
-      return failureCount < 3
+      return failureCount < 3;
     },
-  })
+  });
 }

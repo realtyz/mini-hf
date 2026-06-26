@@ -98,10 +98,22 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
       for (const n of nodes) {
         n.x += n.vx;
         n.y += n.vy;
-        if (n.x < PADDING) { n.x = PADDING; n.vx = Math.abs(n.vx); }
-        if (n.x > canvas.width - PADDING) { n.x = canvas.width - PADDING; n.vx = -Math.abs(n.vx); }
-        if (n.y < PADDING) { n.y = PADDING; n.vy = Math.abs(n.vy); }
-        if (n.y > canvas.height - PADDING) { n.y = canvas.height - PADDING; n.vy = -Math.abs(n.vy); }
+        if (n.x < PADDING) {
+          n.x = PADDING;
+          n.vx = Math.abs(n.vx);
+        }
+        if (n.x > canvas.width - PADDING) {
+          n.x = canvas.width - PADDING;
+          n.vx = -Math.abs(n.vx);
+        }
+        if (n.y < PADDING) {
+          n.y = PADDING;
+          n.vy = Math.abs(n.vy);
+        }
+        if (n.y > canvas.height - PADDING) {
+          n.y = canvas.height - PADDING;
+          n.vy = -Math.abs(n.vy);
+        }
 
         // Mouse repulsion
         const dx = n.x - mx;
@@ -153,7 +165,12 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
         }
         if (pairs.length > 0) {
           const [fi, ti] = pairs[Math.floor(Math.random() * pairs.length)];
-          packetsRef.current.push({ fromIdx: fi, toIdx: ti, t: 0, speed: 0.007 + Math.random() * 0.006 });
+          packetsRef.current.push({
+            fromIdx: fi,
+            toIdx: ti,
+            t: 0,
+            speed: 0.007 + Math.random() * 0.006,
+          });
         }
       }
 
@@ -192,7 +209,7 @@ export function NodeNetwork({ className, nodeCount = 35 }: NodeNetworkProps) {
   return (
     <canvas
       ref={canvasRef}
-      className={`block w-full h-full ${className ?? ''}`}
+      className={`block w-full h-full ${className ?? ""}`}
     />
   );
 }

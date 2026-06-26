@@ -19,14 +19,26 @@ const STATUS_OPTIONS: {
   color?: string;
 }[] = [
   { value: "all", label: STRINGS.statusAll },
-  { value: "pending_approval", label: STRINGS.statusPendingApproval, color: "text-amber-500" },
+  {
+    value: "pending_approval",
+    label: STRINGS.statusPendingApproval,
+    color: "text-amber-500",
+  },
   { value: "pending", label: STRINGS.statusQueued, color: "text-slate-500" },
   { value: "running", label: STRINGS.statusRunning, color: "text-blue-500" },
   { value: "pausing", label: STRINGS.statusPausing, color: "text-orange-500" },
   { value: "paused", label: STRINGS.statusPaused, color: "text-yellow-500" },
-  { value: "completed", label: STRINGS.statusCompleted, color: "text-emerald-500" },
+  {
+    value: "completed",
+    label: STRINGS.statusCompleted,
+    color: "text-emerald-500",
+  },
   { value: "failed", label: STRINGS.statusFailed, color: "text-red-500" },
-  { value: "cancelled", label: STRINGS.statusCancelled, color: "text-gray-500" },
+  {
+    value: "cancelled",
+    label: STRINGS.statusCancelled,
+    color: "text-gray-500",
+  },
 ];
 
 interface TaskFilterBarProps {

@@ -13,5 +13,5 @@ export default defineConfig({
     },
   },
   assetsInclude: ["**/*.md"],
-  envPrefix: ["VITE_"]
+  envPrefix: ["VITE_"],
 });

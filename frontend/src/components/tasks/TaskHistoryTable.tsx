@@ -1,14 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  Box,
-  Database,
-  Smile,
-  Globe,
-  Search,
-  X,
-  History,
-} from "lucide-react";
+import { Box, Database, Smile, Globe, Search, X, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
@@ -33,7 +25,7 @@ const PAGE_SIZE = 10;
 function formatDuration(start: string, end: string | null): string {
   if (!end) return "-";
   const diff = Math.floor(
-    (new Date(end).getTime() - new Date(start).getTime()) / 1000
+    (new Date(end).getTime() - new Date(start).getTime()) / 1000,
   );
   if (diff < 60) return `${diff}秒`;
   if (diff < 3600) return `${Math.floor(diff / 60)}分${diff % 60}秒`;
@@ -45,13 +37,15 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
   const [search, setSearch] = useState("");
 
   const filteredTasks = search
-    ? tasks.filter((t) => t.repo_id.toLowerCase().includes(search.toLowerCase()))
+    ? tasks.filter((t) =>
+        t.repo_id.toLowerCase().includes(search.toLowerCase()),
+      )
     : tasks;
 
   const totalPages = Math.ceil(filteredTasks.length / PAGE_SIZE);
   const paginatedTasks = filteredTasks.slice(
     (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE
+    currentPage * PAGE_SIZE,
   );
 
   const handleSearch = (value: string) => {
@@ -111,7 +105,9 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
               )}
             </div>
             <p className="text-sm font-medium text-foreground">
-              {tasks.length === 0 ? "暂无已完成或失败的任务" : "未找到匹配的任务"}
+              {tasks.length === 0
+                ? "暂无已完成或失败的任务"
+                : "未找到匹配的任务"}
             </p>
             <p className="text-xs mt-1">
               {tasks.length === 0 ? "任务完成后将显示在这里" : "尝试其他关键词"}
@@ -184,12 +180,18 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                     </TableCell>
                     <TableCell className="py-3 text-center">
                       {task.source === "huggingface" ? (
-                        <Badge variant="warning" className="text-[11px] font-medium rounded-lg px-2.5 py-0.5">
+                        <Badge
+                          variant="warning"
+                          className="text-[11px] font-medium rounded-lg px-2.5 py-0.5"
+                        >
                           <Smile className="mr-1 h-3 w-3" />
                           HuggingFace
                         </Badge>
                       ) : (
-                        <Badge variant="info" className="text-[11px] font-medium rounded-lg px-2.5 py-0.5">
+                        <Badge
+                          variant="info"
+                          className="text-[11px] font-medium rounded-lg px-2.5 py-0.5"
+                        >
                           <Globe className="mr-1 h-3 w-3" />
                           ModelScope
                         </Badge>
@@ -197,7 +199,9 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                     </TableCell>
                     <TableCell className="py-3 text-center">
                       <Badge
-                        variant={task.repo_type === "model" ? "default" : "secondary"}
+                        variant={
+                          task.repo_type === "model" ? "default" : "secondary"
+                        }
                         className={cn(
                           "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
                           task.repo_type === "model"
@@ -214,7 +218,9 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                       </Badge>
                     </TableCell>
                     <TableCell className="py-3 text-center">
-                      <span className="font-mono text-[12.5px] text-muted-foreground">{task.revision}</span>
+                      <span className="font-mono text-[12.5px] text-muted-foreground">
+                        {task.revision}
+                      </span>
                     </TableCell>
                     <TableCell className="py-3 text-center">
                       <TaskStatusBadge status={task.status} />
@@ -241,9 +247,15 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
       {(totalPages > 1 || filteredTasks.length > 0) && (
         <div className="flex items-center justify-between border-t border-border/30 px-5 py-3 bg-muted/20">
           <p className="text-[13px] text-muted-foreground/60">
-            共 <span className="font-mono font-medium tabular-nums text-foreground/80">{filteredTasks.length}</span> 个任务
+            共{" "}
+            <span className="font-mono font-medium tabular-nums text-foreground/80">
+              {filteredTasks.length}
+            </span>{" "}
+            个任务
             {search && tasks.length !== filteredTasks.length && (
-              <span className="text-muted-foreground/40">（共 {tasks.length} 个）</span>
+              <span className="text-muted-foreground/40">
+                （共 {tasks.length} 个）
+              </span>
             )}
           </p>
           {totalPages > 1 && (

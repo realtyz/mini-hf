@@ -41,10 +41,15 @@ function TaskStatCard({
   );
 }
 
-export function StorageStatsSection({ task, config }: StorageStatsSectionProps) {
+export function StorageStatsSection({
+  task,
+  config,
+}: StorageStatsSectionProps) {
   const isCompletedState = task.status === "completed";
-  const isFailedOrCancelled = task.status === "cancelled" || task.status === "failed";
-  const isTerminalState = isCompletedState || isFailedOrCancelled || task.status === "paused";
+  const isFailedOrCancelled =
+    task.status === "cancelled" || task.status === "failed";
+  const isTerminalState =
+    isCompletedState || isFailedOrCancelled || task.status === "paused";
   const isPendingState = ["pending_approval", "pending"].includes(task.status);
 
   const displayFileCount =

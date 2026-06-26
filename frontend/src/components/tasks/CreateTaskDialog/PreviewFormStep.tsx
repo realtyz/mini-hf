@@ -1,42 +1,48 @@
-import { motion } from 'framer-motion'
-import { AnimatePresence } from 'framer-motion'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import type { RepoSource, RepoType } from '@/lib/api/types'
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import type { RepoSource, RepoType } from "@/lib/api/types";
 
 interface FormData {
-  source: RepoSource
-  repo_type: RepoType
-  hf_endpoint: string
-  repo_id: string
-  revision: string
-  access_token: string
+  source: RepoSource;
+  repo_type: RepoType;
+  hf_endpoint: string;
+  repo_id: string;
+  revision: string;
+  access_token: string;
 }
 
 interface PreviewFormStepProps {
-  formData: FormData
-  onFormDataChange: (data: FormData) => void
-  hfEndpoints: string[]
-  defaultEndpoint: string
-  previewError: string | null
+  formData: FormData;
+  onFormDataChange: (data: FormData) => void;
+  hfEndpoints: string[];
+  defaultEndpoint: string;
+  previewError: string | null;
 }
 
 const contentVariants = {
   initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: -20 },
-}
+};
 
-export function PreviewFormStep({ formData, onFormDataChange, hfEndpoints, defaultEndpoint, previewError }: PreviewFormStepProps) {
+export function PreviewFormStep({
+  formData,
+  onFormDataChange,
+  hfEndpoints,
+  defaultEndpoint,
+  previewError,
+}: PreviewFormStepProps) {
   return (
     <motion.div
       key="form"
@@ -49,7 +55,9 @@ export function PreviewFormStep({ formData, onFormDataChange, hfEndpoints, defau
     >
       <ScrollArea className="h-full">
         <div className="space-y-5 py-4 px-6">
-          <div className={`grid gap-4 ${formData.source === 'huggingface' ? 'grid-cols-3' : 'grid-cols-2'}`}>
+          <div
+            className={`grid gap-4 ${formData.source === "huggingface" ? "grid-cols-3" : "grid-cols-2"}`}
+          >
             <div className="space-y-2">
               <Label htmlFor="source">仓库来源</Label>
               <Select value={formData.source} disabled>
@@ -80,13 +88,16 @@ export function PreviewFormStep({ formData, onFormDataChange, hfEndpoints, defau
               </Select>
             </div>
 
-            {formData.source === 'huggingface' && (
+            {formData.source === "huggingface" && (
               <div className="space-y-2">
                 <Label htmlFor="hf_endpoint">HF Endpoint</Label>
                 <Select
-                  value={formData.hf_endpoint || '__default__'}
+                  value={formData.hf_endpoint || "__default__"}
                   onValueChange={(v) =>
-                    onFormDataChange({ ...formData, hf_endpoint: v === '__default__' ? '' : v })
+                    onFormDataChange({
+                      ...formData,
+                      hf_endpoint: v === "__default__" ? "" : v,
+                    })
                   }
                 >
                   <SelectTrigger id="hf_endpoint" className="w-full">
@@ -97,7 +108,7 @@ export function PreviewFormStep({ formData, onFormDataChange, hfEndpoints, defau
                     {hfEndpoints.map((endpoint) => (
                       <SelectItem key={endpoint} value={endpoint}>
                         {endpoint}
-                        {endpoint === defaultEndpoint && ' (默认)'}
+                        {endpoint === defaultEndpoint && " (默认)"}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -165,5 +176,5 @@ export function PreviewFormStep({ formData, onFormDataChange, hfEndpoints, defau
         </div>
       </ScrollArea>
     </motion.div>
-  )
+  );
 }

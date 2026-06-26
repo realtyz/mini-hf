@@ -84,7 +84,9 @@ export function BatchDeleteResultDialog({
           <Button
             variant={allSucceeded ? "default" : "outline"}
             onClick={() => onOpenChange(false)}
-            className={cn(allSucceeded && "bg-emerald-600 hover:bg-emerald-700")}
+            className={cn(
+              allSucceeded && "bg-emerald-600 hover:bg-emerald-700",
+            )}
           >
             {STRINGS.batchDeleteResultClose}
           </Button>

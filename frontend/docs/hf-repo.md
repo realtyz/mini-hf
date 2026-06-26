@@ -6,7 +6,6 @@
 
 设置 `HF_ENDPOINT` 环境变量后，HuggingFace 官方库（transformers、datasets、huggingface-hub 等）会自动将请求发送到 mini-hf 服务器，而非 HuggingFace 官方服务器。
 
-
 ## 使用命令行工具
 
 `hf` 是 HuggingFace 官方推荐的命令行工具，用于下载和管理模型/数据集。
@@ -123,7 +122,6 @@ model = AutoModel.from_pretrained(
     revision="v1.0.0"  # 使用特定 tag
 )
 ```
-
 
 ## 注意事项
 

@@ -73,7 +73,14 @@ const statusDisplayConfig: Record<
     /** 是否显示实时进度（需要轮询） */
     showRealtimeProgress: boolean;
     /** 底部操作类型 */
-    bottomActionType: "none" | "refresh" | "view-progress" | "paused" | "pausing" | "cancelled" | "failed";
+    bottomActionType:
+      | "none"
+      | "refresh"
+      | "view-progress"
+      | "paused"
+      | "pausing"
+      | "cancelled"
+      | "failed";
   }
 > = {
   pending_approval: {
@@ -174,9 +181,12 @@ function isWithin7Days(completedAt: string | null): boolean {
 function buildTimeline(t: TaskResponse): { label: string; value: string }[] {
   const items: { label: string; value: string }[] = [];
   items.push({ label: "创建时间", value: formatDate(t.created_at) });
-  if (t.reviewed_at) items.push({ label: "审批时间", value: formatDate(t.reviewed_at) });
-  if (t.started_at) items.push({ label: "开始时间", value: formatDate(t.started_at) });
-  if (t.completed_at) items.push({ label: "完成时间", value: formatDate(t.completed_at) });
+  if (t.reviewed_at)
+    items.push({ label: "审批时间", value: formatDate(t.reviewed_at) });
+  if (t.started_at)
+    items.push({ label: "开始时间", value: formatDate(t.started_at) });
+  if (t.completed_at)
+    items.push({ label: "完成时间", value: formatDate(t.completed_at) });
   items.push({ label: "更新时间", value: formatDate(t.updated_at) });
   return items;
 }
@@ -188,7 +198,8 @@ export function TaskDetailDrawer({
 }: TaskDetailDrawerProps) {
   const { data: task, isLoading, refetch: refetchTask } = useTaskDetail(taskId);
   const { data: progress } = useTaskProgress(taskId, task?.status);
-  const { reviewTask, cancelTask, pauseTask, resumeTask, retryTask } = useTaskActions();
+  const { reviewTask, cancelTask, pauseTask, resumeTask, retryTask } =
+    useTaskActions();
   const [rejectNotes, setRejectNotes] = useState("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [retryDialogOpen, setRetryDialogOpen] = useState(false);
@@ -196,8 +207,13 @@ export function TaskDetailDrawer({
   const isAdmin = user?.role === "admin";
 
   const canCancel = task ? isAdmin || user?.id === task.creator_user_id : false;
-  const canPause = task ? (isAdmin || user?.id === task.creator_user_id) && (task.status === "running" || task.status === "pending") : false;
-  const canResume = task ? (isAdmin || user?.id === task.creator_user_id) && task.status === "paused" : false;
+  const canPause = task
+    ? (isAdmin || user?.id === task.creator_user_id) &&
+      (task.status === "running" || task.status === "pending")
+    : false;
+  const canResume = task
+    ? (isAdmin || user?.id === task.creator_user_id) && task.status === "paused"
+    : false;
   const canRetry = task
     ? (task.status === "failed" || task.status === "cancelled") &&
       isWithin7Days(task.completed_at) &&
@@ -221,7 +237,11 @@ export function TaskDetailDrawer({
 
   const handleReject = () => {
     if (!taskId) return;
-    reviewTask.mutate({ taskId, approved: false, notes: rejectNotes || "审批拒绝" });
+    reviewTask.mutate({
+      taskId,
+      approved: false,
+      notes: rejectNotes || "审批拒绝",
+    });
   };
 
   const handleCancelClick = () => {
@@ -286,7 +306,9 @@ export function TaskDetailDrawer({
               )}
             </div>
           </div>
-          <SheetDescription className="sr-only">查看任务详细信息</SheetDescription>
+          <SheetDescription className="sr-only">
+            查看任务详细信息
+          </SheetDescription>
         </SheetHeader>
 
         {/* Body */}
@@ -349,34 +371,27 @@ export function TaskDetailDrawer({
             <section>
               <SectionHeader accent="bg-primary">基本信息</SectionHeader>
               <div className="rounded-xl border border-border/50 bg-muted/20 divide-y divide-border/40 px-4">
-                <InfoRow
-                  icon={<Globe className="h-3.5 w-3.5" />}
-                  label="来源"
-                >
+                <InfoRow icon={<Globe className="h-3.5 w-3.5" />} label="来源">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
                       {getSourceLabel(task.source)}
                     </span>
                     <span className="text-muted-foreground/40 text-xs">/</span>
-                    <Badge variant={task.repo_type === "model" ? "info" : "neutral"}>
+                    <Badge
+                      variant={task.repo_type === "model" ? "info" : "neutral"}
+                    >
                       {getRepoTypeLabel(task.repo_type)}
                     </Badge>
                   </div>
                 </InfoRow>
 
-                <InfoRow
-                  icon={<Box className="h-3.5 w-3.5" />}
-                  label="仓库"
-                >
+                <InfoRow icon={<Box className="h-3.5 w-3.5" />} label="仓库">
                   <span className="font-semibold text-foreground break-all">
                     {task.repo_id}
                   </span>
                 </InfoRow>
 
-                <InfoRow
-                  icon={<Hash className="h-3.5 w-3.5" />}
-                  label="版本"
-                >
+                <InfoRow icon={<Hash className="h-3.5 w-3.5" />} label="版本">
                   <code className="font-mono text-[12px] bg-muted px-1.5 py-0.5 rounded text-foreground/80">
                     {task.revision}
                   </code>
@@ -409,7 +424,9 @@ export function TaskDetailDrawer({
                     icon={<User className="h-3.5 w-3.5" />}
                     label="创建者"
                   >
-                    <span className="font-medium">{task.creator_user.name}</span>
+                    <span className="font-medium">
+                      {task.creator_user.name}
+                    </span>
                     <span className="text-muted-foreground text-[12px] ml-1.5">
                       {task.creator_user.email}
                     </span>
@@ -419,7 +436,8 @@ export function TaskDetailDrawer({
             </section>
 
             {/* Progress / Storage */}
-            {(task.status === "running" || task.status === "pausing") && !progress ? (
+            {(task.status === "running" || task.status === "pausing") &&
+            !progress ? (
               <section>
                 <SectionHeader accent="bg-blue-500">下载进度</SectionHeader>
                 <div className="rounded-xl border border-blue-100 dark:border-blue-800/40 bg-blue-50/40 dark:bg-blue-950/20 p-4 flex items-center gap-2 text-muted-foreground text-sm">
@@ -427,7 +445,8 @@ export function TaskDetailDrawer({
                   <span>加载进度中...</span>
                 </div>
               </section>
-            ) : (task.status === "running" || task.status === "pausing") && progress ? (
+            ) : (task.status === "running" || task.status === "pausing") &&
+              progress ? (
               <section>
                 <SectionHeader accent="bg-blue-500">
                   {statusConfig.storageSectionTitle ?? ""}
@@ -452,7 +471,8 @@ export function TaskDetailDrawer({
                       {statusConfig.fileListTitle}
                     </span>
                     <span className="ml-auto text-[12px] text-muted-foreground tabular-nums">
-                      {progress.downloaded_files} / {progress.total_files} 个文件
+                      {progress.downloaded_files} / {progress.total_files}{" "}
+                      个文件
                     </span>
                   </div>
                   <div className="h-60 py-1 w-full overflow-y-scroll min-w-0">
@@ -700,7 +720,8 @@ export function TaskDetailDrawer({
           <AlertDialogHeader>
             <AlertDialogTitle>确认取消任务</AlertDialogTitle>
             <AlertDialogDescription className="pt-2">
-              确定要取消任务 <strong className="text-foreground">#{taskId}</strong> 吗？
+              确定要取消任务{" "}
+              <strong className="text-foreground">#{taskId}</strong> 吗？
               {task && (
                 <>
                   <p className="mt-2 text-sm">
@@ -722,7 +743,9 @@ export function TaskDetailDrawer({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel disabled={cancelTask.isPending}>返回</AlertDialogCancel>
+            <AlertDialogCancel disabled={cancelTask.isPending}>
+              返回
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleCancelConfirm}
               disabled={cancelTask.isPending}

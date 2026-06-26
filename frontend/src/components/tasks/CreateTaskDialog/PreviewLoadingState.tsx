@@ -1,23 +1,23 @@
-import { motion } from 'framer-motion'
-import { Loader2 } from 'lucide-react'
+import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
 
 interface PreviewLoadingStateProps {
-  status: string
+  status: string;
 }
 
 const contentVariants = {
   initial: { opacity: 0, x: 20 },
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: -20 },
-}
+};
 
 const STATUS_LABELS: Record<string, string> = {
-  pending: '等待中...',
-  fetching: '获取仓库信息...',
-  processing: '处理文件中...',
-  completed: '完成',
-  failed: '失败',
-}
+  pending: "等待中...",
+  fetching: "获取仓库信息...",
+  processing: "处理文件中...",
+  completed: "完成",
+  failed: "失败",
+};
 
 export function PreviewLoadingState({ status }: PreviewLoadingStateProps) {
   return (
@@ -45,5 +45,5 @@ export function PreviewLoadingState({ status }: PreviewLoadingStateProps) {
         正在获取仓库文件列表，大型仓库可能需要一些时间...
       </p>
     </motion.div>
-  )
+  );
 }

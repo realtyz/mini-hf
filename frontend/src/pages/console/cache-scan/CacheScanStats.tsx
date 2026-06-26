@@ -1,5 +1,8 @@
 import { motion } from "framer-motion";
-import { instrumentContainer, instrumentItem } from "@/lib/animations/motion-config";
+import {
+  instrumentContainer,
+  instrumentItem,
+} from "@/lib/animations/motion-config";
 import { Clock, Database, HelpCircle, HardDrive } from "lucide-react";
 import { formatBytes } from "@/lib/utils";
 
@@ -46,9 +49,7 @@ function StatReading({ icon, label, value, sub }: StatReadingProps) {
         <div className="flex flex-col gap-2">
           {/* Top row: icon + label */}
           <div className="flex items-center gap-2">
-            <div className="text-muted-foreground/60">
-              {icon}
-            </div>
+            <div className="text-muted-foreground/60">{icon}</div>
             <span className="text-[11px] font-medium tracking-wider uppercase text-muted-foreground/50">
               {label}
             </span>

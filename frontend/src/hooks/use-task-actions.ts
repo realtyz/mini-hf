@@ -1,41 +1,41 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { toast } from 'sonner'
-import api from '@/lib/api/client'
-import endpoints from '@/lib/api/endpoints'
-import { queryKeys } from '@/lib/query/keys'
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import api from "@/lib/api/client";
+import endpoints from "@/lib/api/endpoints";
+import { queryKeys } from "@/lib/query/keys";
 import type {
   TaskResponse,
   ApiResponse,
   AsyncPreviewTaskResponse,
   ApiError,
-} from '@/lib/api/types'
-import type { TaskPreviewRequest } from '@/hooks/use-async-preview-task'
+} from "@/lib/api/types";
+import type { TaskPreviewRequest } from "@/hooks/use-async-preview-task";
 
 // ==================== 类型定义 ====================
 
 interface CreateTaskRequest {
-  cache_key: string
-  selected_files?: string[]
+  cache_key: string;
+  selected_files?: string[];
 }
 
-type CreateTaskResponse = ApiResponse<TaskResponse>
+type CreateTaskResponse = ApiResponse<TaskResponse>;
 
 interface ReviewTaskRequest {
-  approved: boolean
-  notes?: string
+  approved: boolean;
+  notes?: string;
 }
 
-type TaskActionResponse = ApiResponse<TaskResponse>
+type TaskActionResponse = ApiResponse<TaskResponse>;
 
 // ==================== 工厂函数 ====================
 
 interface CreateTaskMutationOptions<TVars> {
   /** toast 中显示的操作名称，如 "取消任务" */
-  actionName: string
+  actionName: string;
   /** 是否同时刷新任务详情缓存，默认 true */
-  invalidateDetail?: boolean
+  invalidateDetail?: boolean;
   /** 自定义 onError，覆盖默认 toast */
-  onError?: (error: ApiError, variables: TVars) => void
+  onError?: (error: ApiError, variables: TVars) => void;
 }
 
 /**
@@ -46,56 +46,64 @@ function useCreateTaskMutation<TVars>(
   mutationFn: (variables: TVars) => Promise<TaskResponse>,
   getTaskId: (variables: TVars) => number,
   options: CreateTaskMutationOptions<TVars>,
-  queryClient: ReturnType<typeof useQueryClient>
+  queryClient: ReturnType<typeof useQueryClient>,
 ) {
-  const { actionName, invalidateDetail = true, onError } = options
+  const { actionName, invalidateDetail = true, onError } = options;
 
   return useMutation({
     mutationFn,
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
       if (invalidateDetail) {
         queryClient.invalidateQueries({
           queryKey: queryKeys.tasks.detail(getTaskId(variables)),
-        })
+        });
       }
     },
-    onError: onError ?? ((error: ApiError) => {
-      toast.error(`${actionName}失败`, { description: error.message })
-    }),
-  })
+    onError:
+      onError ??
+      ((error: ApiError) => {
+        toast.error(`${actionName}失败`, { description: error.message });
+      }),
+  });
 }
 
 // ==================== Hooks ====================
 
 export function useTaskActions() {
-  const queryClient = useQueryClient()
+  const queryClient = useQueryClient();
 
   const startPreviewTask = useMutation({
     mutationFn: async (data: TaskPreviewRequest): Promise<string> => {
-      const response = await api.post<AsyncPreviewTaskResponse>(endpoints.task.preview, data)
-      return response.data.task_id
+      const response = await api.post<AsyncPreviewTaskResponse>(
+        endpoints.task.preview,
+        data,
+      );
+      return response.data.task_id;
     },
-  })
+  });
 
   const createTask = useMutation({
     mutationFn: async ({
       cacheKey,
       selectedFiles,
     }: {
-      cacheKey: string
-      selectedFiles: string[]
+      cacheKey: string;
+      selectedFiles: string[];
     }): Promise<TaskResponse> => {
-      const response = await api.post<CreateTaskResponse>(endpoints.task.create, {
-        cache_key: cacheKey,
-        selected_files: selectedFiles,
-      } as CreateTaskRequest)
-      return response.data
+      const response = await api.post<CreateTaskResponse>(
+        endpoints.task.create,
+        {
+          cache_key: cacheKey,
+          selected_files: selectedFiles,
+        } as CreateTaskRequest,
+      );
+      return response.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
     },
-  })
+  });
 
   const reviewTask = useMutation({
     mutationFn: async ({
@@ -103,90 +111,108 @@ export function useTaskActions() {
       approved,
       notes,
     }: {
-      taskId: number
-      approved: boolean
-      notes?: string
+      taskId: number;
+      approved: boolean;
+      notes?: string;
     }): Promise<TaskResponse> => {
       const response = await api.post<TaskActionResponse>(
         endpoints.task.review(taskId),
-        { approved, notes } as ReviewTaskRequest
-      )
-      return response.data
+        { approved, notes } as ReviewTaskRequest,
+      );
+      return response.data;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all })
+      queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
       queryClient.invalidateQueries({
         queryKey: queryKeys.tasks.detail(variables.taskId),
-      })
+      });
     },
     onError: (error: ApiError, variables) => {
-      const action = variables.approved ? '批准' : '拒绝'
-      toast.error(`${action}任务失败`, { description: error.message })
+      const action = variables.approved ? "批准" : "拒绝";
+      toast.error(`${action}任务失败`, { description: error.message });
     },
-  })
+  });
 
   const cancelTask = useCreateTaskMutation(
     async (taskId: number) => {
-      const response = await api.post<TaskActionResponse>(endpoints.task.cancel(taskId))
-      return response.data
+      const response = await api.post<TaskActionResponse>(
+        endpoints.task.cancel(taskId),
+      );
+      return response.data;
     },
     (taskId) => taskId,
-    { actionName: '取消任务' },
-    queryClient
-  )
+    { actionName: "取消任务" },
+    queryClient,
+  );
 
   const pauseTask = useCreateTaskMutation(
     async (taskId: number) => {
-      const response = await api.post<TaskActionResponse>(endpoints.task.pause(taskId))
-      return response.data
+      const response = await api.post<TaskActionResponse>(
+        endpoints.task.pause(taskId),
+      );
+      return response.data;
     },
     (taskId) => taskId,
-    { actionName: '暂停任务' },
-    queryClient
-  )
+    { actionName: "暂停任务" },
+    queryClient,
+  );
 
   const resumeTask = useCreateTaskMutation(
     async (taskId: number) => {
-      const response = await api.post<TaskActionResponse>(endpoints.task.resume(taskId))
-      return response.data
+      const response = await api.post<TaskActionResponse>(
+        endpoints.task.resume(taskId),
+      );
+      return response.data;
     },
     (taskId) => taskId,
-    { actionName: '恢复任务' },
-    queryClient
-  )
+    { actionName: "恢复任务" },
+    queryClient,
+  );
 
   const pinTask = useCreateTaskMutation(
     async (taskId: number) => {
-      const response = await api.post<TaskActionResponse>(endpoints.task.pin(taskId))
-      return response.data
+      const response = await api.post<TaskActionResponse>(
+        endpoints.task.pin(taskId),
+      );
+      return response.data;
     },
     (taskId) => taskId,
-    { actionName: '置顶任务' },
-    queryClient
-  )
+    { actionName: "置顶任务" },
+    queryClient,
+  );
 
   const unpinTask = useCreateTaskMutation(
     async (taskId: number) => {
-      const response = await api.post<TaskActionResponse>(endpoints.task.unpin(taskId))
-      return response.data
+      const response = await api.post<TaskActionResponse>(
+        endpoints.task.unpin(taskId),
+      );
+      return response.data;
     },
     (taskId) => taskId,
-    { actionName: '取消置顶' },
-    queryClient
-  )
+    { actionName: "取消置顶" },
+    queryClient,
+  );
 
   const retryTask = useCreateTaskMutation(
-    async ({ taskId, selectedFiles }: { taskId: number; selectedFiles?: string[] }) => {
+    async ({
+      taskId,
+      selectedFiles,
+    }: {
+      taskId: number;
+      selectedFiles?: string[];
+    }) => {
       const response = await api.post<TaskActionResponse>(
         endpoints.task.retry(taskId),
-        selectedFiles && selectedFiles.length > 0 ? { selected_files: selectedFiles } : undefined,
-      )
-      return response.data
+        selectedFiles && selectedFiles.length > 0
+          ? { selected_files: selectedFiles }
+          : undefined,
+      );
+      return response.data;
     },
     ({ taskId }) => taskId,
-    { actionName: '重试任务', invalidateDetail: false },
-    queryClient
-  )
+    { actionName: "重试任务", invalidateDetail: false },
+    queryClient,
+  );
 
   return {
     startPreviewTask,
@@ -198,5 +224,5 @@ export function useTaskActions() {
     pinTask,
     unpinTask,
     retryTask,
-  }
+  };
 }

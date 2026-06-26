@@ -15,9 +15,10 @@ interface RepoGridProps {
 }
 
 function gridColsClass(columns?: 3 | 4): string {
-  if (columns === 4) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
-  if (columns === 3) return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
-  return 'grid-cols-[repeat(auto-fill,minmax(260px,1fr))]';
+  if (columns === 4)
+    return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+  if (columns === 3) return "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3";
+  return "grid-cols-[repeat(auto-fill,minmax(260px,1fr))]";
 }
 
 export function RepoGrid({
@@ -30,7 +31,7 @@ export function RepoGrid({
   if (isLoading) {
     return (
       <div className="@container">
-        <div className={cn('grid gap-4', gridColsClass(columns))}>
+        <div className={cn("grid gap-4", gridColsClass(columns))}>
           {Array.from({ length: 8 }).map((_, i) => (
             <RepoCardSkeleton key={i} index={i} />
           ))}
@@ -78,7 +79,7 @@ export function RepoGrid({
 
   return (
     <div className="@container">
-      <div className={cn('grid gap-4', gridColsClass(columns))}>
+      <div className={cn("grid gap-4", gridColsClass(columns))}>
         {repos.map((repo, index) => (
           <RepoCard
             key={repo.id}

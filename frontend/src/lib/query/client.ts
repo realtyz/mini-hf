@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryClient } from "@tanstack/react-query";
 
 /**
  * 缓存新鲜时长阶梯（毫秒）
@@ -15,7 +15,7 @@ export const STALE_TIMES = {
   stats: 60 * 1000,
   config: 5 * 60 * 1000,
   static: 10 * 60 * 1000,
-} as const
+} as const;
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -29,4 +29,4 @@ export const queryClient = new QueryClient({
       retry: false,
     },
   },
-})
+});

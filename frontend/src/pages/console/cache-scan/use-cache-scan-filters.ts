@@ -1,7 +1,15 @@
 import { useState, useMemo } from "react";
-import type { RepoScanItem, ScanCategory, ScanResultData } from "@/lib/api/types";
+import type {
+  RepoScanItem,
+  ScanCategory,
+  ScanResultData,
+} from "@/lib/api/types";
 
-export type SortField = "cached_size" | "last_downloaded_at" | "cache_updated_at" | "downloads";
+export type SortField =
+  | "cached_size"
+  | "last_downloaded_at"
+  | "cache_updated_at"
+  | "downloads";
 export type SortDirection = "asc" | "desc";
 
 interface UseCacheScanFiltersReturn {
@@ -15,7 +23,11 @@ interface UseCacheScanFiltersReturn {
   filteredRepos: RepoScanItem[];
 }
 
-function nullsLastCompare(a: unknown, b: unknown, direction: SortDirection): number {
+function nullsLastCompare(
+  a: unknown,
+  b: unknown,
+  direction: SortDirection,
+): number {
   const aNull = a === null || a === undefined;
   const bNull = b === null || b === undefined;
   if (aNull && bNull) return 0;
@@ -30,7 +42,9 @@ export function useCacheScanFilters(
   result: ScanResultData | null,
 ): UseCacheScanFiltersReturn {
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<"all" | ScanCategory>("all");
+  const [categoryFilter, setCategoryFilter] = useState<"all" | ScanCategory>(
+    "all",
+  );
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 

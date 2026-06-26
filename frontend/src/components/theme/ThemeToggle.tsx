@@ -1,24 +1,25 @@
-import { Sun, Moon, Monitor } from 'lucide-react'
-import { useTheme } from '@/hooks/use-theme'
-import { Button } from '@/components/ui/button'
+import { Sun, Moon, Monitor } from "lucide-react";
+import { useTheme } from "@/hooks/use-theme";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from '@/components/ui/tooltip'
+} from "@/components/ui/tooltip";
 
 export function ThemeToggle() {
-  const { theme, setTheme } = useTheme()
-  const nextTheme = theme === 'light' ? 'dark' : theme === 'dark' ? 'system' : 'light'
+  const { theme, setTheme } = useTheme();
+  const nextTheme =
+    theme === "light" ? "dark" : theme === "dark" ? "system" : "light";
 
   const icons = {
     light: Sun,
     dark: Moon,
     system: Monitor,
-  }
-  const Icon = icons[theme]
-  const labels = { light: '浅色', dark: '深色', system: '跟随系统' }
+  };
+  const Icon = icons[theme];
+  const labels = { light: "浅色", dark: "深色", system: "跟随系统" };
 
   return (
     <TooltipProvider delayDuration={200}>
@@ -39,5 +40,5 @@ export function ThemeToggle() {
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  )
+  );
 }

@@ -1,13 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Search,
-  X,
-  RefreshCw,
-  Smile,
-  Globe,
-} from "lucide-react";
+import { Search, X, RefreshCw, Smile, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -61,7 +55,9 @@ async function fetchRepositories({
   queryParams.statuses = [statusFilter];
 
   const endpoint =
-    modelSource === "huggingface" ? endpoints.repo.hfListPublic : endpoints.repo.msList;
+    modelSource === "huggingface"
+      ? endpoints.repo.hfListPublic
+      : endpoints.repo.msList;
   return api.get<RepoListResponse>(endpoint, {
     params: queryParams,
     paramsSerializer: {
@@ -204,7 +200,10 @@ export function Repositories() {
               </SelectContent>
             </Select>
 
-            <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
+            <Select
+              value={statusFilter}
+              onValueChange={handleStatusFilterChange}
+            >
               <SelectTrigger className="w-30 h-9 rounded-xl border-border/60 text-[13px]">
                 <SelectValue placeholder="状态筛选" />
               </SelectTrigger>

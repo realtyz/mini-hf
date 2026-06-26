@@ -37,21 +37,21 @@ export function SelectableFileTree({
       new Set(
         items
           .filter((i) => i.type === "file" && i.is_cached === true)
-          .map((i) => i.path)
+          .map((i) => i.path),
       ),
-    [items]
+    [items],
   );
 
   // 非缓存文件数量（全局）
   const nonCachedFileCount = useMemo(
     () => items.filter((i) => i.type === "file" && i.is_cached !== true).length,
-    [items]
+    [items],
   );
 
   // 有效选中 = 用户选择 + 已缓存文件（始终选中）
   const effectiveSelected = useMemo(
     () => new Set([...selectedPaths, ...cachedPaths]),
-    [selectedPaths, cachedPaths]
+    [selectedPaths, cachedPaths],
   );
 
   const currentChildren = useMemo(() => {
@@ -142,8 +142,7 @@ export function SelectableFileTree({
       <div className="bg-muted/20 px-3 py-1.5 border-b flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>
-            {selectedPaths.size} /{" "}
-            {nonCachedFileCount} 个文件已选
+            {selectedPaths.size} / {nonCachedFileCount} 个文件已选
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -205,7 +204,7 @@ export function SelectableFileTree({
                 const dirState = getDirectorySelectionState(
                   item.path,
                   effectiveSelected,
-                  items
+                  items,
                 );
                 const isIndeterminate = dirState === "some";
 
@@ -225,7 +224,11 @@ export function SelectableFileTree({
                               : false
                         }
                         onCheckedChange={() => toggleDirectory(item.path)}
-                        className={isIndeterminate ? "data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground" : ""}
+                        className={
+                          isIndeterminate
+                            ? "data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground"
+                            : ""
+                        }
                       />
                       <div className="w-7 h-7 rounded-md bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center shrink-0 group-hover:bg-amber-500/20 dark:group-hover:bg-amber-500/30 transition-colors">
                         <Folder className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />

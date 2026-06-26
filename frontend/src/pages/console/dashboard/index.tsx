@@ -8,7 +8,10 @@ import { PageHeader } from "@/components/shared/PageHeader";
 import { useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/keys";
 import { useAuthStore } from "@/stores/auth-store";
-import { containerVariants, itemVariants } from "@/lib/animations/motion-config";
+import {
+  containerVariants,
+  itemVariants,
+} from "@/lib/animations/motion-config";
 
 export function Dashboard() {
   const queryClient = useQueryClient();

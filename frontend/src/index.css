@@ -206,19 +206,33 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: hsla(var(--muted-foreground-h), var(--muted-foreground-s), var(--muted-foreground-l), 0.3);
+    background: hsla(
+      var(--muted-foreground-h),
+      var(--muted-foreground-s),
+      var(--muted-foreground-l),
+      0.3
+    );
     border-radius: 3px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: hsla(var(--muted-foreground-h), var(--muted-foreground-s), var(--muted-foreground-l), 0.5);
+    background: hsla(
+      var(--muted-foreground-h),
+      var(--muted-foreground-s),
+      var(--muted-foreground-l),
+      0.5
+    );
   }
 }
 
 @layer utilities {
   @keyframes rotate {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   .animate-rotate {
@@ -265,12 +279,18 @@
   }
 
   @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-6px); }
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-6px);
+    }
   }
 
   @keyframes pulse-glow {
-    0%, 100% {
+    0%,
+    100% {
       opacity: 0.5;
       box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4);
     }
@@ -281,22 +301,40 @@
   }
 
   @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
   }
 
   @keyframes pulse-ring {
-    0% { transform: scale(0.8); opacity: 1; }
-    100% { transform: scale(2.2); opacity: 0; }
+    0% {
+      transform: scale(0.8);
+      opacity: 1;
+    }
+    100% {
+      transform: scale(2.2);
+      opacity: 0;
+    }
   }
 
   @keyframes progress-fill {
-    from { width: 0%; }
+    from {
+      width: 0%;
+    }
   }
 
   @keyframes count-up {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
   /* 3D Card Flip Animations */
@@ -331,7 +369,8 @@
 
   /* Background gradient animation */
   @keyframes gradient-shift {
-    0%, 100% {
+    0%,
+    100% {
       background-position: 0% 50%;
     }
     50% {
@@ -361,7 +400,12 @@
   }
 
   .animate-shimmer {
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.15),
+      transparent
+    );
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }
@@ -385,8 +429,12 @@
 
   /* Horizontal light streak - flows left to right */
   @keyframes streak-h {
-    from { left: -100%; }
-    to { left: 100%; }
+    from {
+      left: -100%;
+    }
+    to {
+      left: 100%;
+    }
   }
 
   .animate-streak-h {
@@ -397,8 +445,12 @@
 
   /* Vertical light streak - flows top to bottom */
   @keyframes streak-v {
-    from { top: -100%; }
-    to { top: 100%; }
+    from {
+      top: -100%;
+    }
+    to {
+      top: 100%;
+    }
   }
 
   .animate-streak-v {
@@ -409,8 +461,12 @@
 
   /* Shimmer slide for skeleton loading */
   @keyframes shimmer-slide {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
   }
 
   /* 3D Flip Card Styles */
@@ -449,12 +505,24 @@
   }
 
   /* Stagger animations */
-  .stagger-1 { animation-delay: 0ms; }
-  .stagger-2 { animation-delay: 80ms; }
-  .stagger-3 { animation-delay: 160ms; }
-  .stagger-4 { animation-delay: 240ms; }
-  .stagger-5 { animation-delay: 320ms; }
-  .stagger-6 { animation-delay: 400ms; }
+  .stagger-1 {
+    animation-delay: 0ms;
+  }
+  .stagger-2 {
+    animation-delay: 80ms;
+  }
+  .stagger-3 {
+    animation-delay: 160ms;
+  }
+  .stagger-4 {
+    animation-delay: 240ms;
+  }
+  .stagger-5 {
+    animation-delay: 320ms;
+  }
+  .stagger-6 {
+    animation-delay: 400ms;
+  }
 
   /* Glass effect */
   .glass {
@@ -469,7 +537,9 @@
 
   /* Card hover lift */
   .card-hover {
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
   }
 
   .card-hover:hover {
@@ -479,7 +549,7 @@
 
   /* Gradient text */
   .gradient-text {
-    background: linear-gradient(135deg, var(--primary) 0%, #3B82F6 100%);
+    background: linear-gradient(135deg, var(--primary) 0%, #3b82f6 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -487,7 +557,7 @@
 
   /* Progress bar styles */
   .progress-gradient {
-    background: linear-gradient(90deg, var(--primary) 0%, #60A5FA 100%);
+    background: linear-gradient(90deg, var(--primary) 0%, #60a5fa 100%);
   }
 
   /* Focus styles */
@@ -511,8 +581,14 @@
 
   /* Blinking cursor animation */
   @keyframes blink {
-    0%, 50% { opacity: 1; }
-    51%, 100% { opacity: 0; }
+    0%,
+    50% {
+      opacity: 1;
+    }
+    51%,
+    100% {
+      opacity: 0;
+    }
   }
 
   .animate-blink {
@@ -521,7 +597,8 @@
 
   /* Breathing light effect for running tasks */
   @keyframes pulse-bg {
-    0%, 100% {
+    0%,
+    100% {
       background-color: rgba(249, 115, 22, 0.03);
     }
     50% {

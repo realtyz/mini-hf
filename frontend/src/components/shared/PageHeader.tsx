@@ -1,20 +1,26 @@
-import type { ReactNode, ComponentType, SVGProps } from 'react'
+import type { ReactNode, ComponentType, SVGProps } from "react";
 
 interface PageHeaderProps {
   /** Lucide icon component */
-  icon: ComponentType<SVGProps<SVGSVGElement>>
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
   /** Page title */
-  title: string
+  title: string;
   /** Subtitle / description shown below the title */
-  subtitle: string
+  subtitle: string;
   /** Action buttons rendered to the right of the header */
-  actions?: ReactNode
+  actions?: ReactNode;
   /** Optional content injected between the header row and actions.
    *  Useful for inline controls like preset pickers that belong with the header. */
-  children?: ReactNode
+  children?: ReactNode;
 }
 
-export function PageHeader({ icon: Icon, title, subtitle, actions, children }: PageHeaderProps) {
+export function PageHeader({
+  icon: Icon,
+  title,
+  subtitle,
+  actions,
+  children,
+}: PageHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-4">
@@ -26,12 +32,16 @@ export function PageHeader({ icon: Icon, title, subtitle, actions, children }: P
           <div className="absolute -inset-0.5 rounded-2xl border border-slate-200/30 dark:border-slate-600/20 -z-10" />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">{title}</h1>
-          <p className="text-[13px] text-muted-foreground/60 mt-0.5 leading-relaxed">{subtitle}</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            {title}
+          </h1>
+          <p className="text-[13px] text-muted-foreground/60 mt-0.5 leading-relaxed">
+            {subtitle}
+          </p>
         </div>
         {children}
       </div>
       {actions && <div className="flex items-center gap-2">{actions}</div>}
     </div>
-  )
+  );
 }

@@ -4,34 +4,34 @@
  */
 const endpoints = {
   auth: {
-    signIn: '/auth/sign-in',
-    register: '/auth/register',
-    sendVerifyCode: '/auth/send-verify-code',
-    verifyEmail: '/auth/verify-email',
-    registerWithCode: '/auth/register-with-code',
-    verify: '/auth/verify',
-    refresh: '/auth/refresh',
-    logout: '/auth/logout',
-    forgotPassword: '/auth/forgot-password',
-    resetPassword: '/auth/reset-password',
+    signIn: "/auth/sign-in",
+    register: "/auth/register",
+    sendVerifyCode: "/auth/send-verify-code",
+    verifyEmail: "/auth/verify-email",
+    registerWithCode: "/auth/register-with-code",
+    verify: "/auth/verify",
+    refresh: "/auth/refresh",
+    logout: "/auth/logout",
+    forgotPassword: "/auth/forgot-password",
+    resetPassword: "/auth/reset-password",
   },
 
   user: {
-    me: '/user/me',
-    list: '/user/list',
+    me: "/user/me",
+    list: "/user/list",
     detail: (id: number) => `/user/${id}`,
-    create: '/user',
+    create: "/user",
     update: (id: number) => `/user/${id}`,
     delete: (id: number) => `/user/${id}`,
     resetPassword: (id: number) => `/user/${id}/reset-password`,
   },
 
   task: {
-    list: '/task/list',
-    listPublic: '/task/list-public',
-    activePublic: '/task/active-public',
-    recent: '/task/recent',
-    preview: '/task/preview',
+    list: "/task/list",
+    listPublic: "/task/list-public",
+    activePublic: "/task/active-public",
+    recent: "/task/recent",
+    preview: "/task/preview",
     previewStatus: (taskId: string) => `/task/preview/${taskId}`,
     detail: (id: number) => `/task/${id}`,
     review: (id: number) => `/task/${id}/review`,
@@ -43,60 +43,64 @@ const endpoints = {
     retry: (id: number) => `/task/${id}/retry`,
     retryPreview: (id: number) => `/task/${id}/retry-preview`,
     progress: (id: number) => `/task/${id}/progress`,
-    create: '/task',
+    create: "/task",
   },
 
   repo: {
-    hfList: '/hf_repo/list',
-    hfListPublic: '/hf_repo/list-public',
-    msList: '/ms_repo/list',
+    hfList: "/hf_repo/list",
+    hfListPublic: "/hf_repo/list-public",
+    msList: "/ms_repo/list",
     hfDetail: (repoId: string) => `/hf_repo/${encodeURIComponent(repoId)}`,
     hfModel: (repoId: string) => `/hf_repo/model/${encodeURIComponent(repoId)}`,
-    hfDataset: (repoId: string) => `/hf_repo/dataset/${encodeURIComponent(repoId)}`,
+    hfDataset: (repoId: string) =>
+      `/hf_repo/dataset/${encodeURIComponent(repoId)}`,
     tree: (repoId: string, commitHash: string) =>
       `/hf_repo/${encodeURIComponent(repoId)}/tree/${encodeURIComponent(commitHash)}`,
     fileUrl: (repoId: string, commitHash: string, path: string) =>
       `/hf_repo/${encodeURIComponent(repoId)}/file?commit_hash=${encodeURIComponent(commitHash)}&path=${encodeURIComponent(path)}`,
-    batchDelete: '/batch/repo-delete',
-    batchDeleteStatus: (operationId: string) => `/batch/repo-delete/${operationId}/status`,
+    batchDelete: "/batch/repo-delete",
+    batchDeleteStatus: (operationId: string) =>
+      `/batch/repo-delete/${operationId}/status`,
   },
 
   dashboard: {
-    stats: '/dashboard/stats',
+    stats: "/dashboard/stats",
   },
 
   cache: {
-    scanResult: '/cache/scan/result',
-    scanRun: '/cache/scan/run',
+    scanResult: "/cache/scan/result",
+    scanRun: "/cache/scan/run",
   },
 
   config: {
-    list: '/config',
-    schema: '/config/schema',
+    list: "/config",
+    schema: "/config/schema",
     detail: (key: string) => `/config/${encodeURIComponent(key)}`,
-    create: '/config',
+    create: "/config",
     update: (key: string) => `/config/${encodeURIComponent(key)}`,
     delete: (key: string) => `/config/${encodeURIComponent(key)}`,
-    batch: '/config/batch',
+    batch: "/config/batch",
     category: (category: string) => `/config/category/${category}`,
-    init: '/config/init',
-    smtpTest: '/config/category/smtp/test',
+    init: "/config/init",
+    smtpTest: "/config/category/smtp/test",
   },
 
   health: {
-    announcement: '/health/announcement',
-    hfEndpoints: '/health/hf-endpoints',
+    announcement: "/health/announcement",
+    hfEndpoints: "/health/hf-endpoints",
   },
 
   system: {
-    announcements: '/system/announcements',
-    announcementsAdmin: '/system/announcements/admin',
+    announcements: "/system/announcements",
+    announcementsAdmin: "/system/announcements/admin",
   },
 
   adminRepair: {
-    profileStatus: (repoId: string) => `/admin/repair/profile/${encodeURIComponent(repoId)}/status`,
-    snapshotStatus: (snapshotId: number) => `/admin/repair/snapshot/${snapshotId}/status`,
+    profileStatus: (repoId: string) =>
+      `/admin/repair/profile/${encodeURIComponent(repoId)}/status`,
+    snapshotStatus: (snapshotId: number) =>
+      `/admin/repair/snapshot/${snapshotId}/status`,
   },
-} as const
+} as const;
 
-export default endpoints
+export default endpoints;

@@ -1,18 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { containerVariants, itemVariants } from "@/lib/animations/motion-config";
 import {
-  ScanSearch,
-  RefreshCw,
-  ShieldCheck,
-} from "lucide-react";
+  containerVariants,
+  itemVariants,
+} from "@/lib/animations/motion-config";
+import { ScanSearch, RefreshCw, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/stores/auth-store";
-import { useCacheScanResult, useTriggerCacheScan, useDeleteRepo, useBatchDeleteRepos, useBatchDeleteStatus } from "@/hooks/api";
+import {
+  useCacheScanResult,
+  useTriggerCacheScan,
+  useDeleteRepo,
+  useBatchDeleteRepos,
+  useBatchDeleteStatus,
+} from "@/hooks/api";
 import { queryKeys } from "@/lib/query/keys";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
@@ -106,8 +111,12 @@ function AllClearState() {
             <ShieldCheck className="size-4.5 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-foreground">{STRINGS.cacheScanAllClear}</p>
-            <p className="text-[12.5px] text-muted-foreground/60 mt-0.5">{STRINGS.cacheScanAllClearDesc}</p>
+            <p className="text-sm font-semibold text-foreground">
+              {STRINGS.cacheScanAllClear}
+            </p>
+            <p className="text-[12.5px] text-muted-foreground/60 mt-0.5">
+              {STRINGS.cacheScanAllClearDesc}
+            </p>
           </div>
         </div>
       </div>
@@ -125,8 +134,10 @@ export function CacheScan() {
   const { result, isLoading, isError, refetch } = useCacheScanResult();
   const triggerScan = useTriggerCacheScan();
   const {
-    search, setSearch,
-    categoryFilter, setCategoryFilter,
+    search,
+    setSearch,
+    categoryFilter,
+    setCategoryFilter,
     sortField,
     sortDirection,
     setSort,
@@ -138,7 +149,8 @@ export function CacheScan() {
   const [deletingRepoId, setDeletingRepoId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [batchOperationId, setBatchOperationId] = useState<string | null>(null);
-  const [batchDeleteResult, setBatchDeleteResult] = useState<BatchDeleteOperationState | null>(null);
+  const [batchDeleteResult, setBatchDeleteResult] =
+    useState<BatchDeleteOperationState | null>(null);
   const completedOpRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
   const deleteRepo = useDeleteRepo();
@@ -146,17 +158,28 @@ export function CacheScan() {
   const batchDeleteStatus = useBatchDeleteStatus(batchOperationId);
 
   // Filter setters that also clear selection
-  const handleSetSearch = (v: string) => { setSearch(v); setSelectedIds(new Set()); };
-  const handleSetCategoryFilter = (v: "all" | ScanCategory) => { setCategoryFilter(v); setSelectedIds(new Set()); };
+  const handleSetSearch = (v: string) => {
+    setSearch(v);
+    setSelectedIds(new Set());
+  };
+  const handleSetCategoryFilter = (v: "all" | ScanCategory) => {
+    setCategoryFilter(v);
+    setSelectedIds(new Set());
+  };
 
   useEffect(() => {
     const data = batchDeleteStatus.data?.data;
-    if (!data || data.status !== 'completed') return;
+    if (!data || data.status !== "completed") return;
     if (data.operation_id === completedOpRef.current) return;
     completedOpRef.current = data.operation_id;
 
     if (data.total_failed > 0) {
-      toast.warning(STRINGS.cacheScanBatchDeleteCompletedWithFailures(data.total_deleted, data.total_failed));
+      toast.warning(
+        STRINGS.cacheScanBatchDeleteCompletedWithFailures(
+          data.total_deleted,
+          data.total_failed,
+        ),
+      );
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setBatchDeleteResult(data);
     } else {
@@ -240,7 +263,7 @@ export function CacheScan() {
         onError: () => {
           toast.error("批量删除启动失败，请重试");
         },
-      }
+      },
     );
   };
 
@@ -252,14 +275,18 @@ export function CacheScan() {
       {
         onSuccess: () => {
           toast.success(STRINGS.cacheScanDeleteSuccess);
-          queryClient.invalidateQueries({ queryKey: queryKeys.cacheScan.result() });
+          queryClient.invalidateQueries({
+            queryKey: queryKeys.cacheScan.result(),
+          });
           setDeleteDialogOpen(false);
           setDeletingRepoId(null);
         },
         onError: (error) => {
-          toast.error(error instanceof Error ? error.message : "删除失败，请重试");
+          toast.error(
+            error instanceof Error ? error.message : "删除失败，请重试",
+          );
         },
-      }
+      },
     );
   };
 
@@ -346,8 +373,15 @@ export function CacheScan() {
                     disabled={triggerScan.isPending}
                     className="gap-2 cursor-pointer rounded-xl"
                   >
-                    <RefreshCw className={cn("size-4", triggerScan.isPending && "animate-spin")} />
-                    {triggerScan.isPending ? STRINGS.cacheScanScanning : STRINGS.cacheScanTrigger}
+                    <RefreshCw
+                      className={cn(
+                        "size-4",
+                        triggerScan.isPending && "animate-spin",
+                      )}
+                    />
+                    {triggerScan.isPending
+                      ? STRINGS.cacheScanScanning
+                      : STRINGS.cacheScanTrigger}
                   </Button>
                 </motion.div>
               )}

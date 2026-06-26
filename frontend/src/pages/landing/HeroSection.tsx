@@ -6,7 +6,10 @@ export function HeroSection() {
   return (
     <section className="relative py-24 md:py-32 overflow-hidden">
       {/* Node network + tech grid + light streaks */}
-      <NodeNetwork className="absolute inset-0 pointer-events-none" nodeCount={42} />
+      <NodeNetwork
+        className="absolute inset-0 pointer-events-none"
+        nodeCount={42}
+      />
       <TechBackground variant="hero" fadeTop={false} />
 
       <div className="container mx-auto px-4 max-w-4xl text-center relative">
@@ -41,7 +44,6 @@ export function HeroSection() {
             </span>
           </div>
         </div>
-
       </div>
     </section>
   );
