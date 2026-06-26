@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Smile, Globe, Loader2, Clock, Pin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { TaskResponse, TaskStatus } from "@/lib/api/types";
 import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
+import { useElapsedTimer } from "@/hooks/use-elapsed-timer";
 
 interface ActiveTaskListProps {
   tasks: TaskResponse[];
@@ -19,24 +20,18 @@ const ACTIVE_STATUS_COLORS: Partial<Record<TaskStatus, string>> = {
 
 const DEFAULT_STATUS_COLOR = "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700"
 
-function calcDuration(startedAt: string | null): string {
-  if (!startedAt) return "-";
-  const diff = Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000);
-  if (diff < 60) return `${diff}秒`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}分${diff % 60}秒`;
-  return `${Math.floor(diff / 3600)}时${Math.floor((diff % 3600) / 60)}分`;
+function formatElapsed(ms: number | null): string {
+  if (ms === null) return "-";
+
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}秒`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}分${seconds % 60}秒`;
+  return `${Math.floor(seconds / 3600)}时${Math.floor((seconds % 3600) / 60)}分`;
 }
 
-function useElapsedTime(startedAt: string | null, active: boolean): string {
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    if (!active || !startedAt) return;
-    const id = setInterval(() => setTick((n) => n + 1), 1000);
-    return () => clearInterval(id);
-  }, [startedAt, active]);
-
-  return calcDuration(startedAt);
+// Static (non-ticking) elapsed ms for a started-at timestamp, evaluated at call time.
+function elapsedSince(startedAtMs: number): number {
+  return Date.now() - startedAtMs;
 }
 
 interface TaskListItemProps {
@@ -48,7 +43,13 @@ interface TaskListItemProps {
 
 function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
   const isRunning = task.status?.toLowerCase() === "running";
-  const elapsed = useElapsedTime(task.started_at ?? null, isRunning);
+  const startedAtMs = task.started_at ? new Date(task.started_at).getTime() : null;
+  const elapsedMs = useElapsedTimer(isRunning, startedAtMs);
+  // Running tasks tick via the hook once it has a value; until then (and for
+  // non-running tasks) fall back to a static snapshot, matching prior behavior.
+  const elapsed = formatElapsed(
+    startedAtMs === null ? null : elapsedMs > 0 ? elapsedMs : elapsedSince(startedAtMs),
+  );
   const [isPressed, setIsPressed] = useState(false);
   const itemRef = useRef<HTMLDivElement>(null);
 
