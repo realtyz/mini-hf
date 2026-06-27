@@ -53,6 +53,7 @@ src/
 - **Files**: PascalCase for components, kebab-case or camelCase for everything else. Follow existing patterns — don't rename without reason.
 - **Components**: named exports only (no default exports). Use `React.memo()` for pure presentational components.
 - **API hooks**: `use-*-queries.ts` (e.g., `use-repo-queries.ts`, `use-task-progress.ts`). Each file groups related queries + mutations for one domain.
+- **Hooks placement**: Put a hook in `src/hooks/` only when it is reused across pages or features (e.g., `use-task-list`, `use-task-actions`, `use-task-detail`, `use-repo-list` are shared by `console/tasks` and `tasks-public`). Single-page hooks co-locate with the page that owns them (e.g., `pages/console/cache-scan/use-cache-scan-filters.ts`, `pages/console/settings/use-config-form.ts`).
 
 ### State Management
 

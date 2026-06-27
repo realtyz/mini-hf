@@ -15,7 +15,7 @@ import {
   CreateTaskDialog,
 } from "@/components/tasks";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { LoadingSpinner } from "@/components/shared/LoadingSpinner";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { useTaskList, usePendingApprovalCount } from "@/hooks/use-task-list";
@@ -205,7 +205,7 @@ export function Tasks() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <LoadingSkeleton message="加载中..." />
+              <LoadingSpinner message="加载中..." />
             </motion.div>
           ) : error ? (
             <motion.div

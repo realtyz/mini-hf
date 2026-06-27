@@ -4,7 +4,7 @@ export { PageHeader } from "./PageHeader";
 export { StatCard } from "./StatCard";
 export { EmptyState } from "./EmptyState";
 export { ErrorState } from "./ErrorState";
-export { LoadingSkeleton } from "./LoadingSkeleton";
+export { LoadingSpinner } from "./LoadingSpinner";
 export { Pager } from "./Pager";
 export { default as LazyLoad } from "./LazyLoad";
 export { ConfirmDialog } from "./ConfirmDialog";

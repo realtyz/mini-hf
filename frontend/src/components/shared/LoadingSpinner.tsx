@@ -1,7 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 
-interface LoadingSkeletonProps {
+interface LoadingSpinnerProps {
   /** Height class for the container. Default: "h-64" */
   height?: string;
   /** Show a spinning loader. If false, shows nothing (parent renders own skeleton). */
@@ -9,11 +9,11 @@ interface LoadingSkeletonProps {
   message?: string;
 }
 
-export function LoadingSkeleton({
+export function LoadingSpinner({
   height = "h-64",
   showSpinner = true,
   message = "加载中...",
-}: LoadingSkeletonProps) {
+}: LoadingSpinnerProps) {
   if (!showSpinner) return null;
 
   return (
