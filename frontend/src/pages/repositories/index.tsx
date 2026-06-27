@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/tooltip";
 import api from "@/lib/api/client";
 import endpoints from "@/lib/api/endpoints";
+import { queryKeys } from "@/lib/query/keys";
 import type {
   RepoProfile,
   RepoListResponse,
@@ -84,10 +85,13 @@ export function Repositories() {
   }, [search]);
 
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: [
-      "repositories",
-      { modelSource, repoType, statusFilter, search: debouncedSearch, page },
-    ],
+    queryKey: queryKeys.repos.publicList({
+      modelSource,
+      repoType,
+      statusFilter,
+      search: debouncedSearch,
+      page,
+    }),
     queryFn: () =>
       fetchRepositories({
         modelSource,

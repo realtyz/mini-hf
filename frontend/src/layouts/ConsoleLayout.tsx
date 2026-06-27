@@ -709,5 +709,3 @@ export function ConsoleLayout() {
     </SidebarProvider>
   );
 }
-
-export default ConsoleLayout;

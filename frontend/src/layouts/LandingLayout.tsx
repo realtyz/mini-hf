@@ -24,5 +24,3 @@ export function LandingLayout() {
     </div>
   );
 }
-
-export default LandingLayout;

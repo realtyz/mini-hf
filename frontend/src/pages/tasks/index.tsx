@@ -34,7 +34,7 @@ function ShimmerSkeleton({ className }: { className?: string }) {
 
 const COUNTDOWN_SECONDS = 5;
 
-export function TasksPublic() {
+export function Tasks() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   // 用户手动选择的任务 ID（null 表示自动选择模式）
@@ -421,4 +421,4 @@ export function TasksPublic() {
   );
 }
 
-export default TasksPublic;
+export default Tasks;

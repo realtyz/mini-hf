@@ -22,6 +22,7 @@ interface RepoTreeViewerProps {
 }
 
 import { buildTree, getChildrenAtPath, sortTreeChildren } from "@/lib/file-tree-utils";
+import { queryKeys } from "@/lib/query/keys";
 
 async function fetchRepoTree(
   repoId: string,
@@ -40,7 +41,7 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
   const repoName = repoId.split("/").pop() || repoId;
 
   const { data, isLoading, error, refetch } = useQuery<RepoTreeResponse>({
-    queryKey: ["repo-tree", repoId, commitHash],
+    queryKey: queryKeys.repos.tree(repoId, commitHash),
     queryFn: () => fetchRepoTree(repoId, commitHash),
   });
 

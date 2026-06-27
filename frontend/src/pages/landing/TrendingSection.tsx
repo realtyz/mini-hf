@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import api from "@/lib/api/client";
 import { formatCompactNumber } from "@/lib/utils";
 import { STALE_TIMES } from "@/lib/query/client";
+import { queryKeys } from "@/lib/query/keys";
 import type { TrendingRepo } from "@/lib/api/types";
 import { motion } from "framer-motion";
 import {
@@ -119,7 +120,7 @@ function TrendingCard({ repo, index }: { repo: TrendingRepo; index: number }) {
 
 export function TrendingSection() {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["trending"],
+    queryKey: queryKeys.trending.list(),
     queryFn: fetchTrending,
     staleTime: STALE_TIMES.static,
   });

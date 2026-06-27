@@ -22,7 +22,7 @@ import {
 import { ListFooter } from "@/components/shared/ListFooter";
 import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { useRepoList, PAGE_SIZE } from "@/hooks/use-repo-list";
+import { useRepoList, PAGE_SIZE } from "./use-repo-list";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import type { RepoProfile, RepoStatus } from "@/lib/api/types";
 import { cn } from "@/lib/utils";

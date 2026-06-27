@@ -1,12 +1,12 @@
 import { lazy } from "react";
 import type { RouteObject } from "react-router";
-import LandingLayout from "./layouts/LandingLayout";
+import { LandingLayout } from "./layouts/LandingLayout";
 import LandingPage from "./pages";
 import AuthPage from "./pages/auth";
 import DocsPage from "./pages/docs";
 import Repositories from "./pages/repositories";
-import TasksPublic from "./pages/tasks";
-import ConsoleLayout from "./layouts/ConsoleLayout";
+import Tasks from "./pages/tasks";
+import { ConsoleLayout } from "./layouts/ConsoleLayout";
 import { ProtectedRoute } from "./components/auth";
 import { LazyLoad } from "./components/shared/LazyLoad";
 
@@ -15,7 +15,7 @@ const RepositoriesConsole = lazy(() => import("./pages/console/repositories"));
 const RepositoryDetail = lazy(
   () => import("./pages/console/repository-detail"),
 );
-const Tasks = lazy(() => import("./pages/console/tasks"));
+const TasksConsole = lazy(() => import("./pages/console/tasks"));
 const Settings = lazy(() => import("./pages/console/settings"));
 const Users = lazy(() => import("./pages/console/users"));
 const CacheScan = lazy(() => import("./pages/console/cache-scan"));
@@ -51,7 +51,7 @@ export const routes: RouteObject[] = [
       },
       {
         path: "tasks",
-        element: <TasksPublic />,
+        element: <Tasks />,
       },
     ],
   },
@@ -108,7 +108,7 @@ export const routes: RouteObject[] = [
         path: "tasks",
         element: (
           <LazyLoad>
-            <Tasks />
+            <TasksConsole />
           </LazyLoad>
         ),
       },

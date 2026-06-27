@@ -32,7 +32,7 @@ import { PendingApprovalBanner } from "./PendingApprovalBanner";
 
 const PAGE_SIZE = 10;
 
-export function Tasks() {
+export function TasksConsole() {
   const { user } = useAuthStore();
   const isAdmin = user?.role === "admin";
 
@@ -363,4 +363,4 @@ export function Tasks() {
   );
 }
 
-export default Tasks;
+export default TasksConsole;

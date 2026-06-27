@@ -48,7 +48,20 @@ export const queryKeys = {
     all: ["repos"] as const,
     list: (params?: Partial<RepoListParams & { repoType?: string }>) =>
       [...queryKeys.repos.all, "list", params] as const,
+    publicList: (
+      params?: Partial<{
+        repoType?: string;
+        statusFilter?: string;
+        modelSource?: string;
+        search?: string;
+        page?: number;
+        skip?: number;
+        limit?: number;
+      }>,
+    ) => [...queryKeys.repos.all, "public-list", params] as const,
     detail: (id: string) => [...queryKeys.repos.all, "detail", id] as const,
+    tree: (repoId: string, commitHash: string) =>
+      [...queryKeys.repos.all, "tree", repoId, commitHash] as const,
   },
   cacheScan: {
     all: ["cache-scan"] as const,
@@ -67,5 +80,9 @@ export const queryKeys = {
     announcement: () => [...queryKeys.public.all, "announcement"] as const,
     announcements: () => [...queryKeys.public.all, "announcements"] as const,
     hfEndpoints: () => [...queryKeys.public.all, "hf-endpoints"] as const,
+  },
+  trending: {
+    all: ["trending"] as const,
+    list: () => [...queryKeys.trending.all, "list"] as const,
   },
 } as const;
