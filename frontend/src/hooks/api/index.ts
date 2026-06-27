@@ -9,4 +9,3 @@ export * from "./use-dashboard-queries";
 export * from "./use-cache-scan-queries";
 export * from "./use-task-progress";
 export * from "./use-repo-queries";
-export * from "./use-repair-mutations";

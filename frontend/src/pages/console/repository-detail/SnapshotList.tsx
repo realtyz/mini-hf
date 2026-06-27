@@ -9,7 +9,7 @@ import {
 } from "@/lib/constants/repo";
 import type { RepoDetailResponse, SnapshotStatus } from "@/lib/api/types";
 import { StatusEditDialog } from "./StatusEditDialog";
-import { useSetSnapshotStatus } from "@/hooks/api/use-repair-mutations";
+import { useSetSnapshotStatus } from "@/hooks/api/use-repo-queries";
 import { useAuthStore } from "@/stores/auth-store";
 
 interface SnapshotListProps {

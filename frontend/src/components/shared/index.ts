@@ -6,7 +6,7 @@ export { EmptyState } from "./EmptyState";
 export { ErrorState } from "./ErrorState";
 export { LoadingSpinner } from "./LoadingSpinner";
 export { Pager } from "./Pager";
-export { default as LazyLoad } from "./LazyLoad";
+export { LazyLoad } from "./LazyLoad";
 export { ConfirmDialog } from "./ConfirmDialog";
 export { ListFooter } from "./ListFooter";
 export { SpotlightCard } from "./SpotlightCard";

@@ -264,5 +264,3 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
     </motion.div>
   );
 }
-
-export default TaskHistoryTable;

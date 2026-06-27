@@ -99,5 +99,3 @@ export function TaskStatusBadge({
     </motion.div>
   );
 }
-
-export default TaskStatusBadge;

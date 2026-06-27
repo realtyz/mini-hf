@@ -280,5 +280,3 @@ export function CreateTaskDialog({
     </Dialog>
   );
 }
-
-export default CreateTaskDialog;

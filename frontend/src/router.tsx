@@ -8,7 +8,7 @@ import Repositories from "./pages/repositories";
 import TasksPublic from "./pages/tasks-public";
 import ConsoleLayout from "./layouts/ConsoleLayout";
 import { ProtectedRoute } from "./components/auth";
-import LazyLoad from "./components/shared/LazyLoad";
+import { LazyLoad } from "./components/shared/LazyLoad";
 
 const Dashboard = lazy(() => import("./pages/console/dashboard"));
 const RepositoriesConsole = lazy(() => import("./pages/console/repositories"));

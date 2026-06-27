@@ -275,5 +275,3 @@ export function StatCards() {
 
 // Alias export for compatibility
 export { StatCards as SectionCards };
-
-export default StatCards;

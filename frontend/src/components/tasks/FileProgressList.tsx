@@ -455,5 +455,3 @@ export function FileProgressList({
     </div>
   );
 }
-
-export default FileProgressList;

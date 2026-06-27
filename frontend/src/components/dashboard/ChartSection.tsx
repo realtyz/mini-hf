@@ -230,5 +230,3 @@ export function ChartSection() {
     </motion.div>
   );
 }
-
-export default ChartSection;

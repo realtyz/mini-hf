@@ -247,5 +247,3 @@ export function RecentTasks() {
     </motion.div>
   );
 }
-
-export default RecentTasks;

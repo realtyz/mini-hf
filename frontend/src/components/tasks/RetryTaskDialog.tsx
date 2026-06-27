@@ -374,5 +374,3 @@ export function RetryTaskDialog({
     </Dialog>
   );
 }
-
-export default RetryTaskDialog;

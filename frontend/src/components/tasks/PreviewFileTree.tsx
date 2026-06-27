@@ -111,5 +111,3 @@ export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
     />
   );
 }
-
-export default PreviewFileTree;

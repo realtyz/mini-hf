@@ -226,5 +226,3 @@ export function ActiveTaskList({
     </div>
   );
 }
-
-export default ActiveTaskList;

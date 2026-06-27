@@ -99,5 +99,3 @@ export function ProtectedRoute({
   // 验证通过，渲染子组件
   return <>{children}</>;
 }
-
-export default ProtectedRoute;

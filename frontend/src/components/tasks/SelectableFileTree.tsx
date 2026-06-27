@@ -254,5 +254,3 @@ export function SelectableFileTree({
     />
   );
 }
-
-export default SelectableFileTree;

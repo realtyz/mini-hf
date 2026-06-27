@@ -249,5 +249,3 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
     </Card>
   );
 }
-
-export default TaskFileProgressPanel;

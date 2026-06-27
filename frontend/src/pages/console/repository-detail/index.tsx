@@ -18,7 +18,7 @@ import { DeleteRepoDialog } from "./DeleteRepoDialog";
 import { SnapshotList } from "./SnapshotList";
 import { RepositoryDetailSkeleton } from "./RepositoryDetailSkeleton";
 import { StatusEditDialog } from "./StatusEditDialog";
-import { useSetProfileStatus } from "@/hooks/api/use-repair-mutations";
+import { useSetProfileStatus } from "@/hooks/api/use-repo-queries";
 import { useAuthStore } from "@/stores/auth-store";
 import type { RepoStatus } from "@/lib/api/types";
 

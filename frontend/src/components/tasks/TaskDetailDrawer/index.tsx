@@ -712,5 +712,3 @@ export function TaskDetailDrawer({
     </Sheet>
   );
 }
-
-export default TaskDetailDrawer;

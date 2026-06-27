@@ -46,5 +46,3 @@ export function TaskProgressBar({
     </div>
   );
 }
-
-export default TaskProgressBar;

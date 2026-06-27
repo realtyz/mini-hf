@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-export default function LazyLoad({ children }: { children: React.ReactNode }) {
+export function LazyLoad({ children }: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={

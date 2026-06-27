@@ -136,5 +136,3 @@ export function FileExplorerShell({
     </div>
   );
 }
-
-export default FileExplorerShell;
