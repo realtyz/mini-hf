@@ -82,6 +82,17 @@ export function getChildrenAtPath(
   return current;
 }
 
+/**
+ * Sort tree children: directories first, then files, each ordered by name.
+ * Shared by the file-tree viewers (Preview / Selectable / RepoTreeViewer).
+ */
+export function sortTreeChildren(children: TreeNode[]): TreeNode[] {
+  return [...children].sort((a, b) => {
+    if (a.type === b.type) return a.name.localeCompare(b.name);
+    return a.type === "directory" ? -1 : 1;
+  });
+}
+
 export function getFilesInDirectory(
   dirPath: string,
   items: PreviewItem[],

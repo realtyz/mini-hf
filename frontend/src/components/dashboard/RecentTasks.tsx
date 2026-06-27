@@ -1,14 +1,9 @@
-import {
-  ArrowRight,
-  Database,
-  CloudDownload,
-  AlertCircle,
-  RefreshCw,
-} from "lucide-react";
+import { ArrowRight, Database, CloudDownload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState, ErrorState } from "@/components/shared";
 import { useRecentTasks } from "@/hooks/api/use-dashboard-queries";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
 import type { TaskResponse, TaskStatus } from "@/lib/api/types";
@@ -185,53 +180,6 @@ function TaskListSkeleton({ count = 10 }: { count?: number }) {
   );
 }
 
-// 空状态
-function EmptyState() {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="text-center py-12"
-    >
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-slate-100 to-slate-50 dark:from-slate-800/50 dark:to-slate-900/50 mb-4 shadow-sm">
-        <CloudDownload className="size-6 text-slate-400 dark:text-slate-500" />
-      </div>
-      <p className="text-muted-foreground font-medium">暂无任务记录</p>
-      <p className="text-xs text-muted-foreground/60 mt-1">
-        新创建的任务将显示在这里
-      </p>
-    </motion.div>
-  );
-}
-
-// 错误状态
-function ErrorState({ onRetry }: { onRetry: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="text-center py-12"
-    >
-      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br from-rose-100 to-rose-50 dark:from-rose-900/30 dark:to-rose-950/30 mb-4 shadow-sm">
-        <AlertCircle className="size-6 text-rose-500 dark:text-rose-400" />
-      </div>
-      <p className="text-muted-foreground font-medium">任务列表加载失败</p>
-      <p className="text-xs text-muted-foreground/60 mt-1">
-        请检查网络连接或稍后再试
-      </p>
-      <Button
-        variant="outline"
-        size="sm"
-        className="mt-4 gap-1.5"
-        onClick={onRetry}
-      >
-        <RefreshCw className="size-3.5" />
-        重新加载
-      </Button>
-    </motion.div>
-  );
-}
-
 // 主组件
 export function RecentTasks() {
   const { data: tasksData, isLoading, isError, refetch } = useRecentTasks(10);
@@ -273,9 +221,18 @@ export function RecentTasks() {
           {isLoading ? (
             <TaskListSkeleton count={10} />
           ) : isError ? (
-            <ErrorState onRetry={() => refetch()} />
+            <ErrorState
+              message="任务列表加载失败"
+              description="请检查网络连接或稍后再试"
+              onRetry={() => refetch()}
+              retryLabel="重新加载"
+            />
           ) : tasks.length === 0 ? (
-            <EmptyState />
+            <EmptyState
+              icon={<CloudDownload className="size-6 text-muted-foreground/60" />}
+              message="暂无任务记录"
+              description="新创建的任务将显示在这里"
+            />
           ) : (
             <div className="space-y-2">
               <AnimatePresence mode="popLayout">

@@ -2,6 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import type { TaskStatus } from "@/lib/api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
 
 interface TaskStatusBadgeProps {
   status: TaskStatus;
@@ -10,70 +11,14 @@ interface TaskStatusBadgeProps {
   size?: "sm" | "md";
 }
 
-const statusConfig: Record<
-  TaskStatus,
-  {
-    label: string;
-    variant: "warning" | "info" | "success" | "danger" | "neutral";
-    dotColor: string;
-    isActive: boolean;
-  }
-> = {
-  pending_approval: {
-    label: "待审批",
-    variant: "warning",
-    dotColor: "bg-amber-500",
-    isActive: true,
-  },
-  pending: {
-    label: "排队中",
-    variant: "info",
-    dotColor: "bg-sky-500",
-    isActive: true,
-  },
-  running: {
-    label: "进行中",
-    variant: "info",
-    dotColor: "bg-orange-500",
-    isActive: true,
-  },
-  canceling: {
-    label: "取消中",
-    variant: "warning",
-    dotColor: "bg-amber-500",
-    isActive: true,
-  },
-  cancelled: {
-    label: "已取消",
-    variant: "neutral",
-    dotColor: "bg-slate-400",
-    isActive: false,
-  },
-  pausing: {
-    label: "暂停中",
-    variant: "warning",
-    dotColor: "bg-orange-500",
-    isActive: true,
-  },
-  paused: {
-    label: "已暂停",
-    variant: "warning",
-    dotColor: "bg-yellow-500",
-    isActive: false,
-  },
-  completed: {
-    label: "已完成",
-    variant: "success",
-    dotColor: "bg-emerald-500",
-    isActive: false,
-  },
-  failed: {
-    label: "失败",
-    variant: "danger",
-    dotColor: "bg-red-500",
-    isActive: false,
-  },
-};
+// Statuses that are "in-flight" and should animate the status dot.
+const ACTIVE_STATUSES: TaskStatus[] = [
+  "pending_approval",
+  "pending",
+  "running",
+  "canceling",
+  "pausing",
+];
 
 // Status dot component with unified animation style
 function StatusDot({ color, isActive }: { color: string; isActive: boolean }) {
@@ -117,7 +62,8 @@ export function TaskStatusBadge({
   showDot = true,
   size = "sm",
 }: TaskStatusBadgeProps) {
-  const config = statusConfig[status];
+  const config = TASK_STATUS_CONFIG[status];
+  const isActive = ACTIVE_STATUSES.includes(status);
 
   return (
     <motion.div
@@ -127,12 +73,10 @@ export function TaskStatusBadge({
       whileHover={{ scale: 1.02 }}
     >
       <Badge
-        variant={config.variant}
         className={cn(
-          "min-w-16 justify-center gap-1.5 font-medium transition-shadow duration-200",
+          "min-w-16 justify-center gap-1.5 font-medium transition-shadow duration-200 border-0",
           size === "sm" ? "text-[11px] px-2 py-0.5" : "text-xs px-2.5 py-1",
-          status === "running" &&
-            "bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+          config.badgeClass,
           className,
         )}
       >
@@ -145,7 +89,7 @@ export function TaskStatusBadge({
               exit={{ opacity: 0, scale: 0 }}
               transition={{ duration: 0.15 }}
             >
-              <StatusDot color={config.dotColor} isActive={config.isActive} />
+              <StatusDot color={config.dotClass} isActive={isActive} />
             </motion.span>
           )}
         </AnimatePresence>

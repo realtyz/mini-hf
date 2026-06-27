@@ -14,23 +14,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { TaskResponse } from "@/lib/api/types";
-import { cn, formatDistanceToNow } from "@/lib/utils";
+import { cn, formatDistanceToNow, formatDurationRange } from "@/lib/utils";
 
 interface TaskHistoryTableProps {
   tasks: TaskResponse[]; // completed + failed
 }
 
 const PAGE_SIZE = 10;
-
-function formatDuration(start: string, end: string | null): string {
-  if (!end) return "-";
-  const diff = Math.floor(
-    (new Date(end).getTime() - new Date(start).getTime()) / 1000,
-  );
-  if (diff < 60) return `${diff}秒`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}分${diff % 60}秒`;
-  return `${Math.floor(diff / 3600)}时${Math.floor((diff % 3600) / 60)}分`;
-}
 
 export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
   const [currentPage, setCurrentPage] = useState(1);
@@ -227,7 +217,10 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                     </TableCell>
                     <TableCell className="py-3 text-center text-[13px] text-muted-foreground tabular-nums">
                       {task.started_at && task.completed_at
-                        ? formatDuration(task.started_at, task.completed_at)
+                        ? formatDurationRange(
+                            task.started_at,
+                            task.completed_at,
+                          )
                         : "-"}
                     </TableCell>
                     <TableCell className="py-3 pr-5 text-center text-[13px] text-muted-foreground/60">

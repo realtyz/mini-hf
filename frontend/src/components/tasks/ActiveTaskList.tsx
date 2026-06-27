@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import type { TaskResponse, TaskStatus } from "@/lib/api/types";
 import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
 import { useElapsedTimer } from "@/hooks/use-elapsed-timer";
+import { formatElapsed } from "@/lib/utils";
 
 interface ActiveTaskListProps {
   tasks: TaskResponse[];
@@ -23,15 +24,6 @@ const ACTIVE_STATUS_COLORS: Partial<Record<TaskStatus, string>> = {
 
 const DEFAULT_STATUS_COLOR =
   "text-slate-600 bg-slate-50 border-slate-200 dark:bg-slate-800/50 dark:text-slate-400 dark:border-slate-700";
-
-function formatElapsed(ms: number | null): string {
-  if (ms === null) return "-";
-
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}秒`;
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}分${seconds % 60}秒`;
-  return `${Math.floor(seconds / 3600)}时${Math.floor((seconds % 3600) / 60)}分`;
-}
 
 // Static (non-ticking) elapsed ms for a started-at timestamp, evaluated at call time.
 function elapsedSince(startedAtMs: number): number {

@@ -5,7 +5,6 @@ import {
   RefreshCw,
   FileStack,
   XOctagon,
-  Clock,
   Hash,
   GitCommit,
   User,
@@ -13,7 +12,6 @@ import {
   Box,
   ChevronRight,
   Pause,
-  Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -44,12 +42,14 @@ import { SectionHeader } from "./SectionHeader";
 import { InfoRow } from "./InfoRow";
 import { TimelineItem } from "./TimelineItem";
 import { StatusAlertBanner } from "./StatusAlertBanner";
+import { DrawerActionBar } from "./DrawerActionBar";
 import { StorageStatsSection } from "./StorageStatsSection";
 import { useTaskDetail } from "@/hooks/use-task-detail";
 import type { PreviewItem, TaskStatus, TaskResponse } from "@/lib/api/types";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
 import { useTaskActions } from "@/hooks/use-task-actions";
 import { useAuthStore } from "@/stores/auth-store";
+import { isWithin7Days } from "@/lib/utils";
 import { useState } from "react";
 
 interface TaskDetailDrawerProps {
@@ -168,14 +168,6 @@ function getRepoTypeLabel(repoType: string): string {
     dataset: "数据集",
   };
   return labels[repoType] || repoType;
-}
-
-function isWithin7Days(completedAt: string | null): boolean {
-  if (!completedAt) return false;
-  const completedDate = new Date(completedAt);
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  return completedDate >= sevenDaysAgo;
 }
 
 function buildTimeline(t: TaskResponse): { label: string; value: string }[] {
@@ -580,130 +572,79 @@ export function TaskDetailDrawer({
                   </div>
                 )}
                 {statusConfig.bottomActionType === "refresh" && (
-                  <div className="flex items-center justify-between bg-blue-50/60 dark:bg-blue-950/20 border border-blue-200/60 dark:border-blue-800/40 rounded-xl px-4 py-3 mt-1">
-                    <div className="flex items-center gap-2 text-[13px] text-blue-700 dark:text-blue-300 font-medium">
-                      <Clock className="h-3.5 w-3.5" />
-                      <span>任务排队中，等待执行</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => refetchTask()}
-                        className="h-7 text-[12px] border-blue-300 hover:bg-blue-100 active:bg-blue-200 dark:border-blue-700 dark:hover:bg-blue-800/40 dark:active:bg-blue-800/60"
-                      >
-                        <RefreshCw className="mr-1 h-3 w-3" />
-                        刷新
-                      </Button>
-                      {canCancel && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleCancelClick}
-                          disabled={cancelTask.isPending}
-                          className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
-                        >
-                          <XCircle className="mr-1 h-3 w-3" />
-                          {cancelTask.isPending ? "取消中..." : "取消"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                  <DrawerActionBar
+                    type="refresh"
+                    canCancel={canCancel}
+                    canResume={canResume}
+                    canRetry={canRetry}
+                    onCancel={handleCancelClick}
+                    onResume={handleResume}
+                    onRetry={handleRetry}
+                    onRefresh={() => refetchTask()}
+                    isCancelPending={cancelTask.isPending}
+                    isResumePending={resumeTask.isPending}
+                    isRetryPending={retryTask.isPending}
+                  />
                 )}
                 {statusConfig.bottomActionType === "paused" && (
-                  <div className="flex items-center justify-between bg-yellow-50/60 dark:bg-yellow-950/20 border border-yellow-200/60 dark:border-yellow-800/40 rounded-xl px-4 py-3 mt-1">
-                    <div className="flex items-center gap-2 text-[13px] text-yellow-700 dark:text-yellow-300 font-medium">
-                      <Pause className="h-3.5 w-3.5" />
-                      <span>任务已暂停</span>
-                    </div>
-                    <div className="flex gap-2">
-                      {canResume && (
-                        <Button
-                          size="sm"
-                          onClick={handleResume}
-                          disabled={resumeTask.isPending}
-                          className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
-                        >
-                          <Play className="mr-1 h-3 w-3" />
-                          {resumeTask.isPending ? "恢复中..." : "恢复任务"}
-                        </Button>
-                      )}
-                      {canCancel && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleCancelClick}
-                          disabled={cancelTask.isPending}
-                          className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
-                        >
-                          <XCircle className="mr-1 h-3 w-3" />
-                          {cancelTask.isPending ? "取消中..." : "取消任务"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                  <DrawerActionBar
+                    type="paused"
+                    canCancel={canCancel}
+                    canResume={canResume}
+                    canRetry={canRetry}
+                    onCancel={handleCancelClick}
+                    onResume={handleResume}
+                    onRetry={handleRetry}
+                    onRefresh={() => refetchTask()}
+                    isCancelPending={cancelTask.isPending}
+                    isResumePending={resumeTask.isPending}
+                    isRetryPending={retryTask.isPending}
+                  />
                 )}
                 {statusConfig.bottomActionType === "pausing" && (
-                  <div className="flex items-center justify-between bg-yellow-50/60 dark:bg-yellow-950/20 border border-yellow-200/60 dark:border-yellow-800/40 rounded-xl px-4 py-3 mt-1">
-                    <div className="flex items-center gap-2 text-[13px] text-yellow-700 dark:text-yellow-300 font-medium">
-                      <Clock className="h-3.5 w-3.5 animate-pulse" />
-                      <span>正在暂停任务，请稍候...</span>
-                    </div>
-                    {canCancel && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleCancelClick}
-                        disabled={cancelTask.isPending}
-                        className="h-7 text-[12px] border-red-200 hover:bg-red-50 hover:text-red-600 active:bg-red-100 dark:border-red-800/50 dark:hover:bg-red-950/40 dark:active:bg-red-950/60"
-                      >
-                        <XCircle className="mr-1 h-3 w-3" />
-                        {cancelTask.isPending ? "取消中..." : "取消任务"}
-                      </Button>
-                    )}
-                  </div>
+                  <DrawerActionBar
+                    type="pausing"
+                    canCancel={canCancel}
+                    canResume={canResume}
+                    canRetry={canRetry}
+                    onCancel={handleCancelClick}
+                    onResume={handleResume}
+                    onRetry={handleRetry}
+                    onRefresh={() => refetchTask()}
+                    isCancelPending={cancelTask.isPending}
+                    isResumePending={resumeTask.isPending}
+                    isRetryPending={retryTask.isPending}
+                  />
                 )}
                 {statusConfig.bottomActionType === "cancelled" && (
-                  <div className="flex items-center justify-between bg-slate-50/60 dark:bg-slate-950/20 border border-slate-200/60 dark:border-slate-800/40 rounded-xl px-4 py-3 mt-1">
-                    <div className="flex items-center gap-2 text-[13px] text-slate-700 dark:text-slate-300 font-medium">
-                      <XCircle className="h-3.5 w-3.5" />
-                      <span>任务已取消</span>
-                    </div>
-                    <div className="flex gap-2">
-                      {canRetry && (
-                        <Button
-                          size="sm"
-                          onClick={handleRetry}
-                          disabled={retryTask.isPending}
-                          className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
-                        >
-                          <RefreshCw className="mr-1 h-3 w-3" />
-                          {retryTask.isPending ? "重试中..." : "重试任务"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                  <DrawerActionBar
+                    type="cancelled"
+                    canCancel={canCancel}
+                    canResume={canResume}
+                    canRetry={canRetry}
+                    onCancel={handleCancelClick}
+                    onResume={handleResume}
+                    onRetry={handleRetry}
+                    onRefresh={() => refetchTask()}
+                    isCancelPending={cancelTask.isPending}
+                    isResumePending={resumeTask.isPending}
+                    isRetryPending={retryTask.isPending}
+                  />
                 )}
                 {statusConfig.bottomActionType === "failed" && (
-                  <div className="flex items-center justify-between bg-red-50/60 dark:bg-red-950/20 border border-red-200/60 dark:border-red-800/40 rounded-xl px-4 py-3 mt-1">
-                    <div className="flex items-center gap-2 text-[13px] text-red-700 dark:text-red-300 font-medium">
-                      <AlertCircle className="h-3.5 w-3.5" />
-                      <span>任务失败</span>
-                    </div>
-                    <div className="flex gap-2">
-                      {canRetry && (
-                        <Button
-                          size="sm"
-                          onClick={handleRetry}
-                          disabled={retryTask.isPending}
-                          className="h-7 text-[12px] bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white"
-                        >
-                          <RefreshCw className="mr-1 h-3 w-3" />
-                          {retryTask.isPending ? "重试中..." : "重试任务"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
+                  <DrawerActionBar
+                    type="failed"
+                    canCancel={canCancel}
+                    canResume={canResume}
+                    canRetry={canRetry}
+                    onCancel={handleCancelClick}
+                    onResume={handleResume}
+                    onRetry={handleRetry}
+                    onRefresh={() => refetchTask()}
+                    isCancelPending={cancelTask.isPending}
+                    isResumePending={resumeTask.isPending}
+                    isRetryPending={retryTask.isPending}
+                  />
                 )}
               </div>
             )}

@@ -26,7 +26,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RetryTaskDialog } from "@/components/tasks/RetryTaskDialog";
 import { formatBytes } from "@/lib/utils";
 import type { TaskResponse } from "@/lib/api/types";
-import { cn } from "@/lib/utils";
+import { cn, isWithin7Days } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/stores/auth-store";
 import type { ReactNode } from "react";
@@ -50,14 +50,6 @@ export interface TaskRowProps {
 }
 
 const FINAL_STATUSES = ["completed", "failed", "cancelled"];
-
-function isWithin7Days(completedAt: string | null): boolean {
-  if (!completedAt) return false;
-  const completedDate = new Date(completedAt);
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-  return completedDate >= sevenDaysAgo;
-}
 
 type DialogType = "cancel" | "retry" | "approve" | "reject";
 

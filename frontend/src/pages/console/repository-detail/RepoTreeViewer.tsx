@@ -21,7 +21,7 @@ interface RepoTreeViewerProps {
   commitHash: string;
 }
 
-import { buildTree, getChildrenAtPath } from "@/lib/file-tree-utils";
+import { buildTree, getChildrenAtPath, sortTreeChildren } from "@/lib/file-tree-utils";
 
 async function fetchRepoTree(
   repoId: string,
@@ -53,12 +53,10 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
     return children ? Array.from(children.values()) : [];
   }, [tree, currentPath]);
 
-  const sortedChildren = useMemo(() => {
-    return [...currentChildren].sort((a, b) => {
-      if (a.type === b.type) return a.name.localeCompare(b.name);
-      return a.type === "directory" ? -1 : 1;
-    });
-  }, [currentChildren]);
+  const sortedChildren = useMemo(
+    () => sortTreeChildren(currentChildren),
+    [currentChildren],
+  );
 
   const repoFileStats = useMemo(() => {
     const files = allItems.filter((i) => i.type === "file");

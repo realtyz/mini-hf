@@ -1,8 +1,8 @@
 import type { RepoProfile } from "@/lib/api/types";
 import { RepoCard } from "./RepoCard";
 import { RepoCardSkeleton } from "./RepoCardSkeleton";
-import { SearchX, FolderOpen } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { EmptyState, ErrorState } from "@/components/shared";
+import { FolderOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface RepoGridProps {
@@ -10,6 +10,8 @@ interface RepoGridProps {
   isLoading: boolean;
   error: Error | null;
   onViewDetail: (repo: RepoProfile) => void;
+  /** Retry handler for the error state. Omit to hide the retry button. */
+  onRetry?: () => void;
   /** Number of card columns per row. Defaults to auto-fill. */
   columns?: 3 | 4;
 }
@@ -26,6 +28,7 @@ export function RepoGrid({
   isLoading,
   error,
   onViewDetail,
+  onRetry,
   columns,
 }: RepoGridProps) {
   if (isLoading) {
@@ -42,38 +45,21 @@ export function RepoGrid({
 
   if (error) {
     return (
-      <div className="flex h-72 items-center justify-center rounded-2xl border border-dashed border-destructive/30 bg-destructive/5">
-        <div className="text-center px-6">
-          <div className="mx-auto size-14 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-            <SearchX className="size-7 text-destructive/60" />
-          </div>
-          <p className="text-sm font-medium text-foreground mb-1">加载失败</p>
-          <p className="text-xs text-muted-foreground mb-4">
-            请检查网络连接后重试
-          </p>
-          <Button variant="outline" size="sm" className="text-xs">
-            重试
-          </Button>
-        </div>
-      </div>
+      <ErrorState
+        message="加载失败"
+        description="请检查网络连接后重试"
+        onRetry={onRetry}
+      />
     );
   }
 
   if (repos.length === 0) {
     return (
-      <div className="flex h-72 items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/20">
-        <div className="text-center px-6">
-          <div className="mx-auto size-14 rounded-full bg-muted flex items-center justify-center mb-4">
-            <FolderOpen className="size-7 text-muted-foreground/50" />
-          </div>
-          <p className="text-sm font-medium text-foreground mb-1">
-            暂无仓库数据
-          </p>
-          <p className="text-xs text-muted-foreground/80">
-            尝试调整筛选条件或创建新的下载任务
-          </p>
-        </div>
-      </div>
+      <EmptyState
+        icon={<FolderOpen className="size-7 text-muted-foreground/50" />}
+        message="暂无仓库数据"
+        description="尝试调整筛选条件或创建新的下载任务"
+      />
     );
   }
 

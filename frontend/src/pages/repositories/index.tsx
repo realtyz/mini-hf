@@ -232,6 +232,7 @@ export function Repositories() {
           isLoading={isLoading}
           error={error}
           onViewDetail={handleViewDetail}
+          onRetry={refetch}
           columns={4}
         />
       </div>

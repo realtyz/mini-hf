@@ -272,6 +272,7 @@ export function RepositoriesConsole() {
         isLoading={isLoading}
         error={error}
         onViewDetail={handleViewDetail}
+        onRetry={refetch}
         columns={3}
       />
 

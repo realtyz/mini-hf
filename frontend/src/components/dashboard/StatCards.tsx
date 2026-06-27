@@ -24,7 +24,7 @@ function formatStorageCapacity(bytes: number): string {
   return `${(bytes / 1024 / 1024 / 1024 / 1024).toFixed(2)} TB`;
 }
 
-interface StatCardProps {
+interface AnimatedStatCardProps {
   title: string;
   value: number;
   icon: React.ReactNode;
@@ -90,7 +90,7 @@ const AnimatedStatCard = memo(function AnimatedStatCard({
   isLoading,
   index,
   isStorage,
-}: StatCardProps) {
+}: AnimatedStatCardProps) {
   const colors = colorConfig[color];
   const cardRef = useRef<HTMLDivElement>(null);
   const [isHovered, setIsHovered] = useState(false);

@@ -37,7 +37,7 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
     gradient: "from-amber-500/8 via-amber-500/3 to-transparent",
   },
   pending: {
-    label: "等待中",
+    label: "排队中",
     icon: <Clock className="size-3.5" />,
     badgeClass:
       "bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-300",

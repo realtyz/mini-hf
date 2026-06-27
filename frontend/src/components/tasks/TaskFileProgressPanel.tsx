@@ -7,7 +7,6 @@ import {
   FileDown,
   Inbox,
   Loader2,
-  Settings,
   HardDrive,
   FileText,
   AlertTriangle,
@@ -18,56 +17,11 @@ import { Progress } from "@/components/ui/progress";
 import { FileProgressList } from "./FileProgressList";
 import { formatBytes } from "@/lib/utils";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
+import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
 import type { TaskResponse } from "@/lib/api/types";
 
 interface TaskFileProgressPanelProps {
   task: TaskResponse | null;
-}
-
-/** Get status display info */
-function getStatusInfo(status: string | undefined) {
-  switch (status?.toLowerCase()) {
-    case "running":
-      return {
-        label: "进行中",
-        icon: Loader2,
-        color: "text-blue-500",
-        bgColor:
-          "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-      };
-    case "pending":
-    case "pending_approval":
-      return {
-        label: "等待中",
-        icon: Settings,
-        color: "text-slate-500",
-        bgColor:
-          "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
-      };
-    case "completed":
-      return {
-        label: "已完成",
-        icon: Smile,
-        color: "text-emerald-500",
-        bgColor:
-          "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
-      };
-    case "failed":
-      return {
-        label: "失败",
-        icon: Settings,
-        color: "text-red-500",
-        bgColor: "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
-      };
-    default:
-      return {
-        label: "处理中",
-        icon: Loader2,
-        color: "text-blue-500",
-        bgColor:
-          "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-      };
-  }
 }
 
 export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
@@ -80,8 +34,8 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
   const progressInfo = progressData;
   const files = progressInfo?.files ?? [];
 
-  // 状态信息
-  const statusInfo = getStatusInfo(task?.status);
+  // 状态信息（展示属性单一来源：TASK_STATUS_CONFIG）
+  const statusInfo = task ? TASK_STATUS_CONFIG[task.status] : null;
   const isRunning = task?.status?.toLowerCase() === "running";
 
   // 计算进度显示
@@ -182,13 +136,13 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
               <motion.span
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo.bgColor}`}
+                className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium ${statusInfo?.badgeClass ?? ""}`}
               >
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-current opacity-75" />
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-current" />
                 </span>
-                {statusInfo.label}
+                {statusInfo?.label}
               </motion.span>
             </>
           )}

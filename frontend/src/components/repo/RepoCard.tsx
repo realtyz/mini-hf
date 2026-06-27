@@ -11,60 +11,12 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
-import type { RepoProfile, RepoStatus } from "@/lib/api/types";
+import type { RepoProfile } from "@/lib/api/types";
 import { formatDistanceToNow } from "date-fns";
 import { zhCN } from "date-fns/locale";
 import { cn, formatCompactNumber } from "@/lib/utils";
 import { motion } from "framer-motion";
-
-type Accent = "emerald" | "slate" | "sky" | "amber" | "red";
-
-const statusTheme: Record<
-  RepoStatus,
-  {
-    accent: Accent;
-    label: string;
-    dot: string;
-    ring: string;
-    hoverBorder: string;
-  }
-> = {
-  active: {
-    accent: "emerald",
-    label: "活跃",
-    dot: "bg-emerald-500",
-    ring: "ring-emerald-500/20",
-    hoverBorder: "hover:border-emerald-500/30 dark:hover:border-emerald-500/25",
-  },
-  inactive: {
-    accent: "slate",
-    label: "未就绪",
-    dot: "bg-slate-400",
-    ring: "ring-slate-400/20",
-    hoverBorder: "hover:border-slate-400/40 dark:hover:border-slate-500/30",
-  },
-  updating: {
-    accent: "sky",
-    label: "同步中",
-    dot: "bg-sky-500",
-    ring: "ring-sky-500/20",
-    hoverBorder: "hover:border-sky-500/30 dark:hover:border-sky-500/25",
-  },
-  cleaning: {
-    accent: "red",
-    label: "清理中",
-    dot: "bg-red-500",
-    ring: "ring-red-500/20",
-    hoverBorder: "hover:border-red-500/30 dark:hover:border-red-500/25",
-  },
-  cleaned: {
-    accent: "amber",
-    label: "已清理",
-    dot: "bg-amber-500",
-    ring: "ring-amber-500/20",
-    hoverBorder: "hover:border-amber-500/30 dark:hover:border-amber-500/25",
-  },
-};
+import { REPO_STATUS_CONFIG } from "@/lib/constants/repo";
 
 function getRepoTypeIcon(type: string, className?: string) {
   return type === "model" ? (
@@ -86,7 +38,7 @@ export const RepoCard = memo(function RepoCard({
   index = 0,
 }: RepoCardProps) {
   const [copied, setCopied] = useState(false);
-  const status = statusTheme[repo.status];
+  const status = REPO_STATUS_CONFIG[repo.status];
   const isActive = repo.status === "active" || repo.status === "updating";
 
   const handleCopy = useCallback(
@@ -197,7 +149,7 @@ export const RepoCard = memo(function RepoCard({
                     <span
                       className={cn(
                         "absolute inline-flex size-full rounded-full opacity-60",
-                        status.dot,
+                        status.dotClass,
                         "animate-ping",
                       )}
                     />
@@ -205,7 +157,7 @@ export const RepoCard = memo(function RepoCard({
                   <span
                     className={cn(
                       "relative inline-flex size-1.5 rounded-full ring-2 ring-card",
-                      status.dot,
+                      status.dotClass,
                     )}
                   />
                 </span>
