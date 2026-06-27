@@ -2,7 +2,11 @@ import { Clock } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import type { TaskStatus } from "@/lib/api/types";
 
-export function StatusAlertBanner({ status }: { status: TaskStatus }) {
+/**
+ * Banner shown for in-flight task *transition* states (`canceling` / `pausing`)
+ * — not for all statuses. Returns `null` for any other status.
+ */
+export function TransitionStateBanner({ status }: { status: TaskStatus }) {
   if (status === "canceling") {
     return (
       <Alert className="border-orange-200/60 bg-orange-50/60 dark:bg-orange-950/20 dark:border-orange-800/40 rounded-xl py-3">

@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { SelectableFileTree } from "@/components/tasks/SelectableFileTree";
+import { FileTreeSelector } from "@/components/tasks/FileTreeSelector";
 import { useTaskActions } from "@/hooks/use-task-actions";
 import { queryKeys } from "@/lib/query/keys";
 import { formatBytes } from "@/lib/utils";
@@ -325,7 +325,7 @@ export function RetryTaskDialog({
                     <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
                       文件列表
                     </div>
-                    <SelectableFileTree
+                    <FileTreeSelector
                       items={previewData.items}
                       repoId={repoId}
                       selectedPaths={effectiveSelected}

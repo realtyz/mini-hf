@@ -5,12 +5,12 @@ import type { PreviewItem } from "@/lib/api/types";
 import type { TreeNode } from "@/lib/file-tree-utils";
 import { FileExplorerShell } from "./FileExplorerShell";
 
-interface PreviewFileTreeProps {
+interface ReadOnlyFileTreeProps {
   items: PreviewItem[];
   repoId: string;
 }
 
-export function PreviewFileTree({ items, repoId }: PreviewFileTreeProps) {
+export function ReadOnlyFileTree({ items, repoId }: ReadOnlyFileTreeProps) {
   const allRequired = items.every((i) => i.type !== "file" || i.required);
 
   const renderRow = (

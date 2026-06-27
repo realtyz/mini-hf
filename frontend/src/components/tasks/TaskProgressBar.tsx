@@ -11,6 +11,10 @@ interface TaskProgressBarProps {
   className?: string;
 }
 
+/**
+ * Aggregate progress bar for a task — total bytes/percent across all files.
+ * Owned by {@link TaskFileProgressPanel}; sibling to the per-file {@link FileProgressList}.
+ */
 export function TaskProgressBar({
   progressPercent,
   downloadedBytes,

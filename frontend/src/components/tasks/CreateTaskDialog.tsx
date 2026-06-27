@@ -21,7 +21,7 @@ import { useAsyncPreviewTask } from "@/hooks/use-async-preview-task";
 import { usePublicHFEndpoints } from "@/hooks/api/use-config-queries";
 import type { RepoSource, RepoType } from "@/lib/api/types";
 import { AnimatePresence } from "framer-motion";
-import { PreviewFormStep } from "./CreateTaskDialog/PreviewFormStep";
+import { RepoFormStep } from "./CreateTaskDialog/RepoFormStep";
 import { PreviewLoadingState } from "./CreateTaskDialog/PreviewLoadingState";
 import { PreviewErrorState } from "./CreateTaskDialog/PreviewErrorState";
 import { PreviewResultStep } from "./CreateTaskDialog/PreviewResultStep";
@@ -152,7 +152,7 @@ export function CreateTaskDialog({
             ) : step === "previewing" && previewTask.isError ? (
               <PreviewErrorState message={previewError ?? ""} />
             ) : step === "form" ? (
-              <PreviewFormStep
+              <RepoFormStep
                 formData={formData}
                 onFormDataChange={setFormData}
                 hfEndpoints={hfEndpointConfig?.data?.endpoints ?? []}

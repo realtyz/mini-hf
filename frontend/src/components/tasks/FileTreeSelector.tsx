@@ -12,19 +12,19 @@ import {
 } from "@/lib/file-tree-utils";
 import { FileExplorerShell } from "./FileExplorerShell";
 
-interface SelectableFileTreeProps {
+interface FileTreeSelectorProps {
   items: PreviewItem[];
   repoId: string;
   selectedPaths: Set<string>;
   onSelectionChange: (paths: Set<string>) => void;
 }
 
-export function SelectableFileTree({
+export function FileTreeSelector({
   items,
   repoId,
   selectedPaths,
   onSelectionChange,
-}: SelectableFileTreeProps) {
+}: FileTreeSelectorProps) {
   // 已缓存文件路径集合 — 这些文件始终视为选中且不可变更
   const cachedPaths = useMemo(
     () =>

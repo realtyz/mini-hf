@@ -24,6 +24,11 @@ interface TaskFileProgressPanelProps {
   task: TaskResponse | null;
 }
 
+/**
+ * Top-level progress panel for a task's file downloads. Composes the overall
+ * {@link TaskProgressBar} (aggregate bytes) with a {@link FileProgressList}
+ * (per-file rows). Hierarchy: TaskFileProgressPanel ▸ TaskProgressBar + FileProgressList.
+ */
 export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
   const {
     data: progressData,

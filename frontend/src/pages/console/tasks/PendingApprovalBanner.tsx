@@ -3,19 +3,23 @@ import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { motion, AnimatePresence } from "framer-motion";
 
-interface TaskAlertBannerProps {
+/**
+ * Banner prompting admins to review tasks awaiting approval (`pending_approval`).
+ * Distinct from `TransitionStateBanner`, which covers canceling/pausing transitions.
+ */
+interface PendingApprovalBannerProps {
   visible: boolean;
   pendingCount: number;
   isFilteringPending: boolean;
   onFilterPending: () => void;
 }
 
-export function TaskAlertBanner({
+export function PendingApprovalBanner({
   visible,
   pendingCount,
   isFilteringPending,
   onFilterPending,
-}: TaskAlertBannerProps) {
+}: PendingApprovalBannerProps) {
   return (
     <AnimatePresence>
       {visible && (

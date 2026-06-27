@@ -28,7 +28,7 @@ import {
   itemVariants,
 } from "@/lib/animations/motion-config";
 import { TaskFilterBar } from "./TaskFilterBar";
-import { TaskAlertBanner } from "./TaskAlertBanner";
+import { PendingApprovalBanner } from "./PendingApprovalBanner";
 
 const PAGE_SIZE = 10;
 
@@ -170,7 +170,7 @@ export function Tasks() {
         />
       </motion.div>
 
-      <TaskAlertBanner
+      <PendingApprovalBanner
         visible={isAdmin && pendingApprovalCount > 0}
         pendingCount={pendingApprovalCount}
         isFilteringPending={status === "pending_approval"}

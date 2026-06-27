@@ -308,6 +308,10 @@ function FileProgressSummary({ files }: { files: FileProgressItem[] }) {
   );
 }
 
+/**
+ * Per-file progress list — renders one row per file in a task. Owned by
+ * {@link TaskFileProgressPanel}; sibling to the aggregate {@link TaskProgressBar}.
+ */
 export function FileProgressList({
   taskId,
   files,

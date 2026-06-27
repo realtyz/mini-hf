@@ -22,7 +22,7 @@ interface FormData {
   access_token: string;
 }
 
-interface PreviewFormStepProps {
+interface RepoFormStepProps {
   formData: FormData;
   onFormDataChange: (data: FormData) => void;
   hfEndpoints: string[];
@@ -36,13 +36,13 @@ const contentVariants = {
   exit: { opacity: 0, x: -20 },
 };
 
-export function PreviewFormStep({
+export function RepoFormStep({
   formData,
   onFormDataChange,
   hfEndpoints,
   defaultEndpoint,
   previewError,
-}: PreviewFormStepProps) {
+}: RepoFormStepProps) {
   return (
     <motion.div
       key="form"

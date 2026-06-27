@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, CheckCircle2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { SelectableFileTree } from "../SelectableFileTree";
+import { FileTreeSelector } from "../FileTreeSelector";
 import { formatBytes } from "@/lib/utils";
 import type { TaskPreviewData } from "@/lib/api/types";
 
@@ -220,7 +220,7 @@ export function PreviewResultStep({
           <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
             文件列表
           </div>
-          <SelectableFileTree
+          <FileTreeSelector
             items={previewData.items}
             repoId={previewData.repo_id}
             selectedPaths={selectedFiles}

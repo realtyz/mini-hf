@@ -35,13 +35,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { TaskStatusBadge } from "../TaskStatusBadge";
 import { TaskProgressBar } from "../TaskProgressBar";
-import { PreviewFileTree } from "../PreviewFileTree";
+import { ReadOnlyFileTree } from "../ReadOnlyFileTree";
 import { FileProgressList } from "../FileProgressList";
 import { RetryTaskDialog } from "../RetryTaskDialog";
 import { SectionHeader } from "./SectionHeader";
 import { InfoRow } from "./InfoRow";
 import { TimelineItem } from "./TimelineItem";
-import { StatusAlertBanner } from "./StatusAlertBanner";
+import { TransitionStateBanner } from "./TransitionStateBanner";
 import { DrawerActionBar } from "./DrawerActionBar";
 import { StorageStatsSection } from "./StorageStatsSection";
 import { useTaskDetail } from "@/hooks/use-task-detail";
@@ -314,7 +314,7 @@ export function TaskDetailDrawer({
         ) : task && statusConfig ? (
           <div className="px-6 py-5 space-y-6 overflow-scroll">
             {/* Status banners */}
-            <StatusAlertBanner status={task.status} />
+            <TransitionStateBanner status={task.status} />
 
             {/* Approval action */}
             {task.status === "pending_approval" && isAdmin && (
@@ -519,7 +519,7 @@ export function TaskDetailDrawer({
                     {statusConfig.fileListTitle}
                   </SectionHeader>
                   <div className="rounded-xl border border-border/50 overflow-hidden h-72">
-                    <PreviewFileTree
+                    <ReadOnlyFileTree
                       items={task.repo_items as PreviewItem[]}
                       repoId={task.repo_id}
                     />

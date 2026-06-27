@@ -339,7 +339,7 @@ function TaskListLink() {
             className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
             asChild
           >
-            <Link to="/tasks-public" aria-label="任务列表">
+            <Link to="/tasks" aria-label="任务列表">
               <ListTodo className="h-4 w-4" />
             </Link>
           </Button>

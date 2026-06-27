@@ -6,19 +6,20 @@ interface SpotlightCardProps {
   children: React.ReactNode;
   className?: string;
   /**
-   * `interactive` (default) tracks the pointer and renders a radial spotlight
-   * glow on hover — the original AuthPage behavior. `static` is a plain card
-   * surface with a hover shadow, matching the former SettingsComponents copy.
+   * `spotlight` (default) tracks the pointer and renders a radial spotlight
+   * glow on hover — the original AuthPage behavior. `plain` is a plain card
+   * surface with a hover shadow and no spotlight effect, matching the former
+   * SettingsComponents copy.
    */
-  variant?: "interactive" | "static";
+  variant?: "spotlight" | "plain";
 }
 
 export function SpotlightCard({
   children,
   className,
-  variant = "interactive",
+  variant = "spotlight",
 }: SpotlightCardProps) {
-  if (variant === "static") {
+  if (variant === "plain") {
     return (
       <StaticSpotlightCard className={className}>
         {children}

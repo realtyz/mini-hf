@@ -5,7 +5,7 @@ import LandingPage from "./pages";
 import AuthPage from "./pages/auth";
 import DocsPage from "./pages/docs";
 import Repositories from "./pages/repositories";
-import TasksPublic from "./pages/tasks-public";
+import TasksPublic from "./pages/tasks";
 import ConsoleLayout from "./layouts/ConsoleLayout";
 import { ProtectedRoute } from "./components/auth";
 import { LazyLoad } from "./components/shared/LazyLoad";
@@ -50,7 +50,7 @@ export const routes: RouteObject[] = [
         ],
       },
       {
-        path: "tasks-public",
+        path: "tasks",
         element: <TasksPublic />,
       },
     ],

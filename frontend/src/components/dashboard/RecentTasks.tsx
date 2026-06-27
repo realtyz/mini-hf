@@ -201,7 +201,7 @@ export function RecentTasks() {
               最近任务
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              按创建时间显示最近 7 天的任务
+              按创建时间显示最近 7 天的任务（最多 10 条）
             </p>
           </div>
           <Button

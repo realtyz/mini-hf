@@ -37,7 +37,7 @@ export function SettingsSection({
       animate={{ opacity: 1, y: 0 }}
       transition={{ ...smoothTransition, delay }}
     >
-      <SpotlightCard variant="static" className={className}>
+      <SpotlightCard variant="plain" className={className}>
         <CardHeader className="pb-3 pt-5 px-5 sm:px-6">
           <div className="flex items-start gap-3">
             {icon && (
