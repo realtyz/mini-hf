@@ -2,6 +2,7 @@ import type {
   PaginationParams,
   TaskListFilters,
   RepoListParams,
+  RepoStatus,
 } from "@/lib/api/types";
 
 export const queryKeys = {
@@ -51,10 +52,9 @@ export const queryKeys = {
     publicList: (
       params?: Partial<{
         repoType?: string;
-        statusFilter?: string;
+        statuses?: RepoStatus[];
         modelSource?: string;
         search?: string;
-        page?: number;
         skip?: number;
         limit?: number;
       }>,

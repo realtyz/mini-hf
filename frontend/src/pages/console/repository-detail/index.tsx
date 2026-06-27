@@ -2,11 +2,6 @@ import { useState } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router";
 import { Database, Trash2, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query/keys";
-import api from "@/lib/api/client";
-import endpoints from "@/lib/api/endpoints";
-import type { RepoDetailResponse } from "@/lib/api/types";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn, formatCompactNumber } from "@/lib/utils";
@@ -19,20 +14,9 @@ import { DeleteRepoDialog } from "./DeleteRepoDialog";
 import { SnapshotList } from "./SnapshotList";
 import { RepositoryDetailSkeleton } from "./RepositoryDetailSkeleton";
 import { StatusEditDialog } from "./StatusEditDialog";
-import { useSetProfileStatus } from "@/hooks/api/use-repo-queries";
+import { useSetProfileStatus, useRepoDetail } from "@/hooks/api/use-repo-queries";
 import { useAuthStore } from "@/stores/auth-store";
 import type { RepoStatus } from "@/lib/api/types";
-
-async function fetchRepoDetail(
-  repoId: string,
-  repoType: string,
-): Promise<RepoDetailResponse> {
-  const endpoint =
-    repoType === "model"
-      ? endpoints.repo.hfModel(repoId)
-      : endpoints.repo.hfDataset(repoId);
-  return api.get<RepoDetailResponse>(endpoint);
-}
 
 interface RepositoryDetailProps {
   backPath?: string;
@@ -53,11 +37,7 @@ export function RepositoryDetail({
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin";
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.repos.detail(repoId),
-    queryFn: () => fetchRepoDetail(repoId, repoType),
-    enabled: !!repoId,
-  });
+  const { data, isLoading, error } = useRepoDetail(repoId, repoType);
 
   const repo = data?.data.profile;
   const snapshots = data?.data.snapshots || [];

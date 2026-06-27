@@ -9,7 +9,7 @@ import type {
   AsyncPreviewTaskResponse,
   ApiError,
 } from "@/lib/api/types";
-import type { TaskPreviewRequest } from "@/hooks/use-async-preview-task";
+import type { TaskPreviewRequest } from "./use-async-preview-task";
 
 // ==================== 类型定义 ====================
 

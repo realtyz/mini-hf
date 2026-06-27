@@ -4,7 +4,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query/keys";
 import { STALE_TIMES } from "@/lib/query/client";
-import { useTaskList } from "@/hooks/use-task-list";
+import { useTaskList } from "./use-task-list";
 import type {
   TaskResponse,
   TaskStatus,

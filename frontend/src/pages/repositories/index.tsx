@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router";
-import { useQuery } from "@tanstack/react-query";
 import { Search, X, RefreshCw, Smile, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,15 +16,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import api from "@/lib/api/client";
-import endpoints from "@/lib/api/endpoints";
-import { queryKeys } from "@/lib/query/keys";
-import type {
-  RepoProfile,
-  RepoListResponse,
-  RepoListParams,
-  RepoStatus,
-} from "@/lib/api/types";
+import { useRepoList } from "@/hooks/api/use-repo-queries";
+import type { RepoProfile, RepoStatus } from "@/lib/api/types";
 import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
 import { ListFooter } from "@/components/shared/ListFooter";
 
@@ -34,38 +26,6 @@ const PAGE_SIZE = 16;
 type RepoTypeFilter = "all" | "model" | "dataset";
 type StatusFilter = "all" | RepoStatus;
 type ModelSource = "huggingface" | "modelscope";
-
-interface FetchReposParams extends RepoListParams {
-  repoType: RepoTypeFilter;
-  statusFilter: StatusFilter;
-  modelSource: ModelSource;
-}
-
-async function fetchRepositories({
-  repoType,
-  statusFilter,
-  modelSource,
-  ...params
-}: FetchReposParams): Promise<RepoListResponse> {
-  const queryParams: Record<string, unknown> = { ...params };
-
-  if (repoType !== "all") {
-    queryParams.repo_type = repoType;
-  }
-
-  queryParams.statuses = [statusFilter];
-
-  const endpoint =
-    modelSource === "huggingface"
-      ? endpoints.repo.hfListPublic
-      : endpoints.repo.msList;
-  return api.get<RepoListResponse>(endpoint, {
-    params: queryParams,
-    paramsSerializer: {
-      indexes: null,
-    },
-  });
-}
 
 export function Repositories() {
   const navigate = useNavigate();
@@ -84,23 +44,14 @@ export function Repositories() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: queryKeys.repos.publicList({
-      modelSource,
-      repoType,
-      statusFilter,
-      search: debouncedSearch,
-      page,
-    }),
-    queryFn: () =>
-      fetchRepositories({
-        modelSource,
-        repoType,
-        statusFilter,
-        skip: page * PAGE_SIZE,
-        limit: PAGE_SIZE,
-        search: debouncedSearch || undefined,
-      }),
+  const { data, isLoading, error, refetch } = useRepoList({
+    public: true,
+    modelSource,
+    repoType,
+    statuses: statusFilter !== "all" ? [statusFilter] : undefined,
+    search: debouncedSearch || undefined,
+    skip: page * PAGE_SIZE,
+    limit: PAGE_SIZE,
   });
 
   const repositories = data?.data || [];

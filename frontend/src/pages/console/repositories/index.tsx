@@ -22,12 +22,13 @@ import {
 import { ListFooter } from "@/components/shared/ListFooter";
 import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
 import { PageHeader } from "@/components/shared/PageHeader";
-import { useRepoList, PAGE_SIZE } from "./use-repo-list";
+import { useRepoList } from "@/hooks/api/use-repo-queries";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import type { RepoProfile, RepoStatus } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import { REPO_STATUS_CONFIG } from "@/lib/constants/repo";
 
+const PAGE_SIZE = 20;
 const REPO_LIST_STATE_KEY = "repoListState";
 
 interface RepoListState {

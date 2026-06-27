@@ -18,7 +18,7 @@ import {
   TaskHistoryTable,
 } from "@/components/tasks";
 import { useAuthStore } from "@/stores/auth-store";
-import { useActiveTasks, useTaskList } from "@/hooks/use-task-list";
+import { useActiveTasks, useTaskList } from "@/hooks/api/use-task-list";
 import { queryKeys } from "@/lib/query/keys";
 import { useQueryClient } from "@tanstack/react-query";
 

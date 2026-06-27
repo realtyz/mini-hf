@@ -20,7 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileTreeSelector } from "@/components/tasks/FileTreeSelector";
-import { useTaskActions } from "@/hooks/use-task-actions";
+import { useTaskActions } from "@/hooks/api/use-task-actions";
 import { queryKeys } from "@/lib/query/keys";
 import { formatBytes } from "@/lib/utils";
 import api from "@/lib/api/client";
