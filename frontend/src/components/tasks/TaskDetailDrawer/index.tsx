@@ -49,7 +49,7 @@ import type { PreviewItem, TaskStatus, TaskResponse } from "@/lib/api/types";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
 import { useTaskActions } from "@/hooks/use-task-actions";
 import { useAuthStore } from "@/stores/auth-store";
-import { isWithin7Days } from "@/lib/utils";
+import { isWithin7Days, formatDateTimeWithSeconds } from "@/lib/utils";
 import { useState } from "react";
 
 interface TaskDetailDrawerProps {
@@ -151,7 +151,7 @@ const statusDisplayConfig: Record<
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "-";
-  return new Date(dateStr).toLocaleString("zh-CN");
+  return formatDateTimeWithSeconds(dateStr);
 }
 
 function getSourceLabel(source: string): string {
@@ -571,69 +571,9 @@ export function TaskDetailDrawer({
                     )}
                   </div>
                 )}
-                {statusConfig.bottomActionType === "refresh" && (
+                {statusConfig.bottomActionType !== "view-progress" && (
                   <DrawerActionBar
-                    type="refresh"
-                    canCancel={canCancel}
-                    canResume={canResume}
-                    canRetry={canRetry}
-                    onCancel={handleCancelClick}
-                    onResume={handleResume}
-                    onRetry={handleRetry}
-                    onRefresh={() => refetchTask()}
-                    isCancelPending={cancelTask.isPending}
-                    isResumePending={resumeTask.isPending}
-                    isRetryPending={retryTask.isPending}
-                  />
-                )}
-                {statusConfig.bottomActionType === "paused" && (
-                  <DrawerActionBar
-                    type="paused"
-                    canCancel={canCancel}
-                    canResume={canResume}
-                    canRetry={canRetry}
-                    onCancel={handleCancelClick}
-                    onResume={handleResume}
-                    onRetry={handleRetry}
-                    onRefresh={() => refetchTask()}
-                    isCancelPending={cancelTask.isPending}
-                    isResumePending={resumeTask.isPending}
-                    isRetryPending={retryTask.isPending}
-                  />
-                )}
-                {statusConfig.bottomActionType === "pausing" && (
-                  <DrawerActionBar
-                    type="pausing"
-                    canCancel={canCancel}
-                    canResume={canResume}
-                    canRetry={canRetry}
-                    onCancel={handleCancelClick}
-                    onResume={handleResume}
-                    onRetry={handleRetry}
-                    onRefresh={() => refetchTask()}
-                    isCancelPending={cancelTask.isPending}
-                    isResumePending={resumeTask.isPending}
-                    isRetryPending={retryTask.isPending}
-                  />
-                )}
-                {statusConfig.bottomActionType === "cancelled" && (
-                  <DrawerActionBar
-                    type="cancelled"
-                    canCancel={canCancel}
-                    canResume={canResume}
-                    canRetry={canRetry}
-                    onCancel={handleCancelClick}
-                    onResume={handleResume}
-                    onRetry={handleRetry}
-                    onRefresh={() => refetchTask()}
-                    isCancelPending={cancelTask.isPending}
-                    isResumePending={resumeTask.isPending}
-                    isRetryPending={retryTask.isPending}
-                  />
-                )}
-                {statusConfig.bottomActionType === "failed" && (
-                  <DrawerActionBar
-                    type="failed"
+                    type={statusConfig.bottomActionType}
                     canCancel={canCancel}
                     canResume={canResume}
                     canRetry={canRetry}

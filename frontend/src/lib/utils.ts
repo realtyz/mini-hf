@@ -33,6 +33,22 @@ export function formatDistanceToNow(date: Date): string {
   return formatDistanceToNowBase(date, { addSuffix: true, locale: zhCN });
 }
 
+/** "2026/06/27 14:30" — 不含秒，用于列表/表格。 */
+export function formatDateTime(iso: string): string {
+  return new Date(iso).toLocaleString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/** "2026/06/27 14:30:45" — 含秒，用于详情时间线。裸调 toLocaleString("zh-CN") 以保持分隔符/补零与原实现逐字符一致。 */
+export function formatDateTimeWithSeconds(iso: string): string {
+  return new Date(iso).toLocaleString("zh-CN");
+}
+
 /** Format an elapsed duration in milliseconds as "X秒" / "X分X秒" / "X时X分". */
 export function formatElapsed(ms: number | null): string {
   if (ms === null) return "-";

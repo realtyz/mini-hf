@@ -26,6 +26,7 @@ import { useRepoList, PAGE_SIZE } from "./use-repo-list";
 import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import type { RepoProfile, RepoStatus } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
+import { REPO_STATUS_CONFIG } from "@/lib/constants/repo";
 
 const REPO_LIST_STATE_KEY = "repoListState";
 
@@ -38,18 +39,18 @@ interface RepoListState {
   page: number;
 }
 
-// 状态配置：显示名称和颜色
+// 状态配置：从全局 REPO_STATUS_CONFIG 派生，圆点色采用 canonical dotClass
 const STATUS_CONFIG: {
   value: RepoStatus;
   label: string;
   dotColor: string;
-}[] = [
-  { value: "active", label: "活跃", dotColor: "bg-emerald-500" },
-  { value: "updating", label: "更新中", dotColor: "bg-blue-500" },
-  { value: "cleaning", label: "清理中", dotColor: "bg-violet-500" },
-  { value: "inactive", label: "不完整", dotColor: "bg-slate-400" },
-  { value: "cleaned", label: "已清理", dotColor: "bg-orange-500" },
-];
+}[] = (
+  ["active", "updating", "cleaning", "inactive", "cleaned"] as RepoStatus[]
+).map((value) => ({
+  value,
+  label: REPO_STATUS_CONFIG[value].label,
+  dotColor: REPO_STATUS_CONFIG[value].dotClass,
+}));
 
 // 默认选中的状态（不包含 inactive）
 const DEFAULT_STATUSES: RepoStatus[] = ["active", "updating", "cleaning"];

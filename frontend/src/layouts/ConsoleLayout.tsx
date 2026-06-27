@@ -66,6 +66,8 @@ import { useCurrentUser } from "@/hooks/api/use-auth-queries";
 import { useAuthStore } from "@/stores/auth-store";
 import { useTheme } from "@/hooks/use-theme";
 import { queryClient } from "@/lib/query/client";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { MiniHfLogoMark } from "@/components/shared/Logo";
 
 // =============================================================================
 // Types & Interfaces
@@ -180,78 +182,8 @@ function Logo({ collapsed = false }: { collapsed?: boolean }) {
       <div className="relative flex h-8 w-8 shrink-0 items-center justify-center transition-all duration-300 group-hover/logo:scale-110">
         {/* 光晕背景 */}
         <div className="absolute inset-0 rounded-full bg-primary/20 opacity-0 blur-lg transition-opacity duration-300 group-hover/logo:opacity-100" />
-        {/* SVG Logo - 内联使用以支持 currentColor */}
-        <svg
-          viewBox="0 0 32 32"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          className="relative h-7 w-7 text-foreground drop-shadow-sm transition-all duration-300 group-hover/logo:drop-shadow-md"
-        >
-          {/* 外层立方体 - 代表缓存存储 */}
-          <path
-            d="M16 2L4 9V23L16 30L28 23V9L16 2Z"
-            fill="currentColor"
-            opacity="0.15"
-          />
-          <path
-            d="M16 2L4 9V23L16 30L28 23V9L16 2Z"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {/* 内层立方体线条 */}
-          <path
-            d="M16 17V30"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-          <path
-            d="M16 17L4 9"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-          <path
-            d="M16 17L28 9"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-          />
-          {/* 中心节点 - 代表 AI 模型 */}
-          <circle cx="16" cy="17" r="3" fill="currentColor" />
-          {/* 连接线 - 代表神经网络 */}
-          <line
-            x1="16"
-            y1="14"
-            x2="16"
-            y2="8"
-            stroke="currentColor"
-            strokeWidth="1"
-          />
-          <line
-            x1="18.5"
-            y1="18.5"
-            x2="23"
-            y2="21"
-            stroke="currentColor"
-            strokeWidth="1"
-          />
-          <line
-            x1="13.5"
-            y1="18.5"
-            x2="9"
-            y2="21"
-            stroke="currentColor"
-            strokeWidth="1"
-          />
-          {/* 小节点 */}
-          <circle cx="16" cy="8" r="1.5" fill="currentColor" opacity="0.6" />
-          <circle cx="23" cy="21" r="1.5" fill="currentColor" opacity="0.6" />
-          <circle cx="9" cy="21" r="1.5" fill="currentColor" opacity="0.6" />
-        </svg>
+        {/* SVG Logo mark - 共享自 shared/Logo */}
+        <MiniHfLogoMark className="relative h-7 w-7 text-foreground drop-shadow-sm transition-all duration-300 group-hover/logo:drop-shadow-md" />
       </div>
       {/* 文字 - 展开时显示 */}
       <div
@@ -272,9 +204,17 @@ function Logo({ collapsed = false }: { collapsed?: boolean }) {
 }
 
 /**
- * 文档链接按钮
+ * Header 图标链接按钮 — Tooltip + Button + Link 的统一封装
  */
-function DocsLink() {
+function HeaderLink({
+  to,
+  icon: Icon,
+  label,
+}: {
+  to: string;
+  icon: LucideIcon;
+  label: string;
+}) {
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -285,74 +225,18 @@ function DocsLink() {
             className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
             asChild
           >
-            <Link to="/docs" aria-label="使用文档">
-              <BookOpen className="h-4 w-4" />
+            <Link to={to} aria-label={label}>
+              <Icon className="h-4 w-4" />
             </Link>
           </Button>
         </TooltipTrigger>
         <TooltipContent side="bottom" align="center">
-          <p className="text-xs">使用文档</p>
+          <p className="text-xs">{label}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
   );
 }
-
-/**
- * 仓库列表链接按钮
- */
-function ReposLink() {
-  return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
-            asChild
-          >
-            <Link to="/repositories" aria-label="仓库列表">
-              <Boxes className="h-4 w-4" />
-            </Link>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" align="center">
-          <p className="text-xs">仓库列表</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-/**
- * 任务列表链接按钮
- */
-function TaskListLink() {
-  return (
-    <TooltipProvider delayDuration={200}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
-            asChild
-          >
-            <Link to="/tasks" aria-label="任务列表">
-              <ListTodo className="h-4 w-4" />
-            </Link>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom" align="center">
-          <p className="text-xs">任务列表</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 /**
  * 用户下拉菜单
@@ -664,9 +548,9 @@ function ConsoleHeader() {
       {/* 右侧区域 - 通过间距而非分隔线区分功能组 */}
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-0.5">
-          <DocsLink />
-          <ReposLink />
-          <TaskListLink />
+          <HeaderLink to="/docs" icon={BookOpen} label="使用文档" />
+          <HeaderLink to="/repositories" icon={Boxes} label="仓库列表" />
+          <HeaderLink to="/tasks" icon={ListTodo} label="任务列表" />
         </div>
         <ThemeToggle />
         <UserDropdown />
