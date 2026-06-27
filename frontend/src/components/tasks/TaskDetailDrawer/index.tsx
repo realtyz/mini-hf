@@ -50,6 +50,7 @@ import { useTaskProgress } from "@/hooks/api/use-task-progress";
 import { useTaskActions } from "@/hooks/use-task-actions";
 import { useAuthStore } from "@/stores/auth-store";
 import { isWithin7Days, formatDateTimeWithSeconds } from "@/lib/utils";
+import { getSourceLabel, getRepoTypeLabel } from "@/lib/constants/source";
 import { useState } from "react";
 
 interface TaskDetailDrawerProps {
@@ -152,22 +153,6 @@ const statusDisplayConfig: Record<
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "-";
   return formatDateTimeWithSeconds(dateStr);
-}
-
-function getSourceLabel(source: string): string {
-  const labels: Record<string, string> = {
-    huggingface: "HuggingFace",
-    modelscope: "ModelScope",
-  };
-  return labels[source] || source;
-}
-
-function getRepoTypeLabel(repoType: string): string {
-  const labels: Record<string, string> = {
-    model: "模型",
-    dataset: "数据集",
-  };
-  return labels[repoType] || repoType;
 }
 
 function buildTimeline(t: TaskResponse): { label: string; value: string }[] {

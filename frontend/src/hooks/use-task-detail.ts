@@ -31,7 +31,7 @@ export function useTaskDetail(taskId: number | null) {
         "canceling",
       ];
       if (status && nonTerminalStatuses.includes(status)) {
-        return 3000;
+        return STALE_TIMES.realtime;
       }
       return false;
     },

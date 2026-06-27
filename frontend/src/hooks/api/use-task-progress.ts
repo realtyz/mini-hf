@@ -39,7 +39,7 @@ export function useTaskProgress(
     refetchInterval: () => {
       // 使用传入的 taskStatus 判断，确保第一次就能正确轮询
       // 第一次请求时 query.state.data 为 undefined，不能依赖它判断
-      return isRunning ? 3000 : false;
+      return isRunning ? STALE_TIMES.realtime : false;
     },
     staleTime: STALE_TIMES.realtime,
     retry: (failureCount, error) => {

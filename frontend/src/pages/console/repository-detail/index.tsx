@@ -13,6 +13,7 @@ import { cn, formatCompactNumber } from "@/lib/utils";
 import {
   getRepoStatusLabel,
   getRepoStatusDotClass,
+  REPO_STATUS_CONFIG,
 } from "@/lib/constants/repo";
 import { DeleteRepoDialog } from "./DeleteRepoDialog";
 import { SnapshotList } from "./SnapshotList";
@@ -38,13 +39,9 @@ interface RepositoryDetailProps {
   showActions?: boolean;
 }
 
-const PROFILE_STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: "active", label: "活跃" },
-  { value: "inactive", label: "不完整" },
-  { value: "updating", label: "更新中" },
-  { value: "cleaning", label: "清理中" },
-  { value: "cleaned", label: "已清理" },
-];
+const PROFILE_STATUS_OPTIONS: { value: RepoStatus; label: string }[] = (
+  ["active", "inactive", "updating", "cleaning", "cleaned"] as RepoStatus[]
+).map((value) => ({ value, label: REPO_STATUS_CONFIG[value].label }));
 
 export function RepositoryDetail({
   backPath = "/console/repositories",

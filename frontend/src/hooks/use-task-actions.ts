@@ -29,7 +29,7 @@ type TaskActionResponse = ApiResponse<TaskResponse>;
 
 // ==================== 工厂函数 ====================
 
-interface CreateTaskMutationOptions<TVars> {
+interface TaskActionMutationOptions<TVars> {
   /** toast 中显示的操作名称，如 "取消任务" */
   actionName: string;
   /** 是否同时刷新任务详情缓存，默认 true */
@@ -42,10 +42,10 @@ interface CreateTaskMutationOptions<TVars> {
  * 任务操作 mutation 工厂
  * 统一处理 onSuccess（刷新列表 + 可选详情）和 onError（toast 提示）
  */
-function useCreateTaskMutation<TVars>(
+function useTaskActionMutation<TVars>(
   mutationFn: (variables: TVars) => Promise<TaskResponse>,
   getTaskId: (variables: TVars) => number,
-  options: CreateTaskMutationOptions<TVars>,
+  options: TaskActionMutationOptions<TVars>,
   queryClient: ReturnType<typeof useQueryClient>,
 ) {
   const { actionName, invalidateDetail = true, onError } = options;
@@ -133,7 +133,7 @@ export function useTaskActions() {
     },
   });
 
-  const cancelTask = useCreateTaskMutation(
+  const cancelTask = useTaskActionMutation(
     async (taskId: number) => {
       const response = await api.post<TaskActionResponse>(
         endpoints.task.cancel(taskId),
@@ -145,7 +145,7 @@ export function useTaskActions() {
     queryClient,
   );
 
-  const pauseTask = useCreateTaskMutation(
+  const pauseTask = useTaskActionMutation(
     async (taskId: number) => {
       const response = await api.post<TaskActionResponse>(
         endpoints.task.pause(taskId),
@@ -157,7 +157,7 @@ export function useTaskActions() {
     queryClient,
   );
 
-  const resumeTask = useCreateTaskMutation(
+  const resumeTask = useTaskActionMutation(
     async (taskId: number) => {
       const response = await api.post<TaskActionResponse>(
         endpoints.task.resume(taskId),
@@ -169,7 +169,7 @@ export function useTaskActions() {
     queryClient,
   );
 
-  const pinTask = useCreateTaskMutation(
+  const pinTask = useTaskActionMutation(
     async (taskId: number) => {
       const response = await api.post<TaskActionResponse>(
         endpoints.task.pin(taskId),
@@ -181,7 +181,7 @@ export function useTaskActions() {
     queryClient,
   );
 
-  const unpinTask = useCreateTaskMutation(
+  const unpinTask = useTaskActionMutation(
     async (taskId: number) => {
       const response = await api.post<TaskActionResponse>(
         endpoints.task.unpin(taskId),
@@ -193,7 +193,7 @@ export function useTaskActions() {
     queryClient,
   );
 
-  const retryTask = useCreateTaskMutation(
+  const retryTask = useTaskActionMutation(
     async ({
       taskId,
       selectedFiles,

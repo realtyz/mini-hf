@@ -17,11 +17,12 @@ interface SnapshotListProps {
   repoId: string;
 }
 
-const SNAPSHOT_STATUS_OPTIONS: { value: string; label: string }[] = [
-  { value: "active", label: "活跃" },
-  { value: "inactive", label: "未完成" },
-  { value: "archived", label: "已归档" },
-];
+const SNAPSHOT_STATUS_OPTIONS: {
+  value: SnapshotStatusType;
+  label: string;
+}[] = (["active", "inactive", "archived"] as SnapshotStatusType[]).map(
+  (value) => ({ value, label: SNAPSHOT_STATUS_CONFIG[value].label }),
+);
 
 // Single-accent palette: emerald for live, amber for in-flight, muted for archived.
 const SNAPSHOT_DOT_CLASS: Record<SnapshotStatusType, string> = {

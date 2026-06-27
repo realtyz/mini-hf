@@ -114,7 +114,7 @@ export function useTaskList(options: UseTaskListOptions = {}) {
     refetchInterval: shouldPoll
       ? (query) => {
           const data = query.state.data;
-          return hasActiveTasks(data?.data) ? 10000 : false;
+          return hasActiveTasks(data?.data) ? STALE_TIMES.list : false;
         }
       : false,
     staleTime: isPublic
