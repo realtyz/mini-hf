@@ -7,17 +7,22 @@ This file provides guidance to Claude Code when working in the `frontend/` direc
 - React 19 + TypeScript 5.9 (strict mode)
 - React Router 7 (route tree in `src/router.tsx`)
 - TanStack Query 5 (server state, custom `queryKeys` factory)
+- TanStack Table 8 (tabular data, used in console tables)
 - Zustand 5 (client state, auth persisted to localStorage)
 - Tailwind CSS 4 + `@tailwindcss/vite` plugin
 - shadcn/ui (Radix UI primitives via `components/ui/`)
 - framer-motion (declarative animations)
+- recharts (dashboard charts)
+- sonner (toast notifications)
+- react-markdown + remark-gfm + rehype-slug/autolink-headings + react-syntax-highlighter (docs rendering)
 - Axios (API client with JWT interceptors)
+- date-fns / lodash-es (date & utility helpers)
 - Vite 7 (build tool)
 
 ## Path Aliases
 
-- `@/` → `src/`
-- `@docs/` → `docs/`
+- `@/` → `src/` (configured in `vite.config.ts` and `tsconfig.app.json`)
+- `@docs/` → `docs/` (configured in `vite.config.ts` and the root `tsconfig.json`, but **not** in `tsconfig.app.json`; currently unused inside `src/`. If you start importing from `docs/` in app code, add the alias to `tsconfig.app.json` so type-check passes.)
 
 ## Project Conventions
 
@@ -34,8 +39,8 @@ src/
     dashboard/    ← dashboard widgets
     theme/        ← theme provider + context
   hooks/
-    api/          ← TanStack Query hooks (use-*-queries.ts)
-    use-*.ts      ← generic custom hooks
+    api/          ← TanStack Query hooks (server state)
+    use-*.ts      ← generic, non-API custom hooks (use-theme, use-mobile, …)
   stores/         ← Zustand stores (auth-store.ts)
   lib/
     api/          ← axios client, endpoint constants, types
@@ -51,19 +56,23 @@ src/
 ### Naming Conventions
 
 - **Files**: PascalCase for components, kebab-case or camelCase for everything else. Follow existing patterns — don't rename without reason.
-- **Components**: named exports only (no default exports). Use `React.memo()` for pure presentational components. The only exception is page entry files (`pages/**/index.tsx`), which keep a default export so `router.tsx` can `lazy()`-load them.
-- **API hooks**: `use-*-queries.ts` (e.g., `use-repo-queries.ts`, `use-task-progress.ts`). Each file groups related queries + mutations for one domain.
-- **Hooks placement**: Put a hook in `src/hooks/` only when it is reused across pages or features (e.g., `use-task-list`, `use-task-actions`, `use-task-detail`, `use-repo-list` are shared by `console/tasks` and the public `pages/tasks`). Single-page hooks co-locate with the page that owns them (e.g., `pages/console/cache-scan/use-cache-scan-filters.ts`, `pages/console/settings/use-config-form.ts`).
+- **Components**: named exports only (no default exports). Use `React.memo()` for pure presentational components. The only exception is page entry files (`pages/**/index.tsx`), which keep a default export so `router.tsx` can `lazy()`-load them. (Non-component lib modules such as `lib/api/client.ts` and `lib/api/endpoints.ts` do keep a default export — the rule targets components.)
+- **API hooks**: live in `src/hooks/api/`. Name by responsibility — there is no mandatory `-queries` suffix:
+  - `use-<domain>-queries.ts` — a domain's query + mutation bundle (e.g. `use-repo-queries.ts`, `use-config-queries.ts`, `use-user-queries.ts`).
+  - `use-<domain>-actions.ts` — a pure mutation bundle (e.g. `use-task-actions.ts`).
+  - `use-*.ts` — a single query or single-responsibility hook (e.g. `use-task-progress.ts`, `use-task-detail.ts`, `use-task-list.ts`, `use-async-preview-task.ts`).
+- **Hooks placement**: anything that touches TanStack Query / the API client goes in `src/hooks/api/`. Generic, non-server-state hooks (theme, viewport, timers, storage) go in `src/hooks/`. Single-page hooks co-locate with the page that owns them (e.g. `pages/console/cache-scan/use-cache-scan-filters.ts`, `pages/console/settings/use-config-form.ts`).
 
 ### State Management
 
 - **Server state**: TanStack Query. Use the `queryKeys` factory in `lib/query/keys.ts` — never hardcode query key arrays.
 - **Client state**: Zustand. Only `auth-store.ts` so far. New stores go in `stores/`.
-- **URL state**: Use React Router's `useSearchParams` for filter/pagination state that should be shareable via URL.
+- **URL state**: Use React Router's `useSearchParams` for filter/pagination state that should be shareable/bookmarkable via URL (the established pattern in `pages/console/repository-detail` and `pages/console/settings`). Note: the two main list pages do **not** currently follow this — `console/tasks` keeps filters in `useState`, and `console/repositories` persists them via `useSessionStorageState`. When adding a new list page whose filters benefit from being shareable, prefer `useSearchParams`.
 
 ### TanStack Query Patterns
 
-- Query key factory is in `lib/query/keys.ts`. Always add new keys there.
+- Query key factory is in `lib/query/keys.ts`. Always add new keys there — including inside the factory itself (build nested keys from `<domain>.all`, e.g. `[...queryKeys.tasks.all, "detail", id]`, rather than re-typing `["tasks", ...]`).
+- `QueryClient` is configured in `lib/query/client.ts` with global defaults that act as the baseline — don't redeclare them per-query: `refetchOnWindowFocus: false`, `retry: 1`, default `staleTime: STALE_TIMES.stats`, mutations `retry: false`.
 - `staleTime` constants are in `lib/query/client.ts`. Use the appropriate tier:
   - `realtime` (3s) — active task progress, detail
   - `list` (10s) — task/repo lists
@@ -101,12 +110,16 @@ pnpm lint            # ESLint
 pnpm dlx shadcn@latest add <component>  # Add shadcn/ui component
 ```
 
+## Testing
+
+There is **no frontend test harness yet** — `package.json` has no `test` script and no test runner is installed. Backend has pytest; the frontend has no equivalent. Until one is added, lean on `pnpm tsc --noEmit` and `pnpm lint` as the safety net, and prefer pure, easily-reasonable functions for any non-trivial logic so they can be tested later.
+
 ## Key Behavioral Rules
 
-1. **Don't delete or rename existing files** unless the user explicitly asks. The codebase has stable structure.
+1. **Confirm before deleting or renaming files**. The codebase has a stable structure — don't delete or rename on your own initiative. If it's warranted, surface the proposed delete/rename and get the user's OK first.
 2. **Match existing patterns**: If adding a new API hook, follow the structure of `use-repo-queries.ts`. If adding a new page, follow one of the existing page layouts.
 3. **Query keys always go in `keys.ts`**. Never inline `['tasks', 'list']` — use `queryKeys.tasks.list()`.
-4. **No default exports**. Components use named exports.
+4. **No default exports for components**. Components use named exports; only page entry files (`pages/**/index.tsx`) and a couple of non-component lib modules (`lib/api/client.ts`, `lib/api/endpoints.ts`) keep a default export.
 5. **Don't add new dependencies** without asking. The dependency set is stable.
 6. **UI text is in Chinese** (toast messages, labels, error text). Keep it consistent.
 7. **No unnecessary refactoring**. If you're fixing a bug, don't also "clean up" the surrounding code.
