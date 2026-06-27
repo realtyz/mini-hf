@@ -75,5 +75,3 @@ export function TableOfContents({ items, className }: TableOfContentsProps) {
     </div>
   );
 }
-
-export default TableOfContents;

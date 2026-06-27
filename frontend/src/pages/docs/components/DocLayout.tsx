@@ -102,5 +102,3 @@ export function DocLayout({ slug }: DocLayoutProps) {
     </>
   );
 }
-
-export default DocLayout;

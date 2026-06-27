@@ -160,5 +160,3 @@ export function AnnouncementBanner({ className }: AnnouncementBannerProps) {
     </motion.div>
   );
 }
-
-export default AnnouncementBanner;

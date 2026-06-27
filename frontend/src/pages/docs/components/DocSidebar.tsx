@@ -48,5 +48,3 @@ export function DocSidebar({ docs, className }: DocSidebarProps) {
     </div>
   );
 }
-
-export default DocSidebar;

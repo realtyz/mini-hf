@@ -1,7 +1,6 @@
 export { ErrorBoundary } from "./ErrorBoundary";
 export { Logo } from "./Logo";
 export { PageHeader } from "./PageHeader";
-export { StatCard } from "./StatCard";
 export { EmptyState } from "./EmptyState";
 export { ErrorState } from "./ErrorState";
 export { LoadingSpinner } from "./LoadingSpinner";
