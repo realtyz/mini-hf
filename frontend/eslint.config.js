@@ -20,4 +20,14 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    // shadcn/ui primitives and the theme provider co-locate non-component
+    // exports (cva variants, React context) alongside components. Fast Refresh
+    // correctness is less important here than keeping these generated/infra
+    // files intact, so opt them out of the only-export-components rule.
+    files: ["src/components/ui/**/*.{ts,tsx}", "src/components/theme/**/*.{ts,tsx}"],
+    rules: {
+      "react-refresh/only-export-components": "off",
+    },
+  },
 ]);

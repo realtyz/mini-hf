@@ -68,7 +68,7 @@ export function AnnouncementBanner({ className }: AnnouncementBannerProps) {
   const visible = useMemo(() => {
     if (!data?.data) return [];
     return data.data.filter((a) => a.is_active && !dismissedIds.includes(a.id));
-  }, [data?.data, dismissedIds]);
+  }, [data, dismissedIds]);
 
   const displayed = expanded ? visible : visible.slice(0, 2);
   const hasMore = visible.length > 2;

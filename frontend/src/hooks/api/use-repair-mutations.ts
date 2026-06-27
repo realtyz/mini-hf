@@ -50,15 +50,14 @@ export function useSetSnapshotStatus() {
   return useMutation({
     mutationFn: async ({
       snapshotId,
-      repoId,
-      ...body
+      status,
     }: SetSnapshotStatusRequest & {
       snapshotId: number;
       repoId: string;
     }): Promise<RepairResponse> => {
       return api.patch<RepairResponse>(
         endpoints.adminRepair.snapshotStatus(snapshotId),
-        body,
+        { status },
       );
     },
     onSuccess: (_data, variables) => {

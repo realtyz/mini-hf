@@ -54,6 +54,7 @@ export function useAsyncPreviewTask(
 
   const [taskId, setTaskId] = useState<string | null>(null);
   const [startTime, setStartTime] = useState<number | null>(null);
+  const [timedOut, setTimedOut] = useState(false);
   const pollCountRef = useRef(0);
   const queryClient = useQueryClient();
 
@@ -68,6 +69,7 @@ export function useAsyncPreviewTask(
     onSuccess: (id) => {
       setTaskId(id);
       pollCountRef.current = 0;
+      setTimedOut(false);
       setStartTime(Date.now());
     },
   });
@@ -85,7 +87,10 @@ export function useAsyncPreviewTask(
     refetchInterval: (query) => {
       const status = query.state.data?.status;
       if (status === "completed" || status === "failed") return false;
-      if (pollCountRef.current >= maxPolls) return false;
+      if (pollCountRef.current >= maxPolls) {
+        setTimedOut(true);
+        return false;
+      }
       return pollInterval;
     },
     retry: false,
@@ -108,6 +113,7 @@ export function useAsyncPreviewTask(
   const reset = useCallback(() => {
     setTaskId(null);
     setStartTime(null);
+    setTimedOut(false);
     pollCountRef.current = 0;
     queryClient.removeQueries({
       queryKey: queryKeys.tasks.previewStatus(taskId),
@@ -117,12 +123,12 @@ export function useAsyncPreviewTask(
 
   const status = statusQuery.data?.status ?? null;
   const isTerminal = status === "completed" || status === "failed";
-  const timedOut = pollCountRef.current >= maxPolls && !!taskId && !isTerminal;
+  const hasTimedOut = timedOut && !!taskId && !isTerminal;
   const hasError =
     status === "failed" ||
     !!startMutation.error ||
     !!statusQuery.error ||
-    timedOut;
+    hasTimedOut;
 
   const isStarting = startMutation.isPending;
   const isPolling = !!taskId && !isTerminal && !hasError;
@@ -134,7 +140,7 @@ export function useAsyncPreviewTask(
   const error: Error | null =
     (startMutation.error as Error | null) ??
     (statusQuery.error as Error | null) ??
-    (timedOut ? new Error(STRINGS.taskPreviewTimeout) : null);
+    (hasTimedOut ? new Error(STRINGS.taskPreviewTimeout) : null);
 
   return {
     startPreview,

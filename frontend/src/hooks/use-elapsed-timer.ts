@@ -8,8 +8,6 @@ export function useElapsedTimer(
 
   useEffect(() => {
     if (!running || !startTime) return;
-
-    setElapsed(Date.now() - startTime);
     const timer = setInterval(() => {
       setElapsed(Date.now() - startTime);
     }, 1000);
