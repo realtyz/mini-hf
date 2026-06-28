@@ -65,8 +65,9 @@ function TrendingCard({ repo, index }: { repo: TrendingRepo; index: number }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.04, ease: "easeOut" }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.3, delay: (index % 3) * 0.04, ease: [0.16, 1, 0.3, 1] }}
     >
       <Card className="h-full flex flex-col group transition-all duration-200 hover:shadow-md hover:border-primary/25 hover:-translate-y-0.5">
         <CardHeader className="pb-3 pt-5">
@@ -130,13 +131,11 @@ export function TrendingSection() {
       <div className="container mx-auto px-4 max-w-7xl">
         <div className="flex items-end justify-between mb-6">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-orange-500/10 border border-orange-500/20 mb-2.5">
-              <Flame className="h-3.5 w-3.5 text-orange-500" />
-              <span className="text-xs font-medium text-orange-600">
-                Trending on HuggingFace
-              </span>
+            <div className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              <Flame className="size-3.5" />
+              Trending on HuggingFace
             </div>
-            <h2 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
               热门仓库
             </h2>
           </div>
