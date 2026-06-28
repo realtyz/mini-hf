@@ -7,7 +7,9 @@ import { landingContent } from "@/lib/constants/landing";
 import {
   containerVariants,
   itemVariants,
+  springSnappy,
 } from "@/lib/animations/motion-config";
+import { TechBackground } from "./TechBackground";
 
 const COPY_RESET_MS = 1800;
 const FALLBACK_ENDPOINT = "export HF_ENDPOINT=https://<your-mini-hf-host>:9801";
@@ -51,6 +53,10 @@ function EndpointBlock() {
         </span>
         <code className="flex-1 truncate font-mono text-[13px] text-foreground/90">
           {endpoint}
+          <span
+            aria-hidden
+            className="ml-0.5 inline-block w-1.75 -mb-px h-3.5 translate-y-0.5 bg-foreground/70 animate-blink"
+          />
         </code>
         <button
           type="button"
@@ -65,9 +71,6 @@ function EndpointBlock() {
           )}
         </button>
       </div>
-      <p className="mt-2.5 text-center text-xs text-muted-foreground/80">
-        兼容 huggingface-cli · transformers · datasets
-      </p>
     </div>
   );
 }
@@ -75,16 +78,11 @@ function EndpointBlock() {
 export function HeroSection() {
   return (
     <section className="relative overflow-hidden">
-      {/* Static ambient depth — a non-animated radial renders identically
-          across browsers; no motion, no cross-browser drift. */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-120"
-        style={{
-          background:
-            "radial-gradient(60% 100% at 50% 0%, hsl(var(--primary-h) var(--primary-s) var(--primary-l) / 0.05), transparent 70%)",
-        }}
-      />
+      {/* Ambient depth: the project's signature animated tech grid with
+          flowing light streaks. Pure CSS keyframes + -webkit-filter, so it
+          renders identically across mainstream browsers. Sits behind content
+          and fades at the edges to keep the centre calm. */}
+      <TechBackground variant="hero" fadeTop fadeBottom />
 
       <div className="mx-auto max-w-3xl px-4 py-28 text-center sm:py-36">
         <motion.div
@@ -127,21 +125,33 @@ export function HeroSection() {
             variants={itemVariants}
             className="mt-8 flex items-center justify-center gap-3"
           >
-            <Button asChild size="lg" className="cursor-pointer">
-              <Link to="/login" viewTransition>
-                {landingContent.hero.primaryCta}
-              </Link>
-            </Button>
-            <Button
-              asChild
-              size="lg"
-              variant="ghost"
-              className="cursor-pointer"
+            <motion.div
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              transition={springSnappy}
             >
-              <Link to="/docs" viewTransition>
-                {landingContent.hero.secondaryCta}
-              </Link>
-            </Button>
+              <Button asChild size="lg" className="cursor-pointer">
+                <Link to="/login" viewTransition>
+                  {landingContent.hero.primaryCta}
+                </Link>
+              </Button>
+            </motion.div>
+            <motion.div
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              transition={springSnappy}
+            >
+              <Button
+                asChild
+                size="lg"
+                variant="ghost"
+                className="cursor-pointer"
+              >
+                <Link to="/docs" viewTransition>
+                  {landingContent.hero.secondaryCta}
+                </Link>
+              </Button>
+            </motion.div>
           </motion.div>
 
           {/* Signature: endpoint config block */}
