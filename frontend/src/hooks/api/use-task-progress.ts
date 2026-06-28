@@ -45,7 +45,7 @@ export function useTaskProgress(
     retry: (failureCount, error) => {
       // 404 不重试（任务未开始或已完成）。
       // 响应拦截器已把 HTTP 状态写入 ApiError.code，这里直接读取 code。
-      if ((error as ApiError).code === 404) {
+      if ((error as unknown as ApiError).code === 404) {
         return false;
       }
       return failureCount < 3;

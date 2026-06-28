@@ -11,6 +11,10 @@ import { emitAuthLogout } from "@/lib/auth-events";
 import endpoints from "@/lib/api/endpoints";
 
 declare module "axios" {
+  interface AxiosRequestConfig {
+    skipAuthRefresh?: boolean;
+    skipAuthRedirect?: boolean;
+  }
   interface InternalAxiosRequestConfig {
     skipAuthRefresh?: boolean;
     skipAuthRedirect?: boolean;
