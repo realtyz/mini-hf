@@ -45,7 +45,7 @@ import { TransitionStateBanner } from "./TransitionStateBanner";
 import { DrawerActionBar } from "./DrawerActionBar";
 import { StorageStatsSection } from "./StorageStatsSection";
 import { useTaskDetail } from "@/hooks/api/use-task-detail";
-import type { PreviewItem, TaskStatus, TaskResponse } from "@/lib/api/types";
+import type { TaskStatus, TaskResponse } from "@/lib/api/types";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
 import { useTaskActions } from "@/hooks/api/use-task-actions";
 import { useAuthStore } from "@/stores/auth-store";
@@ -505,7 +505,7 @@ export function TaskDetailDrawer({
                   </SectionHeader>
                   <div className="rounded-xl border border-border/50 overflow-hidden h-72">
                     <ReadOnlyFileTree
-                      items={task.repo_items as PreviewItem[]}
+                      items={task.repo_items}
                       repoId={task.repo_id}
                     />
                   </div>

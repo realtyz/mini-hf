@@ -117,12 +117,9 @@ export interface UserCreateRequest {
   is_active?: boolean;
 }
 
-export interface UserListResponse {
-  code: number;
-  message: string;
-  data: UserResponse[];
+export type UserListResponse = ApiResponse<UserResponse[]> & {
   total: number;
-}
+};
 
 export interface UserUpdateRequest {
   name?: string;
@@ -218,18 +215,15 @@ export interface TaskResponse {
   total_storage: number;
   required_file_count: number;
   total_file_count: number;
-  repo_items?: unknown[];
+  repo_items?: PreviewItem[];
   commit_hash: string | null;
   downloaded_file_count: number | null;
   downloaded_bytes: number | null;
 }
 
-export interface TaskListResponse {
-  code: number;
-  message: string;
-  data: TaskResponse[];
+export type TaskListResponse = ApiResponse<TaskResponse[]> & {
   total: number;
-}
+};
 
 export interface ActiveTaskListResponse {
   code: number;
@@ -311,7 +305,7 @@ export type RepoStatus =
 export interface RepoProfile {
   id: number;
   repo_id: string;
-  repo_type: "model" | "dataset";
+  repo_type: RepoType;
   pipeline_tag: string | null;
   cached_commits: number;
   downloads: number;
@@ -321,12 +315,9 @@ export interface RepoProfile {
   status: RepoStatus;
 }
 
-export interface RepoListResponse {
-  code: number;
-  message: string;
-  data: RepoProfile[];
+export type RepoListResponse = ApiResponse<RepoProfile[]> & {
   total: number;
-}
+};
 
 export interface RepoListParams {
   skip?: number;
@@ -432,12 +423,9 @@ export interface ConfigBatchUpdateRequest {
   }>;
 }
 
-export interface ConfigListResponse {
-  code: number;
-  message: string;
-  data: ConfigItem[];
+export type ConfigListResponse = ApiResponse<ConfigItem[]> & {
   total: number;
-}
+};
 
 export interface SMTPConfigResponse {
   host: string;
@@ -533,7 +521,7 @@ export interface ConfigCategorySchema {
   id: string;
   label: string;
   description: string;
-  visual: "email" | "huggingface" | "notification" | string;
+  visual: "email" | "huggingface" | "notification" | "task";
   fields: ConfigFieldSchema[];
   custom_actions: string[];
 }
@@ -642,7 +630,7 @@ export interface TaskProgressData {
   /** 任务ID */
   task_id: number;
   /** 任务状态: running/completed/failed */
-  status: string;
+  status: TaskStatus;
   /** 整体进度百分比 */
   progress_percent: number;
   /** 已完成文件数 */

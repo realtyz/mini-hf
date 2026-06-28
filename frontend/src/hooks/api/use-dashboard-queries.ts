@@ -12,7 +12,7 @@ import type {
 } from "@/lib/api/types";
 import api from "@/lib/api/client";
 import endpoints from "@/lib/api/endpoints";
-import { isActiveStatus } from "@/lib/config/task-status";
+import { isActiveStatus } from "@/lib/constants/task-status";
 
 /**
  * Dashboard 统计数据

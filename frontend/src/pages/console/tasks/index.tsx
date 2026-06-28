@@ -147,7 +147,7 @@ export function TasksConsole() {
     [cancelTask],
   );
 
-  const handleRetryTask = useCallback(() => {
+  const handlePostRetryRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
 
@@ -321,7 +321,7 @@ export function TasksConsole() {
                       onApprove={handleApproveTask}
                       onReject={handleRejectTask}
                       onCancel={handleCancelTask}
-                      onRetry={handleRetryTask}
+                      onRetry={handlePostRetryRefresh}
                       isPinning={
                         pinTask.isPending && pinTask.variables === task.id
                       }

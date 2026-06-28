@@ -29,7 +29,7 @@ import type { TaskResponse } from "@/lib/api/types";
 import { cn, isWithin7Days } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/stores/auth-store";
-import { isTerminalStatus } from "@/lib/config/task-status";
+import { isTerminalStatus } from "@/lib/constants/task-status";
 import type { ReactNode } from "react";
 
 export interface TaskRowProps {

@@ -8,7 +8,7 @@ import { useRecentTasks } from "@/hooks/api/use-dashboard-queries";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
 import type { TaskResponse, TaskStatus } from "@/lib/api/types";
 import { formatBytes, formatDistanceToNow, cn } from "@/lib/utils";
-import { TASK_STATUS_CONFIG } from "@/lib/config/task-status";
+import { TASK_STATUS_CONFIG } from "@/lib/constants/task-status";
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 

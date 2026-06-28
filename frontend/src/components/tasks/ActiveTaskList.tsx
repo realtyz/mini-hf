@@ -1,9 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Smile, Globe, Loader2, Clock, Pin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { TaskResponse, TaskStatus } from "@/lib/api/types";
-import { TASK_STATUS_CONFIG } from "@/lib/config/task-status";
+import { TASK_STATUS_CONFIG } from "@/lib/constants/task-status";
 import { useElapsedTimer } from "@/hooks/use-elapsed-timer";
 import { formatElapsed } from "@/lib/utils";
 
@@ -33,12 +33,17 @@ function elapsedSince(startedAtMs: number): number {
 interface TaskListItemProps {
   task: TaskResponse;
   isSelected: boolean;
-  onClick: () => void;
+  onSelectTask: (taskId: number) => void;
   index: number;
 }
 
-function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
-  const isRunning = task.status?.toLowerCase() === "running";
+const TaskListItem = memo(function TaskListItem({
+  task,
+  isSelected,
+  onSelectTask,
+  index,
+}: TaskListItemProps) {
+  const isRunning = task.status === "running";
   const startedAtMs = task.started_at
     ? new Date(task.started_at).getTime()
     : null;
@@ -59,14 +64,14 @@ function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
-      onClick();
+      onSelectTask(task.id);
     }
   };
 
   return (
     <motion.div
       ref={itemRef}
-      onClick={onClick}
+      onClick={() => onSelectTask(task.id)}
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="button"
@@ -96,7 +101,7 @@ function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
       <div className="flex items-center gap-2.5">
         {/* Status indicator */}
         <div className="shrink-0">
-          {task.status?.toLowerCase() === "running" ? (
+          {task.status === "running" ? (
             <div className="flex h-4 w-4 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/50">
               <Loader2 className="h-2.5 w-2.5 text-blue-500 animate-spin" />
             </div>
@@ -182,13 +187,19 @@ function TaskListItem({ task, isSelected, onClick, index }: TaskListItemProps) {
       </div>
     </motion.div>
   );
-}
+});
 
 export function ActiveTaskList({
   tasks,
   selectedTaskId,
   onSelectTask,
 }: ActiveTaskListProps) {
+  // Stable shared handler so memoized TaskListItem doesn't re-render on parent poll
+  const handleSelect = useCallback(
+    (taskId: number) => onSelectTask(taskId),
+    [onSelectTask],
+  );
+
   if (tasks.length === 0) {
     return (
       <motion.div
@@ -219,7 +230,7 @@ export function ActiveTaskList({
             task={task}
             index={index}
             isSelected={selectedTaskId === task.id}
-            onClick={() => onSelectTask(task.id)}
+            onSelectTask={handleSelect}
           />
         ))}
       </div>

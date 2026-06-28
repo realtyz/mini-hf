@@ -22,8 +22,7 @@ export function useTaskProgress(
   taskId: number | null,
   taskStatus: TaskStatus | undefined,
 ) {
-  // 使用宽松比较，处理大小写不一致问题
-  const isRunning = taskStatus?.toLowerCase() === "running";
+  const isRunning = taskStatus === "running";
 
   return useQuery<TaskProgressData>({
     queryKey: queryKeys.tasks.progress(taskId),

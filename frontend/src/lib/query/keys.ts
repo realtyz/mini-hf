@@ -72,6 +72,8 @@ export const queryKeys = {
   configs: {
     all: ["configs"] as const,
     list: () => [...queryKeys.configs.all, "list"] as const,
+    listByCategory: (category?: string) =>
+      [...queryKeys.configs.all, "list", category] as const,
     schema: () => [...queryKeys.configs.all, "schema"] as const,
     detail: (key: string) => [...queryKeys.configs.all, "detail", key] as const,
   },

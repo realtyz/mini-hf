@@ -1,4 +1,4 @@
-import { useState, useMemo, useLayoutEffect, useRef } from "react";
+import { useState, useMemo, useLayoutEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 import { RefreshCw, Loader2, Inbox, Plus, AlertCircle } from "lucide-react";
@@ -163,9 +163,9 @@ export function Tasks() {
   }, [activeTasks, selectedTaskId]);
 
   // 用户手动选择任务
-  const handleSelectTask = (taskId: number | null) => {
+  const handleSelectTask = useCallback((taskId: number | null) => {
     setManuallySelectedId(taskId);
-  };
+  }, []);
 
   // 刷新所有任务数据
   const handleRefetch = () => {

@@ -154,8 +154,3 @@ export function isTerminalStatus(status: TaskStatus): boolean {
 export function isActiveStatus(status: TaskStatus): boolean {
   return ACTIVE_STATUSES.has(status);
 }
-
-// Helper function to get status config
-export function getTaskStatusConfig(status: TaskStatus): TaskStatusConfig {
-  return TASK_STATUS_CONFIG[status];
-}

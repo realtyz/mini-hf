@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import type { TaskStatus } from "@/lib/api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { TASK_STATUS_CONFIG, isActiveStatus } from "@/lib/config/task-status";
+import { TASK_STATUS_CONFIG, isActiveStatus } from "@/lib/constants/task-status";
 
 interface TaskStatusBadgeProps {
   status: TaskStatus;

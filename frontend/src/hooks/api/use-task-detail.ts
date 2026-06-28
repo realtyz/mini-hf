@@ -3,7 +3,7 @@ import api from "@/lib/api/client";
 import { queryKeys } from "@/lib/query/keys";
 import { STALE_TIMES } from "@/lib/query/client";
 import endpoints from "@/lib/api/endpoints";
-import { isActiveStatus } from "@/lib/config/task-status";
+import { isActiveStatus } from "@/lib/constants/task-status";
 import type { TaskResponse, ApiResponse } from "@/lib/api/types";
 
 /**
@@ -32,7 +32,6 @@ export function useTaskDetail(taskId: number | null) {
     },
     refetchOnWindowFocus: false,
     staleTime: STALE_TIMES.realtime,
-    gcTime: 300000,
   });
 
   return { data, isLoading, error, refetch };

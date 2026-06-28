@@ -13,12 +13,79 @@ import {
   WifiOff,
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import type { FileProgressItem } from "@/lib/api/types";
+import type { FileProgressItem, FileProgressStatus } from "@/lib/api/types";
 
 export type { FileProgressItem };
 import { formatBytes } from "@/lib/utils";
 
 const FILE_LIST_THRESHOLD = 5000;
+
+interface FileStatusConfig {
+  /** Sort order within the list (smaller = higher). */
+  order: number;
+  /** Left border accent class for the row. */
+  accent: string;
+  /** Progress indicator fill class. */
+  progressColor: string;
+  /** Summary view: dot color. */
+  color: string;
+  /** Summary view: stacked-bar segment color. */
+  barColor: string;
+  /** Summary view: status label. */
+  label: string;
+}
+
+// 文件状态展示配置单一来源（对标 TASK_STATUS_CONFIG）
+const FILE_STATUS_CONFIG: Record<FileProgressStatus, FileStatusConfig> = {
+  reconnecting: {
+    order: 0,
+    accent: "border-l-amber-500",
+    progressColor: "bg-amber-500",
+    color: "bg-amber-500",
+    barColor: "bg-amber-500",
+    label: "重连中",
+  },
+  downloading: {
+    order: 1,
+    accent: "border-l-blue-500",
+    progressColor: "bg-blue-500",
+    color: "bg-blue-500",
+    barColor: "bg-blue-500",
+    label: "下载中",
+  },
+  uploading: {
+    order: 2,
+    accent: "border-l-violet-500",
+    progressColor: "bg-violet-500",
+    color: "bg-violet-500",
+    barColor: "bg-violet-500",
+    label: "上传中",
+  },
+  pending: {
+    order: 3,
+    accent: "border-l-slate-300 dark:border-l-slate-600",
+    progressColor: "bg-slate-300 dark:bg-slate-600",
+    color: "bg-slate-300 dark:bg-slate-600",
+    barColor: "bg-slate-200 dark:bg-slate-700",
+    label: "等待中",
+  },
+  failed: {
+    order: 4,
+    accent: "border-l-red-500",
+    progressColor: "bg-red-500",
+    color: "bg-red-500",
+    barColor: "bg-red-500",
+    label: "失败",
+  },
+  completed: {
+    order: 5,
+    accent: "border-l-emerald-500",
+    progressColor: "bg-emerald-500",
+    color: "bg-emerald-500",
+    barColor: "bg-emerald-500",
+    label: "已完成",
+  },
+};
 
 interface FileProgressListProps {
   taskId: number;
@@ -30,33 +97,6 @@ function formatSpeed(bytesPerSec: number | null | undefined): string {
   if (!bytesPerSec || bytesPerSec <= 0) return "";
   return formatBytes(bytesPerSec) + "/s";
 }
-
-const STATUS_ORDER: Record<string, number> = {
-  reconnecting: 0,
-  downloading: 1,
-  uploading: 2,
-  pending: 3,
-  failed: 4,
-  completed: 5,
-};
-
-const STATUS_ACCENT: Record<string, string> = {
-  completed: "border-l-emerald-500",
-  downloading: "border-l-blue-500",
-  reconnecting: "border-l-amber-500",
-  uploading: "border-l-violet-500",
-  failed: "border-l-red-500",
-  pending: "border-l-slate-300 dark:border-l-slate-600",
-};
-
-const PROGRESS_COLOR: Record<string, string> = {
-  completed: "bg-emerald-500",
-  downloading: "bg-blue-500",
-  reconnecting: "bg-amber-500",
-  uploading: "bg-violet-500",
-  failed: "bg-red-500",
-  pending: "bg-slate-300 dark:bg-slate-600",
-};
 
 // File progress row component — memoized to skip re-render when data hasn't changed
 const FileProgressRow = memo(function FileProgressRow({
@@ -102,7 +142,7 @@ const FileProgressRow = memo(function FileProgressRow({
   return (
     <div
       className={`flex items-center gap-3 py-2 px-3 text-sm min-w-0 max-w-full border-l-2 transition-colors duration-200 ${
-        STATUS_ACCENT[file.status] ?? "border-l-transparent"
+        FILE_STATUS_CONFIG[file.status].accent
       } ${
         file.status === "uploading"
           ? "bg-violet-50/50 dark:bg-violet-950/20"
@@ -137,9 +177,7 @@ const FileProgressRow = memo(function FileProgressRow({
         <Progress
           value={progress}
           className="h-1.5 bg-muted w-full"
-          indicatorClassName={
-            PROGRESS_COLOR[file.status] ?? PROGRESS_COLOR.pending
-          }
+          indicatorClassName={FILE_STATUS_CONFIG[file.status].progressColor}
         />
         {file.status === "reconnecting" ? (
           <div className="text-xs mt-1 font-medium text-amber-600 dark:text-amber-400">
@@ -178,42 +216,10 @@ const FileProgressRow = memo(function FileProgressRow({
   );
 });
 
-const STATUS_LABELS: Record<
-  string,
-  { label: string; color: string; barColor: string }
-> = {
-  completed: {
-    label: "已完成",
-    color: "bg-emerald-500",
-    barColor: "bg-emerald-500",
-  },
-  downloading: {
-    label: "下载中",
-    color: "bg-blue-500",
-    barColor: "bg-blue-500",
-  },
-  reconnecting: {
-    label: "重连中",
-    color: "bg-amber-500",
-    barColor: "bg-amber-500",
-  },
-  uploading: {
-    label: "上传中",
-    color: "bg-violet-500",
-    barColor: "bg-violet-500",
-  },
-  pending: {
-    label: "等待中",
-    color: "bg-slate-300 dark:bg-slate-600",
-    barColor: "bg-slate-200 dark:bg-slate-700",
-  },
-  failed: { label: "失败", color: "bg-red-500", barColor: "bg-red-500" },
-};
-
 /** Summary card shown when file count exceeds the threshold */
 function FileProgressSummary({ files }: { files: FileProgressItem[] }) {
   const stats = useMemo(() => {
-    const byStatus: Record<string, number> = {};
+    const byStatus: Partial<Record<FileProgressStatus, number>> = {};
     let totalBytes = 0;
     let downloadedBytes = 0;
     for (const f of files) {
@@ -228,12 +234,12 @@ function FileProgressSummary({ files }: { files: FileProgressItem[] }) {
 
   // Stacked bar segments
   const stackedBar = useMemo(() => {
-    const segments: { status: string; width: number; color: string }[] = [];
-    for (const [status, { barColor }] of Object.entries(STATUS_LABELS)) {
-      const count = stats.byStatus[status] ?? 0;
+    const segments: { status: FileProgressStatus; width: number; color: string }[] = [];
+    for (const [status, { barColor }] of Object.entries(FILE_STATUS_CONFIG)) {
+      const count = stats.byStatus[status as FileProgressStatus] ?? 0;
       if (count > 0) {
         segments.push({
-          status,
+          status: status as FileProgressStatus,
           width: (count / files.length) * 100,
           color: barColor,
         });
@@ -286,8 +292,8 @@ function FileProgressSummary({ files }: { files: FileProgressItem[] }) {
 
       {/* Status breakdown */}
       <div className="flex flex-wrap justify-center gap-4 w-full max-w-sm">
-        {Object.entries(STATUS_LABELS).map(([status, { label, color }]) => {
-          const count = stats.byStatus[status] ?? 0;
+        {Object.entries(FILE_STATUS_CONFIG).map(([status, { label, color }]) => {
+          const count = stats.byStatus[status as FileProgressStatus] ?? 0;
           if (count === 0) return null;
           return (
             <div key={status} className="flex flex-col items-center gap-1">
@@ -324,7 +330,7 @@ export function FileProgressList({
   const { activeFiles, failedFiles, completedFiles } = useMemo(() => {
     const sorted = [...files].sort((a, b) => {
       const orderDiff =
-        (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99);
+        FILE_STATUS_CONFIG[a.status].order - FILE_STATUS_CONFIG[b.status].order;
       if (orderDiff !== 0) return orderDiff;
       return a.path.localeCompare(b.path);
     });

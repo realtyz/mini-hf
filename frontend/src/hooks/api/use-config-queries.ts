@@ -31,7 +31,7 @@ import type {
 
 export function useConfigs(category?: string) {
   return useQuery({
-    queryKey: [...queryKeys.configs.list(), category],
+    queryKey: queryKeys.configs.listByCategory(category),
     queryFn: async () => {
       const params = category
         ? `?category=${encodeURIComponent(category)}`
@@ -217,7 +217,7 @@ export function useAnnouncementList() {
         endpoints.system.announcements,
       );
     },
-    staleTime: STALE_TIMES.stats,
+    staleTime: STALE_TIMES.static,
   });
 }
 

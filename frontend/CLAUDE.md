@@ -67,7 +67,7 @@ src/
 
 - **Server state**: TanStack Query. Use the `queryKeys` factory in `lib/query/keys.ts` — never hardcode query key arrays.
 - **Client state**: Zustand. Only `auth-store.ts` so far. New stores go in `stores/`.
-- **URL state**: Use React Router's `useSearchParams` for filter/pagination state that should be shareable/bookmarkable via URL (the established pattern in `pages/console/repository-detail` and `pages/console/settings`). Note: the two main list pages do **not** currently follow this — `console/tasks` keeps filters in `useState`, and `console/repositories` persists them via `useSessionStorageState`. When adding a new list page whose filters benefit from being shareable, prefer `useSearchParams`.
+- **URL state**: Use React Router's `useSearchParams` for filter/pagination state that should be shareable/bookmarkable via URL (the established pattern in `pages/console/tasks`, `pages/console/repositories`, `pages/console/repository-detail`, and `pages/console/settings`). When adding a new list page whose filters benefit from being shareable, prefer `useSearchParams`.
 
 ### TanStack Query Patterns
 

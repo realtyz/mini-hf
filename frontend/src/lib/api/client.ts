@@ -83,6 +83,7 @@ async function refreshAccessToken(): Promise<string | null> {
       `${config.API_BASE_URL}${endpoints.auth.refresh}`,
       {},
       {
+        timeout: 10000,
         headers: {
           Authorization: `Bearer ${refreshToken}`,
         },

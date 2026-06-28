@@ -17,7 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { FileProgressList } from "./FileProgressList";
 import { formatBytes } from "@/lib/utils";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
-import { TASK_STATUS_CONFIG } from "@/lib/config/task-status";
+import { TASK_STATUS_CONFIG } from "@/lib/constants/task-status";
 import type { TaskResponse } from "@/lib/api/types";
 
 interface TaskFileProgressPanelProps {
@@ -41,7 +41,7 @@ export function TaskFileProgressPanel({ task }: TaskFileProgressPanelProps) {
 
   // 状态信息（展示属性单一来源：TASK_STATUS_CONFIG）
   const statusInfo = task ? TASK_STATUS_CONFIG[task.status] : null;
-  const isRunning = task?.status?.toLowerCase() === "running";
+  const isRunning = task?.status === "running";
 
   // 计算进度显示
   const progress = progressInfo
