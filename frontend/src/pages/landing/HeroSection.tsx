@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { landingContent } from "@/lib/constants/landing";
+import { config } from "@/lib/runtime-config";
 import {
   containerVariants,
   itemVariants,
@@ -12,15 +13,13 @@ import {
 import { TechBackground } from "./TechBackground";
 
 const COPY_RESET_MS = 1800;
-const FALLBACK_ENDPOINT = "export HF_ENDPOINT=https://<your-mini-hf-host>:9801";
 
-/** Best-effort HF_ENDPOINT derived from the current host (CSR only). */
+/**
+ * HF_ENDPOINT derived from runtime config (same source the docs pages use),
+ * so the hero always matches the actually-deployed HF server URL.
+ */
 function resolveHfEndpoint(): string {
-  if (typeof window === "undefined") return FALLBACK_ENDPOINT;
-  const host = window.location.hostname;
-  return host
-    ? `export HF_ENDPOINT=https://${host}:9801`
-    : FALLBACK_ENDPOINT;
+  return `export HF_ENDPOINT=${config.HF_SERVER_URL}`;
 }
 
 /**
