@@ -115,81 +115,63 @@ function TaskItem({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       transition={{ duration: 0.3, delay: index * 0.05 }}
-      className="group relative"
+      className="group relative flex items-center gap-4 rounded-xl border bg-card p-4 transition-colors duration-200 hover:border-foreground/15 hover:bg-muted/40 cursor-pointer"
     >
-      {/* 背景渐变层 */}
-      <div
-        className={cn(
-          "absolute inset-0 rounded-xl bg-linear-to-r opacity-0 group-hover:opacity-100 transition-opacity duration-300",
-          status.gradient,
-        )}
-      />
-
-      <div className="relative flex items-center gap-4 p-4 rounded-xl border bg-card/50 backdrop-blur-sm group-hover:border-primary/20 group-hover:bg-card/80 transition-all duration-200 cursor-pointer">
-        {/* Status indicator dot with pulse */}
-        <div className="relative shrink-0">
-          <div className={cn("h-2.5 w-2.5 rounded-full", status.dotClass)} />
-          {task.status === "running" && (
-            <>
-              <div
-                className={cn(
-                  "absolute inset-0 h-2.5 w-2.5 rounded-full animate-ping opacity-40",
-                  status.dotClass,
-                )}
-              />
-              <div
-                className={cn(
-                  "absolute inset-0 h-2.5 w-2.5 rounded-full animate-pulse opacity-20",
-                  status.dotClass,
-                )}
-              />
-            </>
-          )}
-        </div>
-
-        {/* 任务信息 */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-medium truncate text-sm group-hover:text-foreground transition-colors">
-              {task.repo_id}
-            </span>
-            <Badge
-              className={cn(
-                "text-[11px] shrink-0 gap-1 font-medium px-2 py-0.5 border-0",
-                status.badgeClass,
-              )}
-            >
-              {status.icon}
-              {status.label}
-            </Badge>
-          </div>
-          <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Database className="size-3" />
-              {task.repo_type === "model" ? "模型" : "数据集"}
-            </span>
-            <span className="text-muted-foreground/40">·</span>
-            <span className="flex items-center gap-1">
-              <CloudDownload className="size-3" />
-              {formatBytes(task.total_storage || 0)}
-            </span>
-            <span className="text-muted-foreground/40">·</span>
-            <span>{formatDistanceToNow(new Date(task.created_at))}</span>
-          </div>
-        </div>
-
-        {/* 进度 */}
-        <div className="hidden sm:block shrink-0">
-          <TaskProgress
-            taskId={task.id}
-            status={task.status}
-            isPrimary={isPrimary}
+      {/* Status indicator dot — single ping for running carries the "live" signal */}
+      <div className="relative shrink-0">
+        <span className={cn("block size-2 rounded-full", status.dotClass)} />
+        {task.status === "running" && (
+          <span
+            className={cn(
+              "absolute inset-0 size-2 rounded-full animate-ping opacity-40",
+              status.dotClass,
+            )}
           />
-        </div>
-
-        {/* Hover 箭头指示 */}
-        <ArrowRight className="size-4 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-all duration-200 shrink-0" />
+        )}
       </div>
+
+      {/* 任务信息 */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium truncate text-sm group-hover:text-foreground transition-colors">
+            {task.repo_id}
+          </span>
+          <Badge
+            className={cn(
+              "text-[11px] shrink-0 gap-1 font-medium px-2 py-0.5 border-0",
+              status.badgeClass,
+            )}
+          >
+            {status.icon}
+            {status.label}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Database className="size-3" />
+            {task.repo_type === "model" ? "模型" : "数据集"}
+          </span>
+          <span className="text-muted-foreground/40">·</span>
+          <span className="flex items-center gap-1">
+            <CloudDownload className="size-3" />
+            {formatBytes(task.total_storage || 0)}
+          </span>
+          <span className="text-muted-foreground/40">·</span>
+          <span>{formatDistanceToNow(new Date(task.created_at))}</span>
+        </div>
+      </div>
+
+      {/* 进度 */}
+      <div className="hidden sm:block shrink-0">
+        <TaskProgress
+          taskId={task.id}
+          status={task.status}
+          isPrimary={isPrimary}
+        />
+      </div>
+
+      {/* Hover 箭头指示 */}
+      <ArrowRight className="size-4 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-all duration-200 shrink-0" />
     </motion.div>
   );
 }
@@ -199,20 +181,17 @@ function TaskListSkeleton({ count = 10 }: { count?: number }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: count }).map((_, i) => (
-        <motion.div
+        <div
           key={i}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.05 }}
-          className="flex items-center gap-4 p-4 rounded-xl border bg-card/50"
+          className="flex items-center gap-4 rounded-xl border bg-card p-4"
         >
-          <Skeleton className="h-2.5 w-2.5 rounded-full shrink-0" />
+          <Skeleton className="size-2 rounded-full shrink-0" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
           </div>
           <Skeleton className="h-4 w-20 hidden sm:block" />
-        </motion.div>
+        </div>
       ))}
     </div>
   );
@@ -232,10 +211,7 @@ export function RecentTasks() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
     >
-      <Card className="border transition-all duration-300 hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20 overflow-hidden">
-        {/* 顶部渐变装饰线 */}
-        <div className="h-px bg-linear-to-r from-transparent via-primary/30 to-transparent" />
-
+      <Card className="border transition-shadow duration-300 hover:shadow-sm overflow-hidden">
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <div className="space-y-1.5">
             <CardTitle className="text-base font-semibold tracking-tight">

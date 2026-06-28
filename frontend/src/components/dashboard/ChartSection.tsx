@@ -63,28 +63,6 @@ function LegendItem({
   );
 }
 
-// Summary stat badge
-function StatBadge({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50">
-      <span
-        className="h-2 w-2 rounded-full"
-        style={{ backgroundColor: color }}
-      />
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-semibold">{value}</span>
-    </div>
-  );
-}
-
 export function ChartSection() {
   const { trends, isLoading } = useTaskTrends();
   const [activeBars, setActiveBars] = useState<Record<string, boolean>>({
@@ -125,7 +103,7 @@ export function ChartSection() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
     >
-      <Card className="overflow-hidden border transition-all duration-300 hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-black/20">
+      <Card className="overflow-hidden border transition-shadow duration-300 hover:shadow-sm">
         <CardHeader className="pb-4">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="space-y-1">
@@ -153,17 +131,27 @@ export function ChartSection() {
           </div>
 
           {/* Summary stats row */}
-          <div className="flex flex-wrap gap-2 pt-3 border-t mt-3">
-            <StatBadge
-              label="总完成"
-              value={totals.completed}
-              color="hsl(160, 84%, 39%)"
-            />
-            <StatBadge
-              label="失败/取消"
-              value={totals.failed}
-              color="hsl(0, 84%, 60%)"
-            />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 pt-3 mt-3 border-t text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: "hsl(160, 84%, 39%)" }}
+              />
+              总完成
+              <span className="font-semibold text-foreground tabular-nums">
+                {totals.completed}
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <span
+                className="size-2 rounded-full"
+                style={{ backgroundColor: "hsl(0, 84%, 60%)" }}
+              />
+              失败/取消
+              <span className="font-semibold text-foreground tabular-nums">
+                {totals.failed}
+              </span>
+            </span>
           </div>
         </CardHeader>
 
