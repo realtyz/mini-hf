@@ -66,6 +66,9 @@ export function CreateTaskDialog({
 
   const handlePreview = () => {
     if (!formData.repo_id.trim()) return;
+    // Clear any stale preview from a prior run so the loading state shows
+    // immediately instead of flashing the old preview page.
+    previewTask.reset();
     setStep("previewing");
     previewTask.startPreview({
       source: formData.source,
@@ -132,9 +135,9 @@ export function CreateTaskDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="min-w-3xl max-h-[90vh] flex flex-col p-0 gap-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4 border-b">
-          <DialogTitle className="text-lg">新建下载任务</DialogTitle>
-          <DialogDescription className="text-sm text-muted-foreground mt-1">
+        <DialogHeader className="px-6 pt-5 pb-4 border-b">
+          <DialogTitle className="text-base">新建下载任务</DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground/70 mt-0.5">
             {step === "form"
               ? "填写仓库信息，系统将获取文件列表供您预览"
               : step === "previewing" && !previewTask.isSuccess

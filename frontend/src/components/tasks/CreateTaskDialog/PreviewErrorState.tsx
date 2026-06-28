@@ -25,11 +25,11 @@ export function PreviewErrorState({ message }: PreviewErrorStateProps) {
       <motion.div
         initial={{ scale: 0.8 }}
         animate={{ scale: 1 }}
-        className="w-20 h-20 rounded-full bg-destructive/10 flex items-center justify-center mb-4"
+        className="w-16 h-16 rounded-2xl bg-destructive/10 flex items-center justify-center mb-4"
       >
-        <AlertCircle className="w-10 h-10 text-destructive" />
+        <AlertCircle className="size-7 text-destructive" />
       </motion.div>
-      <h3 className="text-lg font-semibold text-destructive mb-2">预览失败</h3>
+      <h3 className="text-base font-semibold text-destructive mb-1.5">预览失败</h3>
       <p className="text-sm text-muted-foreground text-center max-w-md">
         {message || "获取仓库信息失败，请检查仓库ID和配置后重试"}
       </p>

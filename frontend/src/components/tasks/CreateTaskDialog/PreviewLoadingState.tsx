@@ -30,7 +30,9 @@ export function PreviewLoadingState({ status }: PreviewLoadingStateProps) {
       transition={{ duration: 0.3 }}
       className="flex flex-col items-center justify-center py-12 px-6"
     >
-      <Loader2 className="size-10 animate-spin text-primary mb-4" />
+      <div className="w-16 h-16 rounded-2xl bg-muted/60 flex items-center justify-center mb-4">
+        <Loader2 className="size-7 animate-spin text-primary" />
+      </div>
       <div className="text-center space-y-2">
         <motion.p
           key={status}

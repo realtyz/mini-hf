@@ -2,7 +2,6 @@ import { motion } from "framer-motion";
 import { AnimatePresence } from "framer-motion";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -11,7 +10,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { SectionLabel } from "@/components/shared";
+import { cn } from "@/lib/utils";
 import type { RepoSource, RepoType } from "@/lib/api/types";
+import { Field } from "./Field";
 
 interface FormData {
   source: RepoSource;
@@ -54,111 +56,124 @@ export function RepoFormStep({
       className="h-full"
     >
       <ScrollArea className="h-full">
-        <div className="space-y-5 py-4 px-6">
-          <div
-            className={`grid gap-4 ${formData.source === "huggingface" ? "grid-cols-3" : "grid-cols-2"}`}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="source">仓库来源</Label>
-              <Select value={formData.source} disabled>
-                <SelectTrigger id="source" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="huggingface">HuggingFace</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="repo_type">类型</Label>
-              <Select
-                value={formData.repo_type}
-                onValueChange={(v) =>
-                  onFormDataChange({ ...formData, repo_type: v as RepoType })
-                }
-              >
-                <SelectTrigger id="repo_type" className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="model">模型</SelectItem>
-                  <SelectItem value="dataset">数据集</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {formData.source === "huggingface" && (
-              <div className="space-y-2">
-                <Label htmlFor="hf_endpoint">HF Endpoint</Label>
-                <Select
-                  value={formData.hf_endpoint || "__default__"}
-                  onValueChange={(v) =>
-                    onFormDataChange({
-                      ...formData,
-                      hf_endpoint: v === "__default__" ? "" : v,
-                    })
-                  }
-                >
-                  <SelectTrigger id="hf_endpoint" className="w-full">
-                    <SelectValue placeholder="默认" />
+        <div className="space-y-6 py-5 px-6">
+          {/* 来源 */}
+          <section className="space-y-3">
+            <SectionLabel>来源</SectionLabel>
+            <div
+              className={cn(
+                "grid gap-4",
+                formData.source === "huggingface"
+                  ? "grid-cols-3"
+                  : "grid-cols-2",
+              )}
+            >
+              <Field id="source" label="仓库来源">
+                <Select value={formData.source} disabled>
+                  <SelectTrigger id="source" className="w-full">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="__default__">使用默认</SelectItem>
-                    {hfEndpoints.map((endpoint) => (
-                      <SelectItem key={endpoint} value={endpoint}>
-                        {endpoint}
-                        {endpoint === defaultEndpoint && " (默认)"}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="huggingface">HuggingFace</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-            )}
-          </div>
+              </Field>
 
-          <div className="space-y-2">
-            <Label htmlFor="repo_id">仓库ID</Label>
-            <Input
-              id="repo_id"
-              placeholder="如: bert-base-uncased 或 organization/model-name"
-              value={formData.repo_id}
-              onChange={(e) =>
-                onFormDataChange({ ...formData, repo_id: e.target.value })
-              }
-              className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-            />
-            <p className="text-xs text-muted-foreground">
-              HuggingFace 仓库标识符，如: org/model-name
-            </p>
-          </div>
+              <Field id="repo_type" label="类型">
+                <Select
+                  value={formData.repo_type}
+                  onValueChange={(v) =>
+                    onFormDataChange({ ...formData, repo_type: v as RepoType })
+                  }
+                >
+                  <SelectTrigger id="repo_type" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="model">模型</SelectItem>
+                    <SelectItem value="dataset">数据集</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
 
-          <div className="space-y-2">
-            <Label htmlFor="revision">版本/分支</Label>
-            <Input
-              id="revision"
-              placeholder="main"
-              value={formData.revision}
-              onChange={(e) =>
-                onFormDataChange({ ...formData, revision: e.target.value })
-              }
-              className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
+              {formData.source === "huggingface" && (
+                <Field id="hf_endpoint" label="HF Endpoint">
+                  <Select
+                    value={formData.hf_endpoint || "__default__"}
+                    onValueChange={(v) =>
+                      onFormDataChange({
+                        ...formData,
+                        hf_endpoint: v === "__default__" ? "" : v,
+                      })
+                    }
+                  >
+                    <SelectTrigger id="hf_endpoint" className="w-full">
+                      <SelectValue placeholder="默认" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__default__">使用默认</SelectItem>
+                      {hfEndpoints.map((endpoint) => (
+                        <SelectItem key={endpoint} value={endpoint}>
+                          {endpoint}
+                          {endpoint === defaultEndpoint && " (默认)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </Field>
+              )}
+            </div>
+          </section>
 
-          <div className="space-y-2">
-            <Label htmlFor="access_token">访问令牌（可选）</Label>
-            <Input
-              id="access_token"
-              type="password"
-              placeholder="私有仓库需要填写"
-              value={formData.access_token}
-              onChange={(e) =>
-                onFormDataChange({ ...formData, access_token: e.target.value })
-              }
-              className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
+          {/* 仓库标识 */}
+          <section className="space-y-3">
+            <SectionLabel>仓库标识</SectionLabel>
+            <div className="space-y-4">
+              <Field
+                id="repo_id"
+                label="仓库 ID"
+                hint="HuggingFace 仓库标识符，格式为 org/repo-name"
+              >
+                <Input
+                  id="repo_id"
+                  placeholder="如：deepseek-ai/DeepSeek-V4-Flash"
+                  value={formData.repo_id}
+                  onChange={(e) =>
+                    onFormDataChange({ ...formData, repo_id: e.target.value })
+                  }
+                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                />
+              </Field>
+
+              <Field id="revision" label="版本 / 分支" hint="留空则使用 main">
+                <Input
+                  id="revision"
+                  placeholder="main"
+                  value={formData.revision}
+                  onChange={(e) =>
+                    onFormDataChange({ ...formData, revision: e.target.value })
+                  }
+                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                />
+              </Field>
+
+              <Field id="access_token" label="访问令牌" hint="私有仓库需要填写">
+                <Input
+                  id="access_token"
+                  type="password"
+                  placeholder="可选"
+                  value={formData.access_token}
+                  onChange={(e) =>
+                    onFormDataChange({
+                      ...formData,
+                      access_token: e.target.value,
+                    })
+                  }
+                  className="transition-all duration-200 focus:ring-2 focus:ring-primary/20"
+                />
+              </Field>
+            </div>
+          </section>
 
           <AnimatePresence>
             {previewError && (
