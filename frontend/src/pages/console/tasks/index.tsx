@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback } from "react";
+import { useSearchParams } from "react-router";
 import { Plus, RefreshCw, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ListFooter } from "@/components/shared/ListFooter";
@@ -33,15 +34,43 @@ import { PendingApprovalBanner } from "./PendingApprovalBanner";
 const PAGE_SIZE = 10;
 
 export function TasksConsole() {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin";
 
-  const [status, setStatus] = useState<TaskStatus | "all">("all");
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
+  // 筛选/分页状态走 URL（可分享、刷新不丢失）；UI 临时状态仍用 useState
+  const [searchParams, setSearchParams] = useSearchParams();
+  const status = (searchParams.get("status") as TaskStatus | "all") ?? "all";
+  const search = searchParams.get("search") ?? "";
+  const page = Number(searchParams.get("page")) || 1;
+
   const [selectedTaskId, setSelectedTaskId] = useState<number | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+
+  const updateParams = useCallback(
+    (patch: { status?: string; search?: string; page?: number }) => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          if (patch.status !== undefined) {
+            if (patch.status === "all") next.delete("status");
+            else next.set("status", patch.status);
+          }
+          if (patch.search !== undefined) {
+            if (patch.search === "") next.delete("search");
+            else next.set("search", patch.search);
+          }
+          if (patch.page !== undefined) {
+            if (patch.page === 1) next.delete("page");
+            else next.set("page", String(patch.page));
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   const { data, isLoading, error, refetch } = useTaskList({
     status: status === "all" ? undefined : status,
@@ -76,13 +105,11 @@ export function TasksConsole() {
   }, []);
 
   const handleSearchChange = (value: string) => {
-    setSearch(value);
-    setPage(1);
+    updateParams({ search: value, page: 1 });
   };
 
   const handleStatusChange = (value: TaskStatus | "all") => {
-    setStatus(value);
-    setPage(1);
+    updateParams({ status: value, page: 1 });
   };
 
   const handlePinTask = useCallback(
@@ -175,8 +202,7 @@ export function TasksConsole() {
         pendingCount={pendingApprovalCount}
         isFilteringPending={status === "pending_approval"}
         onFilterPending={() => {
-          setStatus("pending_approval");
-          setPage(1);
+          updateParams({ status: "pending_approval", page: 1 });
         }}
       />
 
@@ -342,7 +368,7 @@ export function TasksConsole() {
               totalPages={totalPages}
               total={total}
               pageSize={PAGE_SIZE}
-              onPageChange={setPage}
+              onPageChange={(p) => updateParams({ page: p })}
               itemLabel="条"
             />
           </motion.div>

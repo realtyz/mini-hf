@@ -77,9 +77,12 @@ export const queryKeys = {
   },
   public: {
     all: ["public"] as const,
-    announcement: () => [...queryKeys.public.all, "announcement"] as const,
-    announcements: () => [...queryKeys.public.all, "announcements"] as const,
     hfEndpoints: () => [...queryKeys.public.all, "hf-endpoints"] as const,
+  },
+  announcements: {
+    all: ["announcements"] as const,
+    list: () => [...queryKeys.announcements.all, "list"] as const,
+    admin: () => [...queryKeys.announcements.all, "admin"] as const,
   },
   trending: {
     all: ["trending"] as const,

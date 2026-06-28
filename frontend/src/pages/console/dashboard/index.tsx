@@ -15,7 +15,7 @@ import {
 
 export function Dashboard() {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin";
 
   const handleRefresh = () => {

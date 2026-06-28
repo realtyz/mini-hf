@@ -20,7 +20,6 @@ import type {
   SMTPTestRequest,
   SMTPTestResponse,
   HFEndpointConfigResponse,
-  AnnouncementConfigResponse,
   AnnouncementItem,
   AnnouncementCreateRequest,
   AnnouncementUpdateRequest,
@@ -142,7 +141,7 @@ export function useConfigSchema() {
 
 export function useAdminAnnouncements() {
   return useQuery({
-    queryKey: [...queryKeys.configs.all, "announcements", "admin"],
+    queryKey: queryKeys.announcements.admin(),
     queryFn: async () => {
       const res = await api.get<ApiResponse<AnnouncementItem[]>>(
         endpoints.system.announcementsAdmin,
@@ -165,7 +164,7 @@ export function useCreateAnnouncement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.configs.all, "announcements"],
+        queryKey: queryKeys.announcements.all,
       });
     },
   });
@@ -186,7 +185,7 @@ export function useUpdateAnnouncement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.configs.all, "announcements"],
+        queryKey: queryKeys.announcements.all,
       });
     },
   });
@@ -200,7 +199,7 @@ export function useDeleteAnnouncement() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: [...queryKeys.configs.all, "announcements"],
+        queryKey: queryKeys.announcements.all,
       });
     },
   });
@@ -210,21 +209,9 @@ export function useDeleteAnnouncement() {
 // Public endpoints (no auth required)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-export function usePublicAnnouncement() {
+export function useAnnouncementList() {
   return useQuery({
-    queryKey: queryKeys.public.announcement(),
-    queryFn: async () => {
-      return api.get<ApiResponse<AnnouncementConfigResponse>>(
-        endpoints.health.announcement,
-      );
-    },
-    staleTime: STALE_TIMES.static,
-  });
-}
-
-export function usePublicAnnouncements() {
-  return useQuery({
-    queryKey: queryKeys.public.announcements(),
+    queryKey: queryKeys.announcements.list(),
     queryFn: async () => {
       return api.get<ApiResponse<AnnouncementItem[]>>(
         endpoints.system.announcements,

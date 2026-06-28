@@ -243,7 +243,8 @@ function HeaderLink({
  */
 function UserDropdown({ collapsed = false }: { collapsed?: boolean }) {
   const navigate = useNavigate();
-  const { user, serverLogout } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const serverLogout = useAuthStore((s) => s.serverLogout);
   const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
@@ -432,7 +433,7 @@ function VersionInfo() {
 function ConsoleSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
 
   // 根据角色过滤菜单
   const filteredMenuGroups = useMemo(() => {

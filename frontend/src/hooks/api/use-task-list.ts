@@ -3,6 +3,7 @@ import api from "@/lib/api/client";
 import { queryKeys } from "@/lib/query/keys";
 import { STALE_TIMES } from "@/lib/query/client";
 import endpoints from "@/lib/api/endpoints";
+import { isActiveStatus } from "@/lib/config/task-status";
 import type {
   TaskListResponse,
   ActiveTaskListResponse,
@@ -34,17 +35,11 @@ interface TaskListParams extends PaginationParams {
 
 /**
  * 检查任务列表中是否有需要轮询的活跃任务
- * 活跃任务包括：running, pending, pending_approval, canceling
+ * 活跃任务包括：running, pending, pending_approval, canceling, pausing
  */
 function hasActiveTasks(tasks: TaskListResponse["data"] | undefined): boolean {
   if (!tasks || !Array.isArray(tasks)) return false;
-  const activeStatuses: TaskStatus[] = [
-    "running",
-    "pending",
-    "pending_approval",
-    "canceling",
-  ];
-  return tasks.some((task) => activeStatuses.includes(task.status));
+  return tasks.some((task) => isActiveStatus(task.status));
 }
 
 /**

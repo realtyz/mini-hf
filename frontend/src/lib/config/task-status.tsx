@@ -129,6 +129,32 @@ export const TASK_STATUS_CONFIG: Record<TaskStatus, TaskStatusConfig> = {
   },
 };
 
+// ── 状态分类：单一来源，各消费点统一引用 ──
+// 终态：生命周期结束，不可再自动转换（重试会创建新任务）
+const TERMINAL_STATUSES: ReadonlySet<TaskStatus> = new Set([
+  "completed",
+  "failed",
+  "cancelled",
+]);
+// 活跃态：可能自主变化、需触发轮询。paused 为稳定中间态，不在此列。
+const ACTIVE_STATUSES: ReadonlySet<TaskStatus> = new Set([
+  "pending_approval",
+  "pending",
+  "running",
+  "canceling",
+  "pausing",
+]);
+/** 轮询白名单 = 活跃态 */
+export const POLLING_STATUSES: readonly TaskStatus[] = [...ACTIVE_STATUSES];
+
+export function isTerminalStatus(status: TaskStatus): boolean {
+  return TERMINAL_STATUSES.has(status);
+}
+
+export function isActiveStatus(status: TaskStatus): boolean {
+  return ACTIVE_STATUSES.has(status);
+}
+
 // Helper function to get status config
 export function getTaskStatusConfig(status: TaskStatus): TaskStatusConfig {
   return TASK_STATUS_CONFIG[status];

@@ -129,7 +129,7 @@ function AllClearState() {
 // =============================================================================
 
 export function CacheScan() {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin";
   const { result, isLoading, isError, refetch } = useCacheScanResult();
   const triggerScan = useTriggerCacheScan();

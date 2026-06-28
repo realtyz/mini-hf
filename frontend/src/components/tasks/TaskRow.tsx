@@ -29,6 +29,7 @@ import type { TaskResponse } from "@/lib/api/types";
 import { cn, isWithin7Days } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/stores/auth-store";
+import { isTerminalStatus } from "@/lib/config/task-status";
 import type { ReactNode } from "react";
 
 export interface TaskRowProps {
@@ -48,8 +49,6 @@ export interface TaskRowProps {
   isRetrying?: boolean;
   index?: number;
 }
-
-const FINAL_STATUSES = ["completed", "failed", "cancelled"];
 
 type DialogType = "cancel" | "retry" | "approve" | "reject";
 
@@ -173,9 +172,9 @@ export const TaskRow = memo(function TaskRow({
   isRetrying,
   index = 0,
 }: TaskRowProps) {
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin";
-  const isFinalStatus = FINAL_STATUSES.includes(task.status);
+  const isFinalStatus = isTerminalStatus(task.status);
   const isPinned = !!task.pinned_at && !isFinalStatus;
   const isRunning = task.status === "running";
 

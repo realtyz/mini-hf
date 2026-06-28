@@ -63,7 +63,7 @@ export function ProtectedRoute({
   fallback,
 }: ProtectedRouteProps) {
   const location = useLocation();
-  const { token } = useAuthStore();
+  const token = useAuthStore((s) => s.token);
 
   // 使用 React Query 获取当前用户信息（自动处理缓存）
   const { isLoading, error } = useCurrentUser();

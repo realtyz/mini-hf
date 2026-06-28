@@ -1,4 +1,8 @@
-import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import axios, {
+  AxiosError,
+  type AxiosRequestConfig,
+  type InternalAxiosRequestConfig,
+} from "axios";
 import type { ApiError, ApiResponse } from "@/lib/api/types";
 import { useAuthStore } from "@/stores/auth-store";
 import { queryClient } from "@/lib/query/client";
@@ -27,26 +31,23 @@ declare module "axios" {
 
 // 自定义 API 实例类型，响应拦截器会返回 data 而不是 AxiosResponse
 interface ApiInstance {
-  get<T = unknown>(url: string, config?: Record<string, unknown>): Promise<T>;
+  get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
   post<T = unknown>(
     url: string,
     data?: unknown,
-    config?: Record<string, unknown>,
+    config?: AxiosRequestConfig,
   ): Promise<T>;
   put<T = unknown>(
     url: string,
     data?: unknown,
-    config?: Record<string, unknown>,
+    config?: AxiosRequestConfig,
   ): Promise<T>;
   patch<T = unknown>(
     url: string,
     data?: unknown,
-    config?: Record<string, unknown>,
+    config?: AxiosRequestConfig,
   ): Promise<T>;
-  delete<T = unknown>(
-    url: string,
-    config?: Record<string, unknown>,
-  ): Promise<T>;
+  delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
 }
 
 // 正在进行的 token 刷新 Promise，用于并发请求去重

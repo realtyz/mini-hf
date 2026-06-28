@@ -17,7 +17,7 @@ import { Progress } from "@/components/ui/progress";
 import { FileProgressList } from "./FileProgressList";
 import { formatBytes } from "@/lib/utils";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
-import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
+import { TASK_STATUS_CONFIG } from "@/lib/config/task-status";
 import type { TaskResponse } from "@/lib/api/types";
 
 interface TaskFileProgressPanelProps {

@@ -60,7 +60,8 @@ interface UserDropdownProps {
  */
 function UserDropdown({ isInConsole = false }: UserDropdownProps) {
   const navigate = useNavigate();
-  const { user, serverLogout } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
+  const serverLogout = useAuthStore((s) => s.serverLogout);
   const { theme, setTheme } = useTheme();
 
   const handleLogout = () => {
@@ -180,7 +181,8 @@ export function Header({
   isMenuOpen,
 }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const { isAuthenticated, user } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const user = useAuthStore((s) => s.user);
   const location = useLocation();
 
   // 确保用户信息已加载（刷新后从 API 获取）

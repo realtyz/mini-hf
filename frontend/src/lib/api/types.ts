@@ -582,12 +582,6 @@ export interface NotificationSaveRequest {
 
 export type AnnouncementType = "info" | "warning" | "urgent";
 
-export interface AnnouncementConfigResponse {
-  content: string;
-  announcement_type: AnnouncementType;
-  is_active: boolean;
-}
-
 export interface AnnouncementSaveRequest {
   content: string;
   announcement_type: AnnouncementType;

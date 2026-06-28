@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router";
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router";
 import {
   RefreshCw,
   Search,
@@ -23,13 +23,11 @@ import { ListFooter } from "@/components/shared/ListFooter";
 import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
 import { PageHeader } from "@/components/shared/PageHeader";
 import { useRepoList } from "@/hooks/api/use-repo-queries";
-import { useSessionStorageState } from "@/hooks/use-session-storage-state";
 import type { RepoProfile, RepoStatus } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 import { REPO_STATUS_CONFIG } from "@/lib/constants/repo";
 
 const PAGE_SIZE = 20;
-const REPO_LIST_STATE_KEY = "repoListState";
 
 interface RepoListState {
   repoType: "all" | "model" | "dataset";
@@ -56,18 +54,77 @@ const STATUS_CONFIG: {
 // 默认选中的状态（不包含 inactive）
 const DEFAULT_STATUSES: RepoStatus[] = ["active", "updating", "cleaning"];
 
+const DEFAULT_STATE: RepoListState = {
+  repoType: "all",
+  search: "",
+  statuses: DEFAULT_STATUSES,
+  sortBy: "cache_updated_at",
+  sortOrder: "desc",
+  page: 1,
+};
+
+/** statuses 是否等于默认集合（顺序无关）。 */
+function isDefaultStatuses(statuses: RepoStatus[]): boolean {
+  return (
+    statuses.length === DEFAULT_STATUSES.length &&
+    statuses.every((s) => DEFAULT_STATUSES.includes(s))
+  );
+}
+
+/**
+ * 从 URL 参数解析列表筛选状态。
+ * - 参数缺省 → 使用默认值；
+ * - statuses 缺省 → DEFAULT_STATUSES；statuses 为空串 → 空选区（保留"全不选"语义）。
+ */
+function parseStateFromParams(params: URLSearchParams): RepoListState {
+  const statusesParam = params.get("statuses");
+  const statuses =
+    statusesParam === null
+      ? DEFAULT_STATUSES
+      : statusesParam === ""
+        ? []
+        : (statusesParam.split(",").filter(Boolean) as RepoStatus[]);
+  return {
+    repoType:
+      (params.get("type") as RepoListState["repoType"]) ?? DEFAULT_STATE.repoType,
+    search: params.get("search") ?? "",
+    statuses,
+    sortBy: params.get("sort") ?? DEFAULT_STATE.sortBy,
+    sortOrder: params.get("order") ?? DEFAULT_STATE.sortOrder,
+    page: Number(params.get("page")) || 1,
+  };
+}
+
 export function RepositoriesConsole() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [repoListState, setRepoListState] =
-    useSessionStorageState<RepoListState>(REPO_LIST_STATE_KEY, {
-      repoType: "all",
-      search: "",
-      statuses: DEFAULT_STATUSES,
-      sortBy: "cache_updated_at",
-      sortOrder: "desc",
-      page: 1,
-    });
+  // 筛选/分页状态走 URL（可分享、刷新不丢失）
+  const repoListState = parseStateFromParams(searchParams);
+
+  const updateState = useCallback(
+    (patch: Partial<RepoListState>) => {
+      setSearchParams(
+        (prev) => {
+          const merged = { ...parseStateFromParams(prev), ...patch };
+          const next = new URLSearchParams();
+          if (merged.repoType !== DEFAULT_STATE.repoType)
+            next.set("type", merged.repoType);
+          if (merged.search !== "") next.set("search", merged.search);
+          if (!isDefaultStatuses(merged.statuses))
+            next.set("statuses", merged.statuses.join(","));
+          if (merged.sortBy !== DEFAULT_STATE.sortBy)
+            next.set("sort", merged.sortBy);
+          if (merged.sortOrder !== DEFAULT_STATE.sortOrder)
+            next.set("order", merged.sortOrder);
+          if (merged.page !== 1) next.set("page", String(merged.page));
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
+  );
 
   const [debouncedSearch, setDebouncedSearch] = useState(repoListState.search);
 
@@ -93,26 +150,18 @@ export function RepositoriesConsole() {
   const total = data?.total || 0;
   const totalPages = Math.ceil(total / PAGE_SIZE);
 
-  const updateState = (patch: Partial<RepoListState>) => {
-    setRepoListState((prev) => ({ ...prev, ...patch }));
-  };
-
   const toggleStatus = (status: RepoStatus) => {
-    setRepoListState((prev) => ({
-      ...prev,
-      statuses: prev.statuses.includes(status)
-        ? prev.statuses.filter((s) => s !== status)
-        : [...prev.statuses, status],
-      page: 1,
-    }));
+    const next = repoListState.statuses.includes(status)
+      ? repoListState.statuses.filter((s) => s !== status)
+      : [...repoListState.statuses, status];
+    updateState({ statuses: next, page: 1 });
   };
 
   const handleRepoTypeChange = (value: string) => {
-    setRepoListState((prev) => ({
-      ...prev,
+    updateState({
       repoType: value as RepoListState["repoType"],
       page: 1,
-    }));
+    });
   };
 
   const handleViewDetail = (repo: RepoProfile) => {

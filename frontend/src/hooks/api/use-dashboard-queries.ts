@@ -7,12 +7,12 @@ import { STALE_TIMES } from "@/lib/query/client";
 import { useTaskList } from "./use-task-list";
 import type {
   TaskResponse,
-  TaskStatus,
   DashboardStatsResponse,
   RecentTaskListResponse,
 } from "@/lib/api/types";
 import api from "@/lib/api/client";
 import endpoints from "@/lib/api/endpoints";
+import { isActiveStatus } from "@/lib/config/task-status";
 
 /**
  * Dashboard 统计数据
@@ -107,19 +107,12 @@ export function useTaskTrends() {
  * - 默认窗口 7 天,limit 10
  *
  * 轮询策略:
- * - 当返回列表中存在活跃任务(running/pending/pending_approval/canceling)时,
+ * - 当返回列表中存在活跃任务(running/pending/pending_approval/canceling/pausing)时,
  *   每 10s 自动刷新一次;否则停轮询
  */
-const RECENT_ACTIVE_STATUSES: TaskStatus[] = [
-  "running",
-  "pending",
-  "pending_approval",
-  "canceling",
-];
-
 function hasRecentActiveTask(tasks: TaskResponse[] | undefined): boolean {
   if (!tasks?.length) return false;
-  return tasks.some((task) => RECENT_ACTIVE_STATUSES.includes(task.status));
+  return tasks.some((task) => isActiveStatus(task.status));
 }
 
 export function useRecentTasks(limit = 10, hours = 24 * 7) {

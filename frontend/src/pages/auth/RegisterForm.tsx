@@ -49,7 +49,7 @@ export function RegisterForm({ onFlip }: RegisterFormProps) {
     useSendVerifyCode();
   const { mutate: verifyEmail, isPending: isVerifying } = useVerifyEmail();
   const { mutate: register, isPending: isRegistering } = useRegisterWithCode();
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   // 倒计时逻辑
   useEffect(() => {

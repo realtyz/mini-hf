@@ -8,21 +8,26 @@ import { useRecentTasks } from "@/hooks/api/use-dashboard-queries";
 import { useTaskProgress } from "@/hooks/api/use-task-progress";
 import type { TaskResponse, TaskStatus } from "@/lib/api/types";
 import { formatBytes, formatDistanceToNow, cn } from "@/lib/utils";
-import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
+import { TASK_STATUS_CONFIG } from "@/lib/config/task-status";
 import { Link } from "react-router";
 import { motion, AnimatePresence } from "framer-motion";
 
 const statusConfig = TASK_STATUS_CONFIG;
 
 // 进度显示组件
+// 仅首条 running 任务（isPrimary）挂载精细轮询查询；其余 running 任务展示
+// 不定态进度条，避免仪表盘对每个 running 任务都发起独立 3s 轮询（请求放大）。
 function TaskProgress({
   taskId,
   status,
+  isPrimary,
 }: {
   taskId: number;
   status: TaskStatus;
+  isPrimary: boolean;
 }) {
-  const { data: progress } = useTaskProgress(taskId, status);
+  // 非首条任务传 null → useTaskProgress 的 enabled 为 false，不发请求
+  const { data: progress } = useTaskProgress(isPrimary ? taskId : null, status);
   const config = statusConfig[status];
 
   if (status === "completed") {
@@ -45,10 +50,35 @@ function TaskProgress({
     );
   }
 
-  if (status !== "running" || !progress) {
+  if (status !== "running") {
     return <span className="text-xs text-muted-foreground">-</span>;
   }
 
+  // 首条 running 任务：有精细进度数据时展示百分比
+  if (isPrimary && progress) {
+    return (
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            "h-1.5 w-20 overflow-hidden rounded-full",
+            config.progressBg,
+          )}
+        >
+          <motion.div
+            className={cn("h-full rounded-full", config.progressFill)}
+            initial={{ width: 0 }}
+            animate={{ width: `${progress.progress_percent}%` }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+          />
+        </div>
+        <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
+          {progress.progress_percent}%
+        </span>
+      </div>
+    );
+  }
+
+  // 其余 running 任务（或首条首次 fetch 前）：不定态进度条，不展示数字
   return (
     <div className="flex items-center gap-2">
       <div
@@ -58,21 +88,25 @@ function TaskProgress({
         )}
       >
         <motion.div
-          className={cn("h-full rounded-full", config.progressFill)}
-          initial={{ width: 0 }}
-          animate={{ width: `${progress.progress_percent}%` }}
-          transition={{ duration: 0.5, ease: "easeOut" }}
+          className={cn("h-full w-1/3 rounded-full", config.progressFill)}
+          animate={{ x: ["-100%", "300%"] }}
+          transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
         />
       </div>
-      <span className="text-xs font-medium text-blue-600 dark:text-blue-400">
-        {progress.progress_percent}%
-      </span>
     </div>
   );
 }
 
 // 单个任务项
-function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
+function TaskItem({
+  task,
+  index,
+  isPrimary,
+}: {
+  task: TaskResponse;
+  index: number;
+  isPrimary: boolean;
+}) {
   const status = statusConfig[task.status];
 
   return (
@@ -146,7 +180,11 @@ function TaskItem({ task, index }: { task: TaskResponse; index: number }) {
 
         {/* 进度 */}
         <div className="hidden sm:block shrink-0">
-          <TaskProgress taskId={task.id} status={task.status} />
+          <TaskProgress
+            taskId={task.id}
+            status={task.status}
+            isPrimary={isPrimary}
+          />
         </div>
 
         {/* Hover 箭头指示 */}
@@ -184,6 +222,9 @@ function TaskListSkeleton({ count = 10 }: { count?: number }) {
 export function RecentTasks() {
   const { data: tasksData, isLoading, isError, refetch } = useRecentTasks(10);
   const tasks = tasksData?.data || [];
+
+  // 仅对"首条 running 任务"启用精细进度轮询，避免 N 条 running 触发 N 个轮询
+  const primaryRunningId = tasks.find((t) => t.status === "running")?.id ?? null;
 
   return (
     <motion.div
@@ -237,7 +278,12 @@ export function RecentTasks() {
             <div className="space-y-2">
               <AnimatePresence mode="popLayout">
                 {tasks.map((task: TaskResponse, index: number) => (
-                  <TaskItem key={task.id} task={task} index={index} />
+                  <TaskItem
+                    key={task.id}
+                    task={task}
+                    index={index}
+                    isPrimary={task.id === primaryRunningId}
+                  />
                 ))}
               </AnimatePresence>
             </div>

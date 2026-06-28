@@ -25,7 +25,7 @@ export function LoginForm({ onFlip }: LoginFormProps) {
   const [showPassword, setShowPassword] = useState(false);
 
   const { mutate: login, isPending: isLoading } = useLogin();
-  const { isAuthenticated } = useAuthStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
 
   useEffect(() => {
     if (isAuthenticated) {

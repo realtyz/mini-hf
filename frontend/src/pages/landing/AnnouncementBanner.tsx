@@ -9,7 +9,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { usePublicAnnouncements } from "@/hooks/api";
+import { useAnnouncementList } from "@/hooks/api";
 import type { AnnouncementType } from "@/lib/api/types";
 
 const DISMISSED_KEY = "announcements_dismissed";
@@ -61,7 +61,7 @@ function getDismissedIds(): number[] {
 }
 
 export function AnnouncementBanner({ className }: AnnouncementBannerProps) {
-  const { data, isLoading } = usePublicAnnouncements();
+  const { data, isLoading } = useAnnouncementList();
   const [dismissedIds, setDismissedIds] = useState<number[]>(getDismissedIds);
   const [expanded, setExpanded] = useState(false);
 

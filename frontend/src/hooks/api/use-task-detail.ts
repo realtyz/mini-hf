@@ -3,6 +3,7 @@ import api from "@/lib/api/client";
 import { queryKeys } from "@/lib/query/keys";
 import { STALE_TIMES } from "@/lib/query/client";
 import endpoints from "@/lib/api/endpoints";
+import { isActiveStatus } from "@/lib/config/task-status";
 import type { TaskResponse, ApiResponse } from "@/lib/api/types";
 
 /**
@@ -23,14 +24,8 @@ export function useTaskDetail(taskId: number | null) {
     enabled: !!taskId,
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      // 非终态任务每 3 秒轮询一次
-      const nonTerminalStatuses = [
-        "pending_approval",
-        "pending",
-        "running",
-        "canceling",
-      ];
-      if (status && nonTerminalStatuses.includes(status)) {
+      // 活跃态任务每 3 秒轮询一次（含 pausing，会自动转为 paused）
+      if (status && isActiveStatus(status)) {
         return STALE_TIMES.realtime;
       }
       return false;

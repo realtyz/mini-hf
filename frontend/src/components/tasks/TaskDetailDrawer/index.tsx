@@ -180,7 +180,7 @@ export function TaskDetailDrawer({
   const [rejectNotes, setRejectNotes] = useState("");
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [retryDialogOpen, setRetryDialogOpen] = useState(false);
-  const { user } = useAuthStore();
+  const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin";
 
   const canCancel = task ? isAdmin || user?.id === task.creator_user_id : false;

@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import type { TaskStatus } from "@/lib/api/types";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { TASK_STATUS_CONFIG } from "@/lib/constants/task";
+import { TASK_STATUS_CONFIG, isActiveStatus } from "@/lib/config/task-status";
 
 interface TaskStatusBadgeProps {
   status: TaskStatus;
@@ -10,15 +10,6 @@ interface TaskStatusBadgeProps {
   showDot?: boolean;
   size?: "sm" | "md";
 }
-
-// Statuses that are "in-flight" and should animate the status dot.
-const ACTIVE_STATUSES: TaskStatus[] = [
-  "pending_approval",
-  "pending",
-  "running",
-  "canceling",
-  "pausing",
-];
 
 // Status dot component with unified animation style
 function StatusDot({ color, isActive }: { color: string; isActive: boolean }) {
@@ -63,7 +54,7 @@ export function TaskStatusBadge({
   size = "sm",
 }: TaskStatusBadgeProps) {
   const config = TASK_STATUS_CONFIG[status];
-  const isActive = ACTIVE_STATUSES.includes(status);
+  const isActive = isActiveStatus(status);
 
   return (
     <motion.div
