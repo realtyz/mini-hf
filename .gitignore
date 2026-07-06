@@ -14,7 +14,7 @@ docs/**
 
 # AI coding tools
 .claude
-.kilo
+.zcode
 .opencode
 
 opencode.json
