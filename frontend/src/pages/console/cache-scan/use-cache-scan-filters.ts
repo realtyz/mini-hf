@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useDeferredValue } from "react";
 import type {
   RepoScanItem,
   ScanCategory,
@@ -42,6 +42,10 @@ export function useCacheScanFilters(
   result: ScanResultData | null,
 ): UseCacheScanFiltersReturn {
   const [search, setSearch] = useState("");
+  // Defer the search value used for filtering so the input stays responsive
+  // while the (potentially expensive) full-array filter + sort runs at a
+  // lower priority. Avoids re-rendering the whole table on every keystroke.
+  const deferredSearch = useDeferredValue(search);
   const [categoryFilter, setCategoryFilter] = useState<"all" | ScanCategory>(
     "all",
   );
@@ -60,7 +64,7 @@ export function useCacheScanFilters(
   const filteredRepos = useMemo(() => {
     if (!result) return [];
     let repos = [...result.repos];
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
     if (q) {
       repos = repos.filter(
         (r) =>
@@ -77,7 +81,7 @@ export function useCacheScanFilters(
       );
     }
     return repos;
-  }, [result, search, categoryFilter, sortField, sortDirection]);
+  }, [result, deferredSearch, categoryFilter, sortField, sortDirection]);
 
   return {
     search,

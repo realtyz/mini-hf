@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   containerVariants,
@@ -25,6 +25,7 @@ import { STRINGS } from "@/lib/constants/strings";
 import type { ScanCategory } from "@/lib/api/types";
 
 import { useCacheScanFilters } from "./use-cache-scan-filters";
+import type { SortField } from "./use-cache-scan-filters";
 import { CacheScanStats } from "./CacheScanStats";
 import { CacheScanToolbar } from "./CacheScanToolbar";
 import { CacheScanTable } from "./CacheScanTable";
@@ -157,15 +158,22 @@ export function CacheScan() {
   const batchDeleteRepos = useBatchDeleteRepos();
   const batchDeleteStatus = useBatchDeleteStatus(batchOperationId);
 
-  // Filter setters that also clear selection
-  const handleSetSearch = (v: string) => {
-    setSearch(v);
-    setSelectedIds(new Set());
-  };
-  const handleSetCategoryFilter = (v: "all" | ScanCategory) => {
-    setCategoryFilter(v);
-    setSelectedIds(new Set());
-  };
+  // Wrap the filter setters so changing the search/category also clears the
+  // selection — otherwise stale ids could linger for items no longer in view.
+  const handleSetSearch = useCallback(
+    (v: string) => {
+      setSearch(v);
+      setSelectedIds(new Set());
+    },
+    [setSearch],
+  );
+  const handleSetCategoryFilter = useCallback(
+    (v: "all" | ScanCategory) => {
+      setCategoryFilter(v);
+      setSelectedIds(new Set());
+    },
+    [setCategoryFilter],
+  );
 
   useEffect(() => {
     const data = batchDeleteStatus.data?.data;
@@ -202,26 +210,28 @@ export function CacheScan() {
     });
   };
 
-  const handleCopy = (repoId: string) => {
+  // Stable shared handlers so memoized CacheScanRow instances don't re-render
+  // when the parent re-renders (e.g. on selection/copiedId changes).
+  const handleCopy = useCallback((repoId: string) => {
     navigator.clipboard.writeText(repoId).then(() => {
       setCopiedId(repoId);
       toast.success(STRINGS.cacheScanCopySuccess);
       setTimeout(() => setCopiedId(null), 2000);
     });
-  };
+  }, []);
 
-  const handleDeleteClick = (repoId: string) => {
+  const handleDeleteClick = useCallback((repoId: string) => {
     setDeletingRepoId(repoId);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
-  const handleClearFilters = () => {
+  const handleClearFilters = useCallback(() => {
     setSearch("");
     setCategoryFilter("all");
     setSelectedIds(new Set());
-  };
+  }, [setSearch, setCategoryFilter]);
 
-  const handleToggleSelect = (repoId: string) => {
+  const handleToggleSelect = useCallback((repoId: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (next.has(repoId)) {
@@ -231,17 +241,27 @@ export function CacheScan() {
       }
       return next;
     });
-  };
+  }, []);
 
-  const handleToggleSelectAll = () => {
-    const allFilteredIds = filteredRepos.map((r) => r.repo_id);
-    const allSelected = allFilteredIds.every((id) => selectedIds.has(id));
-    if (allSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(allFilteredIds));
-    }
-  };
+  const handleToggleSelectAll = useCallback(() => {
+    setSelectedIds((prev) => {
+      const allFilteredIds = filteredRepos.map((r) => r.repo_id);
+      const allSelected =
+        allFilteredIds.length > 0 &&
+        allFilteredIds.every((id) => prev.has(id));
+      if (allSelected) {
+        return new Set();
+      }
+      return new Set(allFilteredIds);
+    });
+  }, [filteredRepos]);
+
+  const handleSort = useCallback(
+    (field: SortField) => {
+      setSort(field);
+    },
+    [setSort],
+  );
 
   const handleBatchDelete = () => {
     const ids = Array.from(selectedIds);
@@ -420,7 +440,7 @@ export function CacheScan() {
                 onToggleSelectAll={handleToggleSelectAll}
                 sortField={sortField}
                 sortDirection={sortDirection}
-                onSort={setSort}
+                onSort={handleSort}
               />
             )}
           </motion.div>
