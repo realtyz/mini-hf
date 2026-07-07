@@ -1,12 +1,10 @@
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import select
 
 from core.settings import settings
-from database.db_models import HfRepoTreeItem
 from hf_server.api.deps import DbDep
 from hf_server.api.schemas.responses.repo_tree import (
     RepoTreeItemResponse,
@@ -26,7 +24,7 @@ MAX_LIMIT = 1000
 DEFAULT_REVISION = "main"
 
 
-def _build_tree_response(items: list[HfRepoTreeItem]) -> list[RepoTreeItemResponse]:
+def _build_tree_response(items: list[Any]) -> list[RepoTreeItemResponse]:
     """Convert RepoTreeItem models to response schema."""
     result = []
     for item in items:
@@ -91,16 +89,10 @@ async def _get_repo_tree(
         cursor: Optional cursor for pagination (base64-encoded path)
         limit: Maximum items per page (default 50, max 1000)
     """
-    # Validate limit parameter
-    if limit < 1:
-        raise HTTPException(status_code=400, detail="Limit must be at least 1")
-    if limit > MAX_LIMIT:
-        raise HTTPException(status_code=400, detail=f"Limit cannot exceed {MAX_LIMIT}")
-
     # Resolve the latest snapshot for this revision regardless of status, so
     # partially-downloaded repositories (status != ACTIVE) remain listable.
-    # Delegates to MetadataService which treats ``rev`` as a commit hash when
-    # it matches the 40-hex pattern, otherwise as a branch/tag name.
+    # MetadataService treats ``rev`` as a commit hash when it matches the
+    # 40-hex pattern, otherwise as a branch/tag name.
     # When revision is None, fall back to the conventional default branch
     # ``main`` (huggingface_hub >= 1.22 sends ``tree/`` with no rev segment).
     effective_rev = revision if revision is not None else DEFAULT_REVISION
@@ -132,21 +124,9 @@ async def _get_repo_tree(
     # We fetch limit + 1 to determine if there's a next page
     query_limit = limit + 1
 
-    tree_stmt = (
-        select(HfRepoTreeItem)
-        .where(HfRepoTreeItem.commit_hash == snapshot.commit_hash)
-        .order_by(HfRepoTreeItem.path.asc())
+    items = await service.get_repo_tree_paginated(
+        snapshot.commit_hash, cursor_path, query_limit
     )
-
-    # Apply cursor filter if provided
-    if cursor_path:
-        tree_stmt = tree_stmt.where(HfRepoTreeItem.path > cursor_path)
-
-    # Apply limit
-    tree_stmt = tree_stmt.limit(query_limit)
-
-    result = await db.execute(tree_stmt)
-    items = list(result.scalars().all())
 
     # Handle empty result
     if not items:

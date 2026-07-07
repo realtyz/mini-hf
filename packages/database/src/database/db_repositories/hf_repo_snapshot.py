@@ -41,6 +41,50 @@ class HfRepoSnapshotRepository:
         result = await self._session.execute(stmt)
         return result.scalar_one_or_none()
 
+    async def get_latest_snapshot_by_revision(
+        self,
+        repo_id: str,
+        repo_type: str,
+        revision: str,
+    ) -> HfRepoSnapshot | None:
+        """Get the latest snapshot for a revision, regardless of status.
+
+        Returns the most recently created snapshot matching repo/type/revision,
+        so partially-downloaded snapshots (status != ACTIVE) remain reachable.
+        """
+        stmt = (
+            select(HfRepoSnapshot)
+            .where(
+                HfRepoSnapshot.repo_id == repo_id,
+                HfRepoSnapshot.repo_type == repo_type,
+                HfRepoSnapshot.revision == revision,
+            )
+            .order_by(HfRepoSnapshot.created_at.desc())
+            .limit(1)
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_snapshot_by_commit(
+        self,
+        repo_id: str,
+        repo_type: str,
+        commit_hash: str,
+    ) -> HfRepoSnapshot | None:
+        """Get snapshot by repo/type/commit_hash.
+
+        Uses scalar_one_or_none: callers rely on commit_hash uniqueness within
+        a repo, so a duplicate would surface as an error rather than silently
+        returning the first row.
+        """
+        stmt = select(HfRepoSnapshot).where(
+            HfRepoSnapshot.repo_id == repo_id,
+            HfRepoSnapshot.repo_type == repo_type,
+            HfRepoSnapshot.commit_hash == commit_hash,
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
     async def get_or_create_snapshot(
         self,
         repo_id: str,

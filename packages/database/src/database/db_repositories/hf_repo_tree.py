@@ -135,6 +135,30 @@ class HfRepoTreeRepository:
 
         return items, total
 
+    async def get_tree_by_cursor(
+        self,
+        commit_hash: str,
+        cursor_path: str | None,
+        limit: int,
+    ) -> list[HfRepoTreeItem]:
+        """Get tree items for a snapshot using cursor-based pagination on path.
+
+        Ordered by ``path`` ascending only. The cursor is a path, so it must be
+        the sole sort key — this intentionally does NOT reuse get_file_tree
+        (which orders by (type, path)), since interleaving type into the
+        ordering would break cursor continuity across pages.
+        """
+        stmt = (
+            select(HfRepoTreeItem)
+            .where(HfRepoTreeItem.commit_hash == commit_hash)
+            .order_by(HfRepoTreeItem.path.asc())
+        )
+        if cursor_path is not None:
+            stmt = stmt.where(HfRepoTreeItem.path > cursor_path)
+        stmt = stmt.limit(limit)
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
     async def set_item_cached(
         self,
         commit_hash: str,
