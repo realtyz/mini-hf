@@ -6,12 +6,13 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select
 
 from core.settings import settings
-from database.db_models import HfRepoSnapshot, HfRepoTreeItem
+from database.db_models import HfRepoTreeItem
 from hf_server.api.deps import DbDep
 from hf_server.api.schemas.responses.repo_tree import (
     RepoTreeItemResponse,
     RepoTreeLfsInfo,
 )
+from hf_server.services.metadata_service import MetadataService
 from hf_server.utils.pagination import decode_cursor, encode_cursor, CursorError
 
 router = APIRouter(tags=["Repo Tree"])
@@ -19,6 +20,10 @@ router = APIRouter(tags=["Repo Tree"])
 # Default limit matching HuggingFace API behavior
 DEFAULT_LIMIT = 50
 MAX_LIMIT = 1000
+
+# When the client omits ``rev`` (huggingface_hub >= 1.22 sends ``tree/`` with
+# no rev segment), fall back to the conventional default branch.
+DEFAULT_REVISION = "main"
 
 
 def _build_tree_response(items: list[HfRepoTreeItem]) -> list[RepoTreeItemResponse]:
@@ -69,7 +74,7 @@ async def _get_repo_tree(
     request: Request,
     repo_id: str,
     repo_type: str,
-    revision: str,
+    revision: Optional[str],
     cursor: Optional[str] = None,
     limit: int = DEFAULT_LIMIT,
 ) -> JSONResponse:
@@ -80,7 +85,9 @@ async def _get_repo_tree(
         request: FastAPI request object
         repo_id: Repository ID (e.g., "facebook/bart-large")
         repo_type: "model" or "dataset"
-        revision: Branch/tag name
+        revision: Branch/tag name or commit hash. When None (newer
+            huggingface_hub sends ``rev=None``) falls back to the default
+            branch (``main``), matching upstream behavior.
         cursor: Optional cursor for pagination (base64-encoded path)
         limit: Maximum items per page (default 50, max 1000)
     """
@@ -92,23 +99,23 @@ async def _get_repo_tree(
 
     # Resolve the latest snapshot for this revision regardless of status, so
     # partially-downloaded repositories (status != ACTIVE) remain listable.
-    snapshot_stmt = (
-        select(HfRepoSnapshot)
-        .where(
-            HfRepoSnapshot.repo_id == repo_id,
-            HfRepoSnapshot.repo_type == repo_type,
-            HfRepoSnapshot.revision == revision,
-        )
-        .order_by(HfRepoSnapshot.created_at.desc())
-        .limit(1)
+    # Delegates to MetadataService which treats ``rev`` as a commit hash when
+    # it matches the 40-hex pattern, otherwise as a branch/tag name.
+    # When revision is None, fall back to the conventional default branch
+    # ``main`` (huggingface_hub >= 1.22 sends ``tree/`` with no rev segment).
+    effective_rev = revision if revision is not None else DEFAULT_REVISION
+    service = MetadataService(db)
+    snapshot = await service.get_snapshot_by_repo_and_rev(
+        repo_id, repo_type, effective_rev
     )
-    result = await db.execute(snapshot_stmt)
-    snapshot = result.scalar_one_or_none()
 
     if snapshot is None:
         raise HTTPException(
             status_code=404,
-            detail=f"Repository '{repo_id}' not found or revision '{revision}' does not exist",
+            detail=(
+                f"Repository '{repo_id}' not found or revision "
+                f"'{effective_rev}' does not exist"
+            ),
         )
 
     # Decode cursor if provided
@@ -179,12 +186,20 @@ async def _get_repo_tree(
     "/api/models/{namespace}/{repo_name}/tree/{rev}",
     response_model=list[RepoTreeItemResponse],
 )
+@router.get(
+    "/api/{namespace}/{repo_name}/tree",
+    response_model=list[RepoTreeItemResponse],
+)
+@router.get(
+    "/api/models/{namespace}/{repo_name}/tree",
+    response_model=list[RepoTreeItemResponse],
+)
 async def list_model_repo_tree(
     namespace: str,
     repo_name: str,
-    rev: str,
     db: DbDep,
     request: Request,
+    rev: Optional[str] = None,
     cursor: Optional[str] = Query(
         None,
         description="Pagination cursor (base64-encoded path) for fetching next page",
@@ -199,6 +214,8 @@ async def list_model_repo_tree(
     """Get model repository tree by namespace, repo_name and revision.
 
     Uses cursor-based pagination for efficient traversal of large repositories.
+    When ``rev`` is omitted (huggingface_hub >= 1.22 sends ``tree/`` with no
+    rev segment), falls back to the conventional default branch ``main``.
     """
     repo_id = f"{namespace}/{repo_name}"
     return await _get_repo_tree(db, request, repo_id, "model", rev, cursor, limit)
@@ -208,12 +225,16 @@ async def list_model_repo_tree(
     "/api/datasets/{namespace}/{repo_name}/tree/{rev}",
     response_model=list[RepoTreeItemResponse],
 )
+@router.get(
+    "/api/datasets/{namespace}/{repo_name}/tree",
+    response_model=list[RepoTreeItemResponse],
+)
 async def list_dataset_repo_tree(
     namespace: str,
     repo_name: str,
-    rev: str,
     db: DbDep,
     request: Request,
+    rev: Optional[str] = None,
     cursor: Optional[str] = Query(
         None,
         description="Pagination cursor (base64-encoded path) for fetching next page",
@@ -228,6 +249,8 @@ async def list_dataset_repo_tree(
     """Get dataset repository tree by namespace, repo_name and revision.
 
     Uses cursor-based pagination for efficient traversal of large repositories.
+    When ``rev`` is omitted (huggingface_hub >= 1.22 sends ``tree/`` with no
+    rev segment), falls back to the conventional default branch ``main``.
     """
     repo_id = f"{namespace}/{repo_name}"
     return await _get_repo_tree(db, request, repo_id, "dataset", rev, cursor, limit)
