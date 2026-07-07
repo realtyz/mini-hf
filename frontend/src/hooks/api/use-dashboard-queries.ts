@@ -50,8 +50,8 @@ export function useTaskTrends() {
     limit: 100,
   });
 
-  const trends: TaskTrendData[] = (() => {
-    if (!data?.data) return [];
+  const { trends, avgQueueSeconds } = (() => {
+    if (!data?.data) return { trends: [], avgQueueSeconds: null };
 
     const tasks = data.data as TaskResponse[];
     const grouped = new Map<string, { completed: number; failed: number }>();
@@ -68,6 +68,11 @@ export function useTaskTrends() {
     }
 
     // 仅统计已结束的任务（成功、失败/取消）
+    // 排队时间 = started_at - reviewed_at，仅累计经审批（reviewed_at 非空）
+    // 且已开跑（started_at 非空）的终态任务；未经审批的不计入
+    let queueSecondsSum = 0;
+    let queueCount = 0;
+
     tasks.forEach((task: TaskResponse) => {
       const taskDate = new Date(task.created_at);
       const dateStr = taskDate.toLocaleDateString("zh-CN", {
@@ -75,27 +80,44 @@ export function useTaskTrends() {
         day: "numeric",
       });
 
-      if (grouped.has(dateStr)) {
-        const stats = grouped.get(dateStr)!;
-        switch (task.status) {
-          case "completed":
-            stats.completed++;
-            break;
-          case "failed":
-          case "cancelled":
-            stats.failed++;
-            break;
-        }
+      if (!grouped.has(dateStr)) return;
+      const stats = grouped.get(dateStr)!;
+
+      switch (task.status) {
+        case "completed":
+          stats.completed++;
+          break;
+        case "failed":
+        case "cancelled":
+          stats.failed++;
+          break;
+      }
+
+      if (
+        (task.status === "completed" ||
+          task.status === "failed" ||
+          task.status === "cancelled") &&
+        task.reviewed_at &&
+        task.started_at
+      ) {
+        queueSecondsSum +=
+          (new Date(task.started_at).getTime() -
+            new Date(task.reviewed_at).getTime()) /
+          1000;
+        queueCount++;
       }
     });
 
-    return Array.from(grouped.entries()).map(([date, stats]) => ({
-      date,
-      ...stats,
-    }));
+    return {
+      trends: Array.from(grouped.entries()).map(([date, stats]) => ({
+        date,
+        ...stats,
+      })),
+      avgQueueSeconds: queueCount > 0 ? queueSecondsSum / queueCount : null,
+    };
   })();
 
-  return { trends, isLoading };
+  return { trends, avgQueueSeconds, isLoading };
 }
 
 /**

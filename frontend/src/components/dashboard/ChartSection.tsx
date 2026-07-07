@@ -13,7 +13,8 @@ import {
 } from "@/components/ui/chart";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskTrends } from "@/hooks/api/use-dashboard-queries";
-import { cn } from "@/lib/utils";
+import { Clock } from "lucide-react";
+import { cn, formatDuration } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useState } from "react";
 
@@ -64,7 +65,7 @@ function LegendItem({
 }
 
 export function ChartSection() {
-  const { trends, isLoading } = useTaskTrends();
+  const { trends, avgQueueSeconds, isLoading } = useTaskTrends();
   const [activeBars, setActiveBars] = useState<Record<string, boolean>>({
     completed: true,
     failed: true,
@@ -150,6 +151,15 @@ export function ChartSection() {
               失败/取消
               <span className="font-semibold text-foreground tabular-nums">
                 {totals.failed}
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <Clock className="size-3 text-muted-foreground" />
+              平均排队
+              <span className="font-semibold text-foreground tabular-nums">
+                {avgQueueSeconds === null
+                  ? "-"
+                  : formatDuration(Math.round(avgQueueSeconds))}
               </span>
             </span>
           </div>
