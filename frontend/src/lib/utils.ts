@@ -29,6 +29,21 @@ export function formatDuration(seconds: number): string {
   }
 }
 
+/**
+ * Format queue wait duration with adaptive precision.
+ * - < 1h: 具体时间（"45秒" / "3分钟"）
+ * - 1h~24h: 大致时间（"约5小时"）
+ * - ≥ 24h: "1.5天"（保留1位小数）
+ *
+ * 仪表盘平均排队时间专用，区别于 formatDuration（ETA 用，精度策略不同）。
+ */
+export function formatQueueDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)}秒`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)}分钟`;
+  if (seconds < 86400) return `约${Math.round(seconds / 3600)}小时`;
+  return `${(seconds / 86400).toFixed(1)}天`;
+}
+
 export function formatDistanceToNow(date: Date): string {
   return formatDistanceToNowBase(date, { addSuffix: true, locale: zhCN });
 }

@@ -14,7 +14,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTaskTrends } from "@/hooks/api/use-dashboard-queries";
 import { Clock } from "lucide-react";
-import { cn, formatDuration } from "@/lib/utils";
+import { cn, formatQueueDuration } from "@/lib/utils";
 import { motion } from "framer-motion";
 import { useState } from "react";
 
@@ -159,7 +159,7 @@ export function ChartSection() {
               <span className="font-semibold text-foreground tabular-nums">
                 {avgQueueSeconds === null
                   ? "-"
-                  : formatDuration(Math.round(avgQueueSeconds))}
+                  : formatQueueDuration(avgQueueSeconds)}
               </span>
             </span>
           </div>
