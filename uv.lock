@@ -10,7 +10,7 @@ members = [
     "hf-server",
     "mgmt-server",
     "mini-hf",
-    "ms-service",
+    "ms-server",
     "services",
     "storage",
     "worker",
@@ -796,9 +796,19 @@ wheels = [
 ]
 
 [[package]]
-name = "ms-service"
+name = "ms-server"
 version = "0.1.0"
-source = { editable = "packages/ms_service" }
+source = { editable = "packages/ms_server" }
+dependencies = [
+    { name = "database" },
+    { name = "fastapi", extra = ["standard"] },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "database", editable = "packages/database" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.133.1" },
+]
 
 [[package]]
 name = "packaging"
