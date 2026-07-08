@@ -10,6 +10,7 @@ members = [
     "hf-server",
     "mgmt-server",
     "mini-hf",
+    "ms-service",
     "services",
     "storage",
     "worker",
@@ -793,6 +794,11 @@ sdist = { url = "https://files.pythonhosted.org/packages/b6/cb/6b9d3fcbcd09db6cd
 wheels = [
     { url = "https://files.pythonhosted.org/packages/07/19/3554c99cfc633cca2ffab2cfc3c8cb064fa17f88bcb68afee7a81957ccc8/modelscope_hub-0.1.7-py3-none-any.whl", hash = "sha256:907e5da4d8b050277a3cbd79d1c2df4f723b549ba38f573f4ffb6d1cd1525349", size = 135758, upload-time = "2026-07-07T07:35:35.283Z" },
 ]
+
+[[package]]
+name = "ms-service"
+version = "0.1.0"
+source = { editable = "packages/ms_service" }
 
 [[package]]
 name = "packaging"
