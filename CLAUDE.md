@@ -71,6 +71,12 @@ Key worker modules:
 - `handlers/contracts.py` — `TaskControl` (cancel/pause signals) and `ExecutionResult`
 - `handlers/source_types.py` — Source endpoint type definitions
 
+The worker loop itself (not a handler) lives at the package root of `worker`:
+- `worker.py` — `Worker` class, the polling loop that picks up `PENDING` tasks
+- `watchdog.py` — `TaskWatchdog`, a background coroutine that batch-checks running tasks for `CANCELING`/`PAUSING` DB transitions (replaces per-task watchers)
+- `retry.py` — `RetryPolicy`, decides whether/how to retry a failed task (backoff in `settings.WORKER_RETRY_*`)
+- `recovery.py` — Recovery for tasks/profiles left in a bad state after a crash
+
 The `handlers/hf/` subdirectory splits the HuggingFace implementation by phase:
 - `handler.py` — Top-level `HfDownloadHandler` wiring the protocols together
 - `adapter.py` — Source API adapter (commit/tree resolution)
@@ -150,18 +156,22 @@ Design notes and implementation specs (e.g., the multi-version refactor) live in
 
 Base: `/api/v1`
 
-| Endpoint | Purpose |
-|----------|---------|
-| `POST /auth/login` | JWT login |
-| `POST /auth/refresh` | Refresh access token |
-| `GET /user/me` | Current user info |
-| `GET /health` | Health check |
-| `/repos/*` | Repository management |
-| `/tasks/*` | Task queue operations |
-| `/config/schema` | Config schema for UI generation (registry-driven) |
-| `/config/batch` | Batch config update |
-| `/configs/*` | System configuration |
-| `/system/announcements` | Announcement CRUD (uses `Announcement` model, not config keys) |
+Router prefixes (see `packages/mgmt_server/src/mgmt_server/api/v1/router.py` for the wiring):
+
+| Prefix | File | Purpose |
+|--------|------|---------|
+| `/auth` | `auth.py` | `/sign-in` (JWT login), register, `/verify-email`, `/send-verify-code`, `/forgot-password`, `/reset-password`, `/refresh`, `/logout` |
+| `/user` | `user.py` | User CRUD (admin) + `/me`, `/me/password` (current user) |
+| `/hf_repo` | `repo.py` | Repository management - list, detail (`/model/{repo_id}`, `/dataset/{repo_id}`), tree, file, delete |
+| `/task` | `task.py` | Task queue - list, `/preview`, `/review` (approve), `/cancel`, `/pause`/`/resume`, `/retry`, `/progress` |
+| `/config` | `config.py` | System config CRUD + `/schema` (registry-driven UI form), `/batch` (batch update), `/init` |
+| `/batch` | `batch.py` | Cross-resource batch operations |
+| `/dashboard` | `dashboard.py` | `/stats` dashboard aggregations |
+| `/trending` | `trending.py` | Trending metrics (e.g. avg task queue time) |
+| `/cache/scan` | `cache_scan.py` | `/run`, `/result` - unreferenced S3 object scan |
+| `/health` | `health.py` | Health check + `/announcement`, `/hf-endpoints` (public, unauthenticated) |
+| `/system` | `system.py` | Announcement CRUD (uses the `Announcement` model, not config keys) |
+| `/admin/repair` | `repair.py` | Admin-only repair operations |
 
 ### HF API (Port 9801)
 
@@ -183,7 +193,7 @@ Copy `.env.example` to `.env.local` and configure:
 - `REDIS_URL`: Redis connection
 - `S3_*`: S3-compatible storage (MinIO, Ceph, AWS S3)
 - `INCOMPLETE_FILE_PATH`: Temp download directory
-- `APP_HF_SERVER_URL`: Public URL of the HF API server (used for pagination links and download URLs)
+- `HF_SERVER_URL`: Public URL of the HF API server. Read by `settings.HF_SERVER_URL` and used by the HF server for pagination links and download URLs returned to HF clients; also injected into the frontend SPA at container start (`frontend/entrypoint.sh` -> `window.__RUNTIME_CONFIG__`). Note: `.env.example` and `README.md` additionally document `APP_HF_SERVER_URL`, but **no code reads it** - it appears to be a leftover from a rename. Use `HF_SERVER_URL` in code.
 - `CONFIG_ENCRYPTION_KEY`: Encryption key for sensitive config values (falls back to `JWT_SECRET_KEY`)
 
 Frontend environment (create `frontend/.env`):
@@ -237,9 +247,14 @@ pnpm build
 # Lint
 pnpm lint
 
+# Type check only (no test harness exists for the frontend)
+pnpm tsc --noEmit
+
 # Add shadcn/ui component
 pnpm dlx shadcn@latest add <component>
 ```
+
+There is **no frontend test runner**. The safety net is `pnpm tsc --noEmit` + `pnpm lint`; prefer pure functions for non-trivial logic. See [frontend/CLAUDE.md](frontend/CLAUDE.md) for details.
 
 ### Docker
 

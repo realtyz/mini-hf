@@ -12,6 +12,7 @@ dependencies = [
     "database",
     "cache",
     "huggingface-hub>=1.9.0",
+    "modelscope>=1.38.1",
 ]
 
 [tool.uv.sources]
