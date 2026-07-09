@@ -26,12 +26,13 @@ async def _run_scheduled_scan() -> None:
     """Scheduled scan job: creates its own session and cache client."""
     from cache import cache_service
     from database import new_session
+    from storage import s3_client
 
     from mgmt_server.services.cache_scan_service import CacheScanService
 
     try:
         async with new_session() as session:
-            svc = CacheScanService(session, cache_service)
+            svc = CacheScanService(session, cache_service, s3_client)
             await svc.scan()
             await session.commit()
     except Exception:
