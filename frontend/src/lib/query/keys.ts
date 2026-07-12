@@ -47,8 +47,11 @@ export const queryKeys = {
   },
   repos: {
     all: ["repos"] as const,
-    list: (params?: Partial<RepoListParams & { repoType?: string }>) =>
-      [...queryKeys.repos.all, "list", params] as const,
+    list: (
+      params?: Partial<
+        RepoListParams & { repoType?: string; modelSource?: string }
+      >,
+    ) => [...queryKeys.repos.all, "list", params] as const,
     publicList: (
       params?: Partial<{
         repoType?: string;

@@ -162,7 +162,14 @@ export function useRepoList(params: UseRepoListParams) {
         skip,
         limit,
       })
-    : queryKeys.repos.list({ repoType, skip, limit, statuses, ...rest });
+    : queryKeys.repos.list({
+        modelSource,
+        repoType,
+        skip,
+        limit,
+        statuses,
+        ...rest,
+      });
 
   return useQuery({
     queryKey,
