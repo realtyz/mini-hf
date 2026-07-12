@@ -108,6 +108,18 @@ class DownloadInfrastructure(ABC):
     def build_blob_key_builder(self) -> BlobKeyBuilder:
         """Return a BlobKeyBuilder callable for the file processor."""
 
+    @property
+    def head_check_enabled(self) -> bool | None:
+        """Per-source override for the downloader's HEAD pre-check.
+
+        Returns ``None`` by default, which defers to the global
+        ``WORKER_HEAD_CHECK_ENABLED`` setting. Sources whose upstream file
+        endpoint does not respond to HEAD (e.g. ModelScope's ``/repo``
+        endpoint returns 404 for HEAD) override this to return ``False``
+        so the pre-check is skipped and files are fetched directly via GET.
+        """
+        return None
+
 
 class CleanupLifecycle(ABC):
     """Protocol for success finalization and abort cleanup (phase 6 + abort)."""
@@ -326,6 +338,7 @@ class BaseDownloadHandler(
             url_builder=self.build_url_builder(),
             auth_header_builder=self.build_auth_header_builder(),
             blob_key_builder=self.build_blob_key_builder(),
+            head_check_enabled=self.head_check_enabled,
             infra=FileProcessInfrastructure(
                 download_semaphore=asyncio.Semaphore(
                     settings.WORKER_CONCURRENT_DOWNLOADS

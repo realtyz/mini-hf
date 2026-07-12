@@ -44,6 +44,18 @@ class MsDownloadHandler(BaseDownloadHandler):
     def source_name(self) -> str:
         return "ModelScope"
 
+    @property
+    def head_check_enabled(self) -> bool | None:
+        """Disable the downloader's HEAD pre-check for ModelScope.
+
+        ModelScope's single-file endpoint (``/api/v1/.../repo?Revision=...
+        &FilePath=...``) does not respond to HEAD -- it returns HTTP 404 for
+        every file, even ones that GET successfully. Skipping the pre-check
+        avoids false-negative failures; file reachability is still validated
+        by the GET itself.
+        """
+        return False
+
     # ------------------------------------------------------------------
     # Phase 1: prepare_profile
     # ------------------------------------------------------------------

@@ -107,6 +107,24 @@ class TestBuildAuthHeaderBuilder:
         assert builder("t") == headers
 
 
+class TestHeadCheckDisabled:
+    """ModelScope's /repo file endpoint returns 404 for HEAD requests, so the
+    downloader's HEAD pre-check must be skipped. The handler overrides
+    head_check_enabled to False (base default is None -> defer to settings)."""
+
+    def test_ms_handler_disables_head_check(self):
+        handler = _make_handler()
+        assert handler.head_check_enabled is False
+
+    def test_base_default_is_none(self):
+        """The base default is None (defer to settings), so HuggingFace
+        (which doesn't override) keeps the HEAD pre-check."""
+        from worker.handlers.hf.handler import HfDownloadHandler
+
+        hf_handler = HfDownloadHandler.__new__(HfDownloadHandler)
+        assert hf_handler.head_check_enabled is None
+
+
 class TestCloseMsService:
     """R2: _close_ms_service is idempotent and releases the httpx client."""
 

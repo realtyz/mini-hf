@@ -69,6 +69,12 @@ class FileProcessContext:
     auth_header_builder: AuthHeaderBuilder
     blob_key_builder: BlobKeyBuilder
     infra: FileProcessInfrastructure
+    # Per-source override for the downloader's HEAD pre-check.
+    # None (default) defers to settings.WORKER_HEAD_CHECK_ENABLED.
+    # Sources whose upstream endpoint does not respond to HEAD (e.g.
+    # ModelScope's /repo file endpoint returns 404 for HEAD) set this to
+    # False to skip the pre-check and download directly via GET.
+    head_check_enabled: bool | None = None
 
 
 async def download_and_upload_files(
@@ -352,7 +358,11 @@ async def _download_phase(
             retry_max_delay=settings.WORKER_RETRY_MAX_DELAY,
             chunk_size=settings.WORKER_DOWNLOAD_CHUNK_SIZE,
             client=ctx.infra.shared_client,
-            head_check=settings.WORKER_HEAD_CHECK_ENABLED,
+            head_check=(
+                settings.WORKER_HEAD_CHECK_ENABLED
+                if ctx.head_check_enabled is None
+                else ctx.head_check_enabled
+            ),
             head_check_timeout=settings.WORKER_HEAD_CHECK_TIMEOUT,
             disk_space_check=settings.WORKER_DISK_SPACE_CHECK_ENABLED,
             stall_report_threshold=settings.WORKER_STALL_REPORT_THRESHOLD,
