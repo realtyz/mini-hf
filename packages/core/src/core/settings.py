@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     # Application settings
     DEBUG: bool = False
     HF_SERVER_URL: str
+    # ModelScope compatible API server URL
+    MS_SERVER_URL: str = "http://localhost:9802"
 
     # Redis settings (for worker)
     REDIS_URL: str = ""

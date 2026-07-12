@@ -8,6 +8,8 @@ from storage.utils.key_builder import (
     build_blob_key,
     build_blob_prefix,
     parse_blob_key,
+    build_ms_blob_key,
+    build_ms_blob_prefix,
 )
 
 __all__ = [
@@ -19,4 +21,6 @@ __all__ = [
     "build_blob_key",
     "build_blob_prefix",
     "parse_blob_key",
+    "build_ms_blob_key",
+    "build_ms_blob_prefix",
 ]

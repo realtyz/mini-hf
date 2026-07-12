@@ -7,7 +7,7 @@ from sqlalchemy import case, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import defer
 
-from database.db_models import Task, TaskStatus
+from database.db_models import Task, TaskStatus, Source
 
 
 class TaskRepository:
@@ -35,7 +35,7 @@ class TaskRepository:
         """Create a new task with PENDING_APPROVAL status.
 
         Args:
-            source: Repository source ('huggingface' or 'modelscope')
+            source: Repository source (Source enum value, e.g. 'huggingface' or 'modelscope')
             repo_id: Repository ID to download
             repo_type: Repository type ('model' or 'dataset')
             revision: Repository revision/commit to download
@@ -448,7 +448,7 @@ class TaskRepository:
                         TaskStatus.PAUSED,
                     ]
                 ),
-                Task.source.in_(["huggingface", "modelscope"]),
+                Task.source.in_([s.value for s in Source]),
             )
             .limit(1)
         )
@@ -494,7 +494,7 @@ class TaskRepository:
 
         Args:
             repo_id: Repository ID
-            source: Repository source ('huggingface' or 'modelscope')
+            source: Repository source (Source enum value, e.g. 'huggingface' or 'modelscope')
 
         Returns:
             Active task if exists, None otherwise

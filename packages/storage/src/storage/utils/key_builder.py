@@ -40,6 +40,38 @@ def build_blob_prefix(repo_id: str, repo_type: str) -> str:
     return f"hf/{repo_type}--{namespace}--{repo_name}/blobs/"
 
 
+def build_ms_blob_key(repo_id: str, repo_type: str, blob_id: str) -> str:
+    """Build S3 key for a ModelScope repository blob.
+
+    Format: ms/{repo_type}--{namespace}--{repo_name}/blobs/{blob_id}
+
+    Mirrors ``build_blob_key`` but uses the ``ms/`` prefix to isolate
+    ModelScope blobs from HuggingFace blobs in the shared bucket.
+    """
+    _validate_repo_id(repo_id)
+    namespace, repo_name = repo_id.split("/", 1)
+    return f"ms/{repo_type}--{namespace}--{repo_name}/blobs/{blob_id}"
+
+
+def build_ms_blob_prefix(repo_id: str, repo_type: str) -> str:
+    """Build S3 prefix for all blobs in a ModelScope repository.
+
+    Args:
+        repo_id: Repository ID (e.g., "zhipuai/chatglm")
+        repo_type: Repository type (e.g., "model", "dataset")
+
+    Returns:
+        S3 prefix string ending with '/'
+
+    Example:
+        >>> build_ms_blob_prefix("zhipuai/chatglm", "model")
+        'ms/model--zhipuai--chatglm/blobs/'
+    """
+    _validate_repo_id(repo_id)
+    namespace, repo_name = repo_id.split("/", 1)
+    return f"ms/{repo_type}--{namespace}--{repo_name}/blobs/"
+
+
 def parse_blob_key(key: str) -> tuple[str, str, str]:
     """Parse a blob S3 key into its components.
 

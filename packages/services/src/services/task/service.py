@@ -48,7 +48,7 @@ class TaskService:
         """Create a new task.
 
         Args:
-            source: Repository source ('huggingface' or 'modelscope')
+            source: Repository source (Source enum value, e.g. 'huggingface' or 'modelscope')
             repo_id: Repository ID to download
             revision: Repository revision/commit to download
             repo_type: Repository type ('model' or 'dataset')
@@ -440,7 +440,7 @@ class TaskService:
 
         Args:
             repo_id: Repository ID
-            source: Repository source ('huggingface' or 'modelscope')
+            source: Repository source (Source enum value, e.g. 'huggingface' or 'modelscope')
 
         Returns:
             Active task if exists, None otherwise

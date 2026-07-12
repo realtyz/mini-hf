@@ -97,7 +97,7 @@ class Worker:
         """Register profile recovery functions for a source.
 
         Args:
-            source: Source identifier (e.g. "huggingface", "modelscope")
+            source: Source identifier (Source enum value, e.g. 'huggingface', 'modelscope')
             recovery_func: Async callable(session, repo_id, repo_type) that
                 restores a profile within an existing session.
             startup_recovery: Optional async callable() that scans for and

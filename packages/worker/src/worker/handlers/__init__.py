@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from database.db_models import Source
 from worker.handlers.contracts import HandlerFunc, TaskControl, ExecutionResult
 from worker.handlers.base_handler import (
     BaseDownloadHandler,
@@ -84,7 +85,7 @@ def register_handlers(worker: Worker) -> None:
     """Register all task handlers and profile recoveries to the worker instance."""
     worker.register("download_huggingface", handle_download_huggingface)
     worker.register_profile_recovery(
-        source="huggingface",
+        source=Source.HUGGINGFACE.value,
         recovery_func=restore_hf_profile_in_session,
         startup_recovery=recover_hf_updating_profiles,
     )

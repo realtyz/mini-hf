@@ -1,0 +1,394 @@
+"""Repository for ModelScope repository snapshot operations."""
+
+from datetime import datetime
+from typing import NamedTuple
+
+from sqlalchemy import delete, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from database.db_models import MsRepoSnapshot, SnapshotStatus
+
+
+class SizeStats(NamedTuple):
+    total_size: int
+    cached_size: int
+
+
+class MsRepoSnapshotRepository:
+    """Repository for MsRepoSnapshot entity operations.
+
+    This repository handles all database operations related to repository snapshots,
+    including creation, activation, archival, and queries.
+    """
+
+    def __init__(self, session: AsyncSession):
+        self._session = session
+
+    async def get_snapshot_by_repo(
+        self,
+        repo_id: str,
+        repo_type: str,
+        revision: str,
+        commit_hash: str,
+    ) -> MsRepoSnapshot | None:
+        """Get snapshot by repo, revision and commit hash."""
+        stmt = select(MsRepoSnapshot).where(
+            MsRepoSnapshot.repo_id == repo_id,
+            MsRepoSnapshot.repo_type == repo_type,
+            MsRepoSnapshot.revision == revision,
+            MsRepoSnapshot.commit_hash == commit_hash,
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_latest_snapshot_by_revision(
+        self,
+        repo_id: str,
+        repo_type: str,
+        revision: str,
+    ) -> MsRepoSnapshot | None:
+        """Get the latest snapshot for a revision, regardless of status.
+
+        Returns the most recently created snapshot matching repo/type/revision,
+        so partially-downloaded snapshots (status != ACTIVE) remain reachable.
+        """
+        stmt = (
+            select(MsRepoSnapshot)
+            .where(
+                MsRepoSnapshot.repo_id == repo_id,
+                MsRepoSnapshot.repo_type == repo_type,
+                MsRepoSnapshot.revision == revision,
+            )
+            .order_by(MsRepoSnapshot.created_at.desc())
+            .limit(1)
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_snapshot_by_commit(
+        self,
+        repo_id: str,
+        repo_type: str,
+        commit_hash: str,
+    ) -> MsRepoSnapshot | None:
+        """Get snapshot by repo/type/commit_hash.
+
+        Uses scalar_one_or_none: callers rely on commit_hash uniqueness within
+        a repo, so a duplicate would surface as an error rather than silently
+        returning the first row.
+        """
+        stmt = select(MsRepoSnapshot).where(
+            MsRepoSnapshot.repo_id == repo_id,
+            MsRepoSnapshot.repo_type == repo_type,
+            MsRepoSnapshot.commit_hash == commit_hash,
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_or_create_snapshot(
+        self,
+        repo_id: str,
+        repo_type: str,
+        revision: str,
+        commit_hash: str,
+        committed_at: datetime | None = None,
+        initial_status: SnapshotStatus | None = None,
+    ) -> tuple[MsRepoSnapshot, bool]:
+        """Get existing snapshot or create new one.
+
+        Args:
+            repo_id: Repository ID
+            repo_type: Repository type (model/dataset)
+            revision: Revision (branch/tag name)
+            commit_hash: Commit hash
+            committed_at: Commit timestamp
+            initial_status: Initial status for new snapshot (default: INACTIVE)
+
+        Returns:
+            Tuple of (snapshot, is_new) where is_new indicates if a new snapshot was created
+        """
+        # First check if this exact (revision, commit_hash) combination exists
+        existing = await self.get_snapshot_by_repo(
+            repo_id, repo_type, revision, commit_hash
+        )
+        if existing:
+            return existing, False
+
+        # 处理带时区的 datetime - 转换为无时区（假设 UTC）
+        if committed_at is not None and committed_at.tzinfo is not None:
+            committed_at = committed_at.replace(tzinfo=None)
+
+        # Create new snapshot with specified initial status (default: INACTIVE)
+        status = (
+            initial_status if initial_status is not None else SnapshotStatus.INACTIVE
+        )
+        snapshot = MsRepoSnapshot(
+            repo_id=repo_id,
+            repo_type=repo_type,
+            revision=revision,
+            commit_hash=commit_hash,
+            committed_at=committed_at,
+            status=status,
+        )
+        self._session.add(snapshot)
+        await self._session.flush()
+        return snapshot, True
+
+    async def get_active_snapshot(
+        self,
+        repo_id: str,
+        repo_type: str,
+        revision: str,
+    ) -> MsRepoSnapshot | None:
+        """Get the active snapshot for a revision.
+
+        Each revision can only have one ACTIVE snapshot at a time.
+
+        Args:
+            repo_id: Repository ID
+            repo_type: Repository type (model/dataset)
+            revision: Revision (branch/tag name)
+
+        Returns:
+            Active snapshot or None if not found
+        """
+        stmt = select(MsRepoSnapshot).where(
+            MsRepoSnapshot.repo_id == repo_id,
+            MsRepoSnapshot.repo_type == repo_type,
+            MsRepoSnapshot.revision == revision,
+            MsRepoSnapshot.status == SnapshotStatus.ACTIVE,
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def activate_snapshot(
+        self,
+        repo_id: str,
+        repo_type: str,
+        revision: str,
+        commit_hash: str,
+    ) -> MsRepoSnapshot | None:
+        """Activate a snapshot by changing status from INACTIVE to ACTIVE.
+
+        Args:
+            repo_id: Repository ID
+            repo_type: Repository type (model/dataset)
+            revision: Revision (branch/tag name)
+            commit_hash: Commit hash of the snapshot to activate
+
+        Returns:
+            The activated snapshot or None if not found
+        """
+        stmt = select(MsRepoSnapshot).where(
+            MsRepoSnapshot.repo_id == repo_id,
+            MsRepoSnapshot.repo_type == repo_type,
+            MsRepoSnapshot.revision == revision,
+            MsRepoSnapshot.commit_hash == commit_hash,
+            MsRepoSnapshot.status == SnapshotStatus.INACTIVE,
+        )
+        result = await self._session.execute(stmt)
+        snapshot = result.scalar_one_or_none()
+
+        if snapshot:
+            snapshot.status = SnapshotStatus.ACTIVE
+            await self._session.flush()
+
+        return snapshot
+
+    async def archive_snapshot(
+        self,
+        repo_id: str,
+        repo_type: str,
+        revision: str,
+        archive_commit_hash: str | None = None,
+    ) -> MsRepoSnapshot | None:
+        """Archive the current active snapshot for a revision.
+
+        Changes the status from ACTIVE to ARCHIVED.
+
+        Args:
+            repo_id: Repository ID
+            repo_type: Repository type (model/dataset)
+            revision: Revision (branch/tag name)
+            archive_commit_hash: If provided, only archive this specific commit hash
+
+        Returns:
+            The archived snapshot or None if no active snapshot found
+        """
+        stmt = select(MsRepoSnapshot).where(
+            MsRepoSnapshot.repo_id == repo_id,
+            MsRepoSnapshot.repo_type == repo_type,
+            MsRepoSnapshot.revision == revision,
+            MsRepoSnapshot.status == SnapshotStatus.ACTIVE,
+        )
+        if archive_commit_hash:
+            stmt = stmt.where(MsRepoSnapshot.commit_hash == archive_commit_hash)
+
+        result = await self._session.execute(stmt)
+        snapshot = result.scalar_one_or_none()
+
+        if snapshot:
+            snapshot.status = SnapshotStatus.ARCHIVED
+            await self._session.flush()
+
+        return snapshot
+
+    async def get_snapshots_by_commit(
+        self,
+        repo_id: str,
+        commit_hash: str,
+    ) -> list[MsRepoSnapshot]:
+        """Get snapshots by repo_id and commit_hash."""
+        stmt = select(MsRepoSnapshot).where(
+            MsRepoSnapshot.repo_id == repo_id,
+            MsRepoSnapshot.commit_hash == commit_hash,
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_all_snapshots(
+        self,
+        repo_id: str,
+    ) -> list[MsRepoSnapshot]:
+        """Get all snapshots for a repository."""
+        stmt = select(MsRepoSnapshot).where(
+            MsRepoSnapshot.repo_id == repo_id,
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def get_snapshots_by_revision(
+        self,
+        repo_id: str,
+        repo_type: str,
+        revision: str,
+    ) -> list[MsRepoSnapshot]:
+        """Get all snapshots for a specific revision."""
+        stmt = (
+            select(MsRepoSnapshot)
+            .where(
+                MsRepoSnapshot.repo_id == repo_id,
+                MsRepoSnapshot.repo_type == repo_type,
+                MsRepoSnapshot.revision == revision,
+            )
+            .order_by(MsRepoSnapshot.created_at.desc())
+        )
+        result = await self._session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def delete_snapshot(
+        self,
+        commit_hash: str,
+    ) -> None:
+        """Delete snapshot and all its tree items.
+
+        Note: Tree items should be deleted separately or via cascade.
+        """
+        # Delete snapshot (tree items should be handled separately)
+        await self._session.execute(
+            delete(MsRepoSnapshot).where(MsRepoSnapshot.commit_hash == commit_hash)
+        )
+        await self._session.flush()
+
+    async def delete_snapshot_and_tree(
+        self,
+        snapshot_id: int,
+        commit_hash: str,
+    ) -> None:
+        """Delete a snapshot and its associated tree items in one transaction.
+
+        Args:
+            snapshot_id: Primary key of the snapshot to delete
+            commit_hash: Commit hash whose tree items should be removed
+        """
+        from database.db_models import MsRepoTreeItem
+
+        await self._session.execute(
+            delete(MsRepoTreeItem).where(MsRepoTreeItem.commit_hash == commit_hash)
+        )
+        await self._session.execute(
+            delete(MsRepoSnapshot).where(MsRepoSnapshot.id == snapshot_id)
+        )
+        await self._session.flush()
+
+    async def get_snapshot_size_stats(
+        self,
+        commit_hashes: list[str],
+    ) -> dict[str, SizeStats]:
+        """Return total_size and cached_size for each commit_hash.
+
+        Args:
+            commit_hashes: List of commit hashes to query
+
+        Returns:
+            Dict mapping commit_hash -> SizeStats(total_size, cached_size) in bytes
+        """
+        from sqlalchemy import case
+
+        from database.db_models import MsRepoTreeItem
+
+        if not commit_hashes:
+            return {}
+
+        stmt = (
+            select(
+                MsRepoTreeItem.commit_hash,
+                func.coalesce(func.sum(MsRepoTreeItem.size), 0).label("total_size"),
+                func.coalesce(
+                    func.sum(
+                        case(
+                            (MsRepoTreeItem.is_cached == True, MsRepoTreeItem.size),  # noqa: E712
+                            else_=0,
+                        )
+                    ),
+                    0,
+                ).label("cached_size"),
+            )
+            .where(MsRepoTreeItem.commit_hash.in_(commit_hashes))
+            .group_by(MsRepoTreeItem.commit_hash)
+        )
+        result = await self._session.execute(stmt)
+        return {
+            row.commit_hash: SizeStats(int(row.total_size), int(row.cached_size))
+            for row in result.all()
+        }
+
+    async def get_repo_with_snapshots(
+        self,
+        repo_id: str,
+        repo_type: str,
+    ) -> tuple[list[MsRepoSnapshot], int]:
+        """Get all snapshots for a repository with total count.
+
+        Args:
+            repo_id: Repository ID
+            repo_type: Repository type (model/dataset)
+
+        Returns:
+            Tuple of (list of snapshots, total count)
+        """
+        # Get total count
+        count_stmt = select(func.count()).select_from(
+            select(MsRepoSnapshot)
+            .where(
+                MsRepoSnapshot.repo_id == repo_id,
+                MsRepoSnapshot.repo_type == repo_type,
+            )
+            .subquery()
+        )
+        count_result = await self._session.execute(count_stmt)
+        total = count_result.scalar() or 0
+
+        # Get snapshots
+        snapshots_stmt = (
+            select(MsRepoSnapshot)
+            .where(
+                MsRepoSnapshot.repo_id == repo_id,
+                MsRepoSnapshot.repo_type == repo_type,
+            )
+            .order_by(MsRepoSnapshot.created_at.desc())
+        )
+        snapshots_result = await self._session.execute(snapshots_stmt)
+        snapshots = list(snapshots_result.scalars().all())
+
+        return snapshots, total

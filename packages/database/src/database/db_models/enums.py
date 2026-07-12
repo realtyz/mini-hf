@@ -49,3 +49,15 @@ class AnnouncementType(str, PyEnum):
     INFO = "info"
     WARNING = "warning"
     URGENT = "urgent"
+
+
+class Source(str, PyEnum):
+    """Task source identifier - determines which handler/table set is used.
+
+    The DB column ``Task.source`` stays ``String(16)``; since ``Source`` is a
+    ``str`` subclass, enum members read/write transparently as their string
+    values without needing a migration.
+    """
+
+    HUGGINGFACE = "huggingface"
+    MODELSCOPE = "modelscope"

@@ -8,7 +8,7 @@ from typing import Any
 
 from cache.keys import CacheKeys
 from cache.services.cache import CacheService
-from database.db_models import User
+from database.db_models import Source, User
 from database.db_repositories import HfRepoSnapshotRepository, HfRepoTreeRepository
 from loguru import logger
 from services.config import ConfigService
@@ -102,7 +102,7 @@ class TaskPreviewService:
         for scheduling the background callable (e.g. via FastAPI BackgroundTasks).
         background_callable may be None if the result was served from local cache.
         """
-        if source != "huggingface":
+        if source != Source.HUGGINGFACE.value:
             raise ValidationError(
                 f"Source '{source}' is not supported for preview. Only 'huggingface' is supported."
             )
