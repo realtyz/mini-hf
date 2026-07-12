@@ -59,6 +59,10 @@ class UIMetadata:
     rows: int = 3
     helper_text: str = ""
     col_span: int = 1
+    # For hf_endpoint_list widget: the form key of the sibling default-endpoint
+    # field whose value should auto-sync when the endpoint list changes.
+    # e.g. "hf_default_endpoint" / "ms_default_endpoint". Empty for non-endpoint widgets.
+    default_endpoint_key: str = ""
 
 
 @dataclass(frozen=True)
@@ -373,7 +377,11 @@ ConfigRegistry.register(
         label="可用 Endpoints",
         description="HuggingFace endpoint list (JSON array)",
         required=True,
-        ui=UIMetadata(widget="hf_endpoint_list"),
+        ui=UIMetadata(
+            widget="hf_endpoint_list",
+            placeholder="https://huggingface.co",
+            default_endpoint_key="hf_default_endpoint",
+        ),
     )
 )
 ConfigRegistry.register(
@@ -401,7 +409,11 @@ ConfigRegistry.register(
         label="可用 Endpoints",
         description="ModelScope endpoint list (JSON array)",
         required=True,
-        ui=UIMetadata(widget="hf_endpoint_list"),
+        ui=UIMetadata(
+            widget="hf_endpoint_list",
+            placeholder="https://modelscope.cn",
+            default_endpoint_key="ms_default_endpoint",
+        ),
     )
 )
 ConfigRegistry.register(

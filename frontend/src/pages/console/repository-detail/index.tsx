@@ -23,6 +23,8 @@ interface RepositoryDetailProps {
   showActions?: boolean;
 }
 
+type RepoSource = "huggingface" | "modelscope";
+
 const PROFILE_STATUS_OPTIONS: { value: RepoStatus; label: string }[] = (
   ["active", "inactive", "updating", "cleaning", "cleaned"] as RepoStatus[]
 ).map((value) => ({ value, label: REPO_STATUS_CONFIG[value].label }));
@@ -34,15 +36,17 @@ export function RepositoryDetail({
   const [searchParams] = useSearchParams();
   const repoId = searchParams.get("repoId") || "";
   const repoType = searchParams.get("type") || "model";
+  const source: RepoSource =
+    searchParams.get("source") === "modelscope" ? "modelscope" : "huggingface";
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin";
 
-  const { data, isLoading, error } = useRepoDetail(repoId, repoType);
+  const { data, isLoading, error } = useRepoDetail(repoId, repoType, source);
 
   const repo = data?.data.profile;
   const snapshots = data?.data.snapshots || [];
 
-  const setProfileStatus = useSetProfileStatus();
+  const setProfileStatus = useSetProfileStatus(source);
 
   const navigate = useNavigate();
   const [isLeaving, setIsLeaving] = useState(false);
@@ -269,7 +273,11 @@ export function RepositoryDetail({
         </dl>
 
         {/* ─── Version list ─── */}
-        <SnapshotList snapshots={snapshots} repoId={repoId} />
+        <SnapshotList
+          snapshots={snapshots}
+          repoId={repoId}
+          source={source}
+        />
       </div>
 
       {/* Delete dialog */}
@@ -279,6 +287,7 @@ export function RepositoryDetail({
         repoId={repoId}
         repoName={repo.repo_id}
         onDeleted={handleDeleted}
+        source={source}
       />
     </div>
   );

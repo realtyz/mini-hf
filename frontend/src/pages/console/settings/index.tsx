@@ -25,6 +25,7 @@ import { AnnouncementTab } from "./AnnouncementTab";
 type SettingsTabId =
   | "smtp"
   | "huggingface"
+  | "modelscope"
   | "notification"
   | "announcement"
   | "task_control";
@@ -32,6 +33,7 @@ type SettingsTabId =
 const TAB_IDS = [
   "smtp",
   "huggingface",
+  "modelscope",
   "notification",
   "announcement",
   "task_control",
@@ -57,6 +59,12 @@ const tabRegistry: TabConfig[] = [
     id: "huggingface",
     label: "HF 配置",
     description: "Endpoint 节点管理",
+    icon: Globe,
+  },
+  {
+    id: "modelscope",
+    label: "MS 配置",
+    description: "ModelScope endpoint 节点管理",
     icon: Globe,
   },
   {
@@ -94,6 +102,10 @@ function TabContent({ activeTab }: { activeTab: SettingsTabId }) {
     () => schemaCategories.find((c) => c.id === "huggingface"),
     [schemaCategories],
   );
+  const modelscopeCategory = useMemo(
+    () => schemaCategories.find((c) => c.id === "modelscope"),
+    [schemaCategories],
+  );
   const notificationCategory = useMemo(
     () => schemaCategories.find((c) => c.id === "notification"),
     [schemaCategories],
@@ -124,6 +136,10 @@ function TabContent({ activeTab }: { activeTab: SettingsTabId }) {
     case "huggingface":
       return huggingfaceCategory ? (
         <ConfigFormEngine category={huggingfaceCategory} />
+      ) : null;
+    case "modelscope":
+      return modelscopeCategory ? (
+        <ConfigFormEngine category={modelscopeCategory} />
       ) : null;
     case "notification":
       return notificationCategory ? (

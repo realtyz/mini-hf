@@ -19,6 +19,7 @@ import { cn, formatBytes } from "@/lib/utils";
 interface RepoTreeViewerProps {
   repoId: string;
   commitHash: string;
+  source?: "huggingface" | "modelscope";
 }
 
 import { buildTree, getChildrenAtPath, sortTreeChildren } from "@/lib/file-tree-utils";
@@ -27,12 +28,20 @@ import { queryKeys } from "@/lib/query/keys";
 async function fetchRepoTree(
   repoId: string,
   commitHash: string,
+  source: "huggingface" | "modelscope" = "huggingface",
 ): Promise<RepoTreeResponse> {
-  const endpoint = endpoints.repo.tree(repoId, commitHash);
+  const endpoint =
+    source === "modelscope"
+      ? endpoints.repo.msTree(repoId, commitHash)
+      : endpoints.repo.tree(repoId, commitHash);
   return api.get<RepoTreeResponse>(endpoint);
 }
 
-export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
+export function RepoTreeViewer({
+  repoId,
+  commitHash,
+  source = "huggingface",
+}: RepoTreeViewerProps) {
   const [currentPath, setCurrentPath] = useState("");
   const [isNavigating, setIsNavigating] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
@@ -41,8 +50,8 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
   const repoName = repoId.split("/").pop() || repoId;
 
   const { data, isLoading, error, refetch } = useQuery<RepoTreeResponse>({
-    queryKey: queryKeys.repos.tree(repoId, commitHash),
-    queryFn: () => fetchRepoTree(repoId, commitHash),
+    queryKey: queryKeys.repos.tree(repoId, commitHash, source),
+    queryFn: () => fetchRepoTree(repoId, commitHash, source),
   });
 
   const allItems = useMemo<RepoTreeItem[]>(() => data?.data ?? [], [data]);
@@ -341,7 +350,11 @@ export function RepoTreeViewer({ repoId, commitHash }: RepoTreeViewerProps) {
                   )}
                   {item.type === "file" && item.is_cached && (
                     <a
-                      href={`${config.API_BASE_URL}${endpoints.repo.fileUrl(repoId, commitHash, item.path)}`}
+                      href={`${config.API_BASE_URL}${
+                        source === "modelscope"
+                          ? endpoints.repo.msFileUrl(repoId, commitHash, item.path)
+                          : endpoints.repo.fileUrl(repoId, commitHash, item.path)
+                      }`}
                       download={item.name}
                       title="下载文件"
                       onClick={(e) => e.stopPropagation()}

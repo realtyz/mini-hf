@@ -59,9 +59,18 @@ export const queryKeys = {
         limit?: number;
       }>,
     ) => [...queryKeys.repos.all, "public-list", params] as const,
-    detail: (id: string) => [...queryKeys.repos.all, "detail", id] as const,
-    tree: (repoId: string, commitHash: string) =>
-      [...queryKeys.repos.all, "tree", repoId, commitHash] as const,
+    detail: (id: string, source?: string) =>
+      [
+        ...queryKeys.repos.all,
+        "detail",
+        { id, source: source ?? "huggingface" },
+      ] as const,
+    tree: (repoId: string, commitHash: string, source?: string) =>
+      [
+        ...queryKeys.repos.all,
+        "tree",
+        { repoId, commitHash, source: source ?? "huggingface" },
+      ] as const,
   },
   cacheScan: {
     all: ["cache-scan"] as const,
@@ -80,6 +89,7 @@ export const queryKeys = {
   public: {
     all: ["public"] as const,
     hfEndpoints: () => [...queryKeys.public.all, "hf-endpoints"] as const,
+    msEndpoints: () => [...queryKeys.public.all, "ms-endpoints"] as const,
   },
   announcements: {
     all: ["announcements"] as const,

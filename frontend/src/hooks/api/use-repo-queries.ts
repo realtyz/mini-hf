@@ -19,14 +19,23 @@ interface DeleteRepoParams {
   repoType?: string;
 }
 
-export function useDeleteRepo() {
+type RepoModelSource = "huggingface" | "modelscope";
+
+/**
+ * Mutation hook: delete a repository (profile + snapshots + S3 data).
+ * Routes to HF (/hf_repo) or MS (/ms_repo) endpoint based on source.
+ */
+export function useDeleteRepo(source: RepoModelSource = "huggingface") {
   return useMutation({
     mutationFn: async (params: string | DeleteRepoParams) => {
       const { repoId, repoType } =
         typeof params === "string"
           ? { repoId: params, repoType: undefined }
           : params;
-      const endpoint = endpoints.repo.hfDetail(repoId);
+      const endpoint =
+        source === "modelscope"
+          ? endpoints.repo.msDetail(repoId)
+          : endpoints.repo.hfDetail(repoId);
       const config: { timeout: number; params?: Record<string, string> } = {
         timeout: 60000,
       };
@@ -40,9 +49,9 @@ export function useDeleteRepo() {
 
 /**
  * Mutation hook: change a repository profile's status.
- * Invalidates the repo detail query on success.
+ * Invalidates the repo detail query on success (respecting source dimension).
  */
-export function useSetProfileStatus() {
+export function useSetProfileStatus(source: RepoModelSource = "huggingface") {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -59,7 +68,7 @@ export function useSetProfileStatus() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.repos.detail(variables.repoId),
+        queryKey: queryKeys.repos.detail(variables.repoId, source),
       });
       toast.success("仓库状态已更新");
     },
@@ -71,9 +80,9 @@ export function useSetProfileStatus() {
 
 /**
  * Mutation hook: change a snapshot's status.
- * Invalidates the repo detail query on success.
+ * Invalidates the repo detail query on success (respecting source dimension).
  */
-export function useSetSnapshotStatus() {
+export function useSetSnapshotStatus(source: RepoModelSource = "huggingface") {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -91,7 +100,7 @@ export function useSetSnapshotStatus() {
     },
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
-        queryKey: queryKeys.repos.detail(variables.repoId),
+        queryKey: queryKeys.repos.detail(variables.repoId, source),
       });
       toast.success("版本状态已更新");
     },
@@ -103,25 +112,23 @@ export function useSetSnapshotStatus() {
 
 // ==================== 仓库列表 / 详情查询 ====================
 
-type RepoModelSource = "huggingface" | "modelscope";
-
 interface UseRepoListParams extends Omit<RepoListParams, "statuses"> {
   repoType?: "all" | "model" | "dataset";
   statuses?: RepoStatus[];
   /**
-   * 公共模式（无需认证）。默认 false，控制台使用认证 API（/hf_repo/list）。
-   * 设为 true 时按 modelSource 选择公共端点（hfListPublic / msList）。
+   * 公共模式（无需认证）。默认 false，控制台使用认证 API。
+   * 按 modelSource 选择认证端点（hfList / msList）或公共端点（hfListPublic / msListPublic）。
    */
   public?: boolean;
-  /** 公共模式下选择数据源；仅 public 模式生效，默认 huggingface */
+  /** 选择数据源（HF / MS）；默认 huggingface */
   modelSource?: RepoModelSource;
 }
 
 /**
  * 获取仓库列表
  *
- * - 认证模式（默认）：调用 /hf_repo/list，返回所有缓存的仓库
- * - 公共模式（public: true）：按 modelSource 调用 hfListPublic / msList
+ * - 认证模式（默认）：按 modelSource 调用 /hf_repo/list 或 /ms_repo/list
+ * - 公共模式（public: true）：按 modelSource 调用 hfListPublic / msListPublic
  *
  * 筛选、分页、排序参数统一在此构造，避免各页面重复拼装 query params。
  * 公共与认证模式使用不同 queryKey，缓存互不混淆。
@@ -137,11 +144,14 @@ export function useRepoList(params: UseRepoListParams) {
     ...rest
   } = params;
 
-  const endpoint = isPublic
-    ? modelSource === "modelscope"
-      ? endpoints.repo.msList
-      : endpoints.repo.hfListPublic
-    : endpoints.repo.hfList;
+  const endpoint =
+    isPublic
+      ? modelSource === "modelscope"
+        ? endpoints.repo.msListPublic
+        : endpoints.repo.hfListPublic
+      : modelSource === "modelscope"
+        ? endpoints.repo.msList
+        : endpoints.repo.hfList;
 
   const queryKey = isPublic
     ? queryKeys.repos.publicList({
@@ -184,17 +194,25 @@ export function useRepoList(params: UseRepoListParams) {
 
 /**
  * 获取仓库详情（profile + snapshots）
- * 按 repoType 选择 model / dataset 端点
+ * 按 repoType 选择 model / dataset 端点，按 source 选择 HF / MS 端点
  */
-export function useRepoDetail(repoId: string, repoType: string) {
+export function useRepoDetail(
+  repoId: string,
+  repoType: string,
+  source: RepoModelSource = "huggingface",
+) {
   return useQuery({
-    queryKey: queryKeys.repos.detail(repoId),
+    queryKey: queryKeys.repos.detail(repoId, source),
     queryFn: async () => {
-      const endpoint =
-        repoType === "model"
-          ? endpoints.repo.hfModel(repoId)
-          : endpoints.repo.hfDataset(repoId);
-      return api.get<RepoDetailResponse>(endpoint);
+      const repoEndpoint =
+        source === "modelscope"
+          ? repoType === "model"
+            ? endpoints.repo.msModel(repoId)
+            : endpoints.repo.msDataset(repoId)
+          : repoType === "model"
+            ? endpoints.repo.hfModel(repoId)
+            : endpoints.repo.hfDataset(repoId);
+      return api.get<RepoDetailResponse>(repoEndpoint);
     },
     enabled: !!repoId,
   });

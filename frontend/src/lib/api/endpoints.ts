@@ -50,14 +50,23 @@ const endpoints = {
     hfList: "/hf_repo/list",
     hfListPublic: "/hf_repo/list-public",
     msList: "/ms_repo/list",
+    msListPublic: "/ms_repo/list-public",
     hfDetail: (repoId: string) => `/hf_repo/${encodeURIComponent(repoId)}`,
+    msDetail: (repoId: string) => `/ms_repo/${encodeURIComponent(repoId)}`,
     hfModel: (repoId: string) => `/hf_repo/model/${encodeURIComponent(repoId)}`,
     hfDataset: (repoId: string) =>
       `/hf_repo/dataset/${encodeURIComponent(repoId)}`,
+    msModel: (repoId: string) => `/ms_repo/model/${encodeURIComponent(repoId)}`,
+    msDataset: (repoId: string) =>
+      `/ms_repo/dataset/${encodeURIComponent(repoId)}`,
     tree: (repoId: string, commitHash: string) =>
       `/hf_repo/${encodeURIComponent(repoId)}/tree/${encodeURIComponent(commitHash)}`,
+    msTree: (repoId: string, commitHash: string) =>
+      `/ms_repo/${encodeURIComponent(repoId)}/tree/${encodeURIComponent(commitHash)}`,
     fileUrl: (repoId: string, commitHash: string, path: string) =>
       `/hf_repo/${encodeURIComponent(repoId)}/file?commit_hash=${encodeURIComponent(commitHash)}&path=${encodeURIComponent(path)}`,
+    msFileUrl: (repoId: string, commitHash: string, path: string) =>
+      `/ms_repo/${encodeURIComponent(repoId)}/file?commit_hash=${encodeURIComponent(commitHash)}&path=${encodeURIComponent(path)}`,
     batchDelete: "/batch/repo-delete",
     batchDeleteStatus: (operationId: string) =>
       `/batch/repo-delete/${operationId}/status`,
@@ -88,6 +97,7 @@ const endpoints = {
   health: {
     announcement: "/health/announcement",
     hfEndpoints: "/health/hf-endpoints",
+    msEndpoints: "/health/ms-endpoints",
   },
 
   system: {

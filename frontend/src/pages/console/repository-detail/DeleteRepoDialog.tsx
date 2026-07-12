@@ -21,6 +21,7 @@ interface DeleteRepoDialogProps {
   repoId: string;
   repoName: string;
   onDeleted: () => void;
+  source?: "huggingface" | "modelscope";
 }
 
 export function DeleteRepoDialog({
@@ -29,9 +30,10 @@ export function DeleteRepoDialog({
   repoId,
   repoName,
   onDeleted,
+  source = "huggingface",
 }: DeleteRepoDialogProps) {
   const queryClient = useQueryClient();
-  const deleteRepo = useDeleteRepo();
+  const deleteRepo = useDeleteRepo(source);
 
   const handleConfirmDelete = () => {
     deleteRepo.mutate(repoId, {

@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SectionLabel } from "@/components/shared";
-import { cn } from "@/lib/utils";
 import type { RepoSource, RepoType } from "@/lib/api/types";
 import { Field } from "./Field";
 
@@ -29,6 +28,7 @@ interface RepoFormStepProps {
   onFormDataChange: (data: FormData) => void;
   hfEndpoints: string[];
   defaultEndpoint: string;
+  defaultMSEndpoint: string;
   previewError: string | null;
 }
 
@@ -43,6 +43,7 @@ export function RepoFormStep({
   onFormDataChange,
   hfEndpoints,
   defaultEndpoint,
+  defaultMSEndpoint,
   previewError,
 }: RepoFormStepProps) {
   return (
@@ -60,21 +61,24 @@ export function RepoFormStep({
           {/* 来源 */}
           <section className="space-y-3">
             <SectionLabel>来源</SectionLabel>
-            <div
-              className={cn(
-                "grid gap-4",
-                formData.source === "huggingface"
-                  ? "grid-cols-3"
-                  : "grid-cols-2",
-              )}
-            >
+            <div className="grid gap-4 grid-cols-3">
               <Field id="source" label="仓库来源">
-                <Select value={formData.source} disabled>
+                <Select
+                  value={formData.source}
+                  onValueChange={(v) =>
+                    onFormDataChange({
+                      ...formData,
+                      source: v as RepoSource,
+                      revision: "",
+                    })
+                  }
+                >
                   <SelectTrigger id="source" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="huggingface">HuggingFace</SelectItem>
+                    <SelectItem value="modelscope">ModelScope</SelectItem>
                   </SelectContent>
                 </Select>
               </Field>
@@ -122,6 +126,18 @@ export function RepoFormStep({
                   </Select>
                 </Field>
               )}
+
+              {formData.source === "modelscope" && (
+                <Field id="ms_endpoint" label="MS Endpoint">
+                  <Input
+                    id="ms_endpoint"
+                    value={defaultMSEndpoint || "使用默认"}
+                    readOnly
+                    placeholder="https://modelscope.cn"
+                    className="bg-muted/50 text-muted-foreground cursor-not-allowed"
+                  />
+                </Field>
+              )}
             </div>
           </section>
 
@@ -132,11 +148,19 @@ export function RepoFormStep({
               <Field
                 id="repo_id"
                 label="仓库 ID"
-                hint="HuggingFace 仓库标识符，格式为 org/repo-name"
+                hint={
+                  formData.source === "huggingface"
+                    ? "HuggingFace 仓库标识符，格式为 org/repo-name"
+                    : "ModelScope 仓库标识符，格式为 org/repo-name"
+                }
               >
                 <Input
                   id="repo_id"
-                  placeholder="如：deepseek-ai/DeepSeek-V4-Flash"
+                  placeholder={
+                    formData.source === "huggingface"
+                      ? "如：deepseek-ai/DeepSeek-V4-Flash"
+                      : "如：AI-ModelScope/deepseek-v3"
+                  }
                   value={formData.repo_id}
                   onChange={(e) =>
                     onFormDataChange({ ...formData, repo_id: e.target.value })
@@ -145,10 +169,18 @@ export function RepoFormStep({
                 />
               </Field>
 
-              <Field id="revision" label="版本 / 分支" hint="留空则使用 main">
+              <Field
+                id="revision"
+                label="版本 / 分支"
+                hint={
+                  formData.source === "huggingface"
+                    ? "留空则使用 main"
+                    : "留空则使用 master"
+                }
+              >
                 <Input
                   id="revision"
-                  placeholder="main"
+                  placeholder={formData.source === "huggingface" ? "main" : "master"}
                   value={formData.revision}
                   onChange={(e) =>
                     onFormDataChange({ ...formData, revision: e.target.value })
