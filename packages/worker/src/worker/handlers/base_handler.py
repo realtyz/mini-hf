@@ -37,7 +37,11 @@ from worker.handlers.file_processor import (
     FileProcessResult,
     download_and_upload_files,
 )
-from worker.handlers.source_types import AuthHeaderBuilder, UrlBuilder
+from worker.handlers.source_types import (
+    AuthHeaderBuilder,
+    BlobKeyBuilder,
+    UrlBuilder,
+)
 from worker.handlers.progress_tracker import TaskProgressTracker
 
 
@@ -86,7 +90,7 @@ class TreeLifecycle(ABC):
 
 
 class DownloadInfrastructure(ABC):
-    """Protocol for file download execution and URL/auth configuration (phase 5)."""
+    """Protocol for file download execution and URL/auth/blob-key configuration (phase 5)."""
 
     @abstractmethod
     async def execute_downloads(self) -> None:
@@ -99,6 +103,10 @@ class DownloadInfrastructure(ABC):
     @abstractmethod
     def build_auth_header_builder(self) -> AuthHeaderBuilder:
         """Return an AuthHeaderBuilder callable for the file processor."""
+
+    @abstractmethod
+    def build_blob_key_builder(self) -> BlobKeyBuilder:
+        """Return a BlobKeyBuilder callable for the file processor."""
 
 
 class CleanupLifecycle(ABC):
@@ -317,6 +325,7 @@ class BaseDownloadHandler(
             progress_tracker=self._progress_tracker,
             url_builder=self.build_url_builder(),
             auth_header_builder=self.build_auth_header_builder(),
+            blob_key_builder=self.build_blob_key_builder(),
             infra=FileProcessInfrastructure(
                 download_semaphore=asyncio.Semaphore(
                     settings.WORKER_CONCURRENT_DOWNLOADS
