@@ -15,6 +15,8 @@ class ConfigKey(StrEnum):
     SMTP_FROM_EMAIL = "smtp_from_email"
     HF_ENDPOINTS = "hf_endpoints"
     HF_DEFAULT_ENDPOINT = "hf_default_endpoint"
+    MS_ENDPOINTS = "ms_endpoints"
+    MS_DEFAULT_ENDPOINT = "ms_default_endpoint"
     NOTIFICATION_EMAIL = "notification_email"
     NOTIFICATION_TASK_APPROVAL = "notification_task_approval"
     AUTO_APPROVE_ENABLED = "auto_approve_enabled"
@@ -35,6 +37,7 @@ class ConfigValueType(StrEnum):
 class ConfigCategory(StrEnum):
     EMAIL = "email"
     HUGGINGFACE = "huggingface"
+    MODELSCOPE = "modelscope"
     NOTIFICATION = "notification"
     TASK_CONTROL = "task_control"
 
@@ -115,6 +118,12 @@ class ConfigRegistry:
             label="HF 配置",
             description="Endpoint 节点管理",
             visual="huggingface",
+        ),
+        ConfigCategory.MODELSCOPE: ConfigCategoryMetadata(
+            id=ConfigCategory.MODELSCOPE,
+            label="MS 配置",
+            description="ModelScope endpoint 节点管理",
+            visual="modelscope",
         ),
         ConfigCategory.NOTIFICATION: ConfigCategoryMetadata(
             id=ConfigCategory.NOTIFICATION,
@@ -375,6 +384,34 @@ ConfigRegistry.register(
         category=ConfigCategory.HUGGINGFACE,
         label="默认 Endpoint",
         description="Default HuggingFace endpoint",
+        required=True,
+    )
+)
+
+# ═══════════════════════════════════════════════════════════════════
+# ModelScope
+# ═══════════════════════════════════════════════════════════════════
+
+ConfigRegistry.register(
+    ConfigEntry(
+        key=ConfigKey.MS_ENDPOINTS,
+        type=ConfigValueType.JSON,
+        default=["https://modelscope.cn"],
+        category=ConfigCategory.MODELSCOPE,
+        label="可用 Endpoints",
+        description="ModelScope endpoint list (JSON array)",
+        required=True,
+        ui=UIMetadata(widget="hf_endpoint_list"),
+    )
+)
+ConfigRegistry.register(
+    ConfigEntry(
+        key=ConfigKey.MS_DEFAULT_ENDPOINT,
+        type=ConfigValueType.STRING,
+        default="https://modelscope.cn",
+        category=ConfigCategory.MODELSCOPE,
+        label="默认 Endpoint",
+        description="Default ModelScope endpoint",
         required=True,
     )
 )
