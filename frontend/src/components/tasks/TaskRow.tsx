@@ -25,6 +25,7 @@ import {
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { RetryTaskDialog } from "@/components/tasks/RetryTaskDialog";
 import { formatBytes } from "@/lib/utils";
+import { getSourceLabel } from "@/lib/constants/source";
 import type { TaskResponse } from "@/lib/api/types";
 import { cn, isWithin7Days } from "@/lib/utils";
 import { motion } from "framer-motion";
@@ -246,6 +247,14 @@ export const TaskRow = memo(function TaskRow({
         <span className="block truncate max-w-70 text-[13px] font-medium text-foreground/80 group-hover:text-primary transition-colors">
           {task.repo_id}
         </span>
+      </TableCell>
+      <TableCell className="py-3 text-center">
+        <Badge
+          variant={task.source === "huggingface" ? "warning" : "info"}
+          className="text-[11px] font-medium rounded-lg px-2.5 py-0.5"
+        >
+          {getSourceLabel(task.source)}
+        </Badge>
       </TableCell>
       <TableCell className="py-3 text-center">
         <code className="text-[12.5px] bg-muted/50 px-1.5 py-0.5 rounded-md font-mono text-muted-foreground">

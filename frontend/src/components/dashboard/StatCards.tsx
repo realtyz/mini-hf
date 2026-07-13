@@ -44,6 +44,7 @@ interface StatCardProps {
   value: number;
   icon: React.ReactNode;
   description: string;
+  descriptionNode?: React.ReactNode;
   isLoading?: boolean;
   isStorage?: boolean;
   index: number;
@@ -54,6 +55,7 @@ const StatCard = memo(function StatCard({
   value,
   icon,
   description,
+  descriptionNode,
   isLoading,
   isStorage,
   index,
@@ -93,7 +95,9 @@ const StatCard = memo(function StatCard({
           </CardTitle>
         </CardHeader>
         <CardContent className="px-6 pt-2">
-          <p className="text-[11px] text-muted-foreground/70">{description}</p>
+          {descriptionNode ?? (
+            <p className="text-[11px] text-muted-foreground/70">{description}</p>
+          )}
         </CardContent>
       </Card>
     </motion.div>
@@ -102,6 +106,19 @@ const StatCard = memo(function StatCard({
 
 export function StatCards() {
   const { stats, isLoading } = useDashboardStats();
+
+  const repoSplit = (
+    <div className="flex items-center gap-1.5 flex-wrap">
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+        HuggingFace
+        <span className="tabular-nums">{stats.hfRepos}</span>
+      </span>
+      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] font-medium bg-orange-50 text-orange-700 dark:bg-orange-950 dark:text-orange-300">
+        ModelScope
+        <span className="tabular-nums">{stats.msRepos}</span>
+      </span>
+    </div>
+  );
 
   const cards = [
     {
@@ -121,7 +138,8 @@ export function StatCards() {
       title: "仓库总数",
       value: stats.totalRepos,
       icon: <Database className="size-4" />,
-      description: "已缓存的 HuggingFace 仓库",
+      description: "已缓存的 HuggingFace / ModelScope 仓库",
+      descriptionNode: repoSplit,
     },
     {
       title: "下载次数",

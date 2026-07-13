@@ -377,6 +377,8 @@ export interface RepoTreeResponse {
 
 export interface DashboardStats {
   total_repos: number;
+  hf_repos: number;
+  ms_repos: number;
   total_files: number;
   storage_capacity: number;
   total_downloads: number;

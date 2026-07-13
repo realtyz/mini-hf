@@ -152,7 +152,13 @@ class DashboardStats(BaseModel):
     """Dashboard statistics data."""
 
     total_repos: int = Field(
+        ..., description="Total number of repositories (excluding inactive)"
+    )
+    hf_repos: int = Field(
         ..., description="Total number of HuggingFace repositories (excluding inactive)"
+    )
+    ms_repos: int = Field(
+        ..., description="Total number of ModelScope repositories (excluding inactive)"
     )
     total_files: int = Field(..., description="Total number of files in S3 bucket")
     storage_capacity: int = Field(..., description="Total storage capacity in bytes")

@@ -1,6 +1,6 @@
 import { useState, useRef, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Smile, Globe, Loader2, Clock, Pin } from "lucide-react";
+import { Loader2, Clock, Pin } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { TaskResponse, TaskStatus } from "@/lib/api/types";
 import { TASK_STATUS_CONFIG } from "@/lib/constants/task-status";
@@ -122,11 +122,13 @@ const TaskListItem = memo(function TaskListItem({
         <div className="flex-1 min-w-0">
           {/* Repo info - single line */}
           <div className="flex items-center gap-1.5">
-            {task.source === "huggingface" ? (
-              <Smile className="h-3 w-3 text-orange-500 shrink-0" />
-            ) : (
-              <Globe className="h-3 w-3 text-blue-500 shrink-0" />
-            )}
+            <Badge
+              variant={task.source === "huggingface" ? "warning" : "info"}
+              className="text-[9px] px-1 py-0 h-3.5 shrink-0 font-semibold"
+              title={task.source === "huggingface" ? "HuggingFace" : "ModelScope"}
+            >
+              {task.source === "huggingface" ? "HF" : "MS"}
+            </Badge>
             <span
               className="font-medium text-xs truncate group-hover:text-primary transition-colors"
               title={task.repo_id}

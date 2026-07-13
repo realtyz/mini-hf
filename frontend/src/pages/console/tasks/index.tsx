@@ -278,6 +278,11 @@ export function TasksConsole() {
                         仓库
                       </span>
                     </TableHead>
+                    <TableHead className="w-28 text-center">
+                      <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                        来源
+                      </span>
+                    </TableHead>
                     <TableHead className="w-24 text-center">
                       <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
                         版本
