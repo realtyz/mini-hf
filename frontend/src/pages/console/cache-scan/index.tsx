@@ -139,6 +139,8 @@ export function CacheScan() {
     setSearch,
     categoryFilter,
     setCategoryFilter,
+    sourceFilter,
+    setSourceFilter,
     sortField,
     sortDirection,
     setSort,
@@ -154,7 +156,8 @@ export function CacheScan() {
     useState<BatchDeleteOperationState | null>(null);
   const completedOpRef = useRef<string | null>(null);
   const queryClient = useQueryClient();
-  const deleteRepo = useDeleteRepo();
+  const deleteRepoHf = useDeleteRepo("huggingface");
+  const deleteRepoMs = useDeleteRepo("modelscope");
   const batchDeleteRepos = useBatchDeleteRepos();
   const batchDeleteStatus = useBatchDeleteStatus(batchOperationId);
 
@@ -173,6 +176,13 @@ export function CacheScan() {
       setSelectedIds(new Set());
     },
     [setCategoryFilter],
+  );
+  const handleSetSourceFilter = useCallback(
+    (v: "all" | "huggingface" | "modelscope") => {
+      setSourceFilter(v);
+      setSelectedIds(new Set());
+    },
+    [setSourceFilter],
   );
 
   useEffect(() => {
@@ -228,8 +238,9 @@ export function CacheScan() {
   const handleClearFilters = useCallback(() => {
     setSearch("");
     setCategoryFilter("all");
+    setSourceFilter("all");
     setSelectedIds(new Set());
-  }, [setSearch, setCategoryFilter]);
+  }, [setSearch, setCategoryFilter, setSourceFilter]);
 
   const handleToggleSelect = useCallback((repoId: string) => {
     setSelectedIds((prev) => {
@@ -267,13 +278,15 @@ export function CacheScan() {
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     const repoTypes: Record<string, string> = {};
+    const sources: Record<string, string> = {};
     for (const repo of result?.repos ?? []) {
       if (selectedIds.has(repo.repo_id)) {
         repoTypes[repo.repo_id] = repo.repo_type;
+        sources[repo.repo_id] = repo.source;
       }
     }
     batchDeleteRepos.mutate(
-      { repoIds: ids, repoTypes },
+      { repoIds: ids, repoTypes, sources },
       {
         onSuccess: (data) => {
           setBatchOperationId(data.operation_id);
@@ -290,6 +303,7 @@ export function CacheScan() {
   const handleConfirmDelete = () => {
     if (!deletingRepoId) return;
     const repo = result?.repos.find((r) => r.repo_id === deletingRepoId);
+    const deleteRepo = repo?.source === "modelscope" ? deleteRepoMs : deleteRepoHf;
     deleteRepo.mutate(
       { repoId: deletingRepoId, repoType: repo?.repo_type },
       {
@@ -326,6 +340,8 @@ export function CacheScan() {
         onRefresh={() => refetch()}
         categoryFilter={categoryFilter}
         setCategoryFilter={handleSetCategoryFilter}
+        sourceFilter={sourceFilter}
+        setSourceFilter={handleSetSourceFilter}
         search={search}
         setSearch={handleSetSearch}
         filteredCount={filteredRepos.length}
@@ -451,7 +467,7 @@ export function CacheScan() {
         open={deleteDialogOpen}
         onOpenChange={setDeleteDialogOpen}
         repoId={deletingRepoId}
-        isDeleting={deleteRepo.isPending}
+        isDeleting={deleteRepoHf.isPending || deleteRepoMs.isPending}
         onConfirm={handleConfirmDelete}
       />
 

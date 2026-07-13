@@ -240,6 +240,20 @@ const CacheScanRow = memo(function CacheScanRow({
         </Badge>
       </TableCell>
 
+      <TableCell className="py-3 text-center">
+        <Badge
+          variant="outline"
+          className={cn(
+            "text-[11px] font-medium rounded-lg px-2.5 py-0.5",
+            repo.source === "modelscope"
+              ? "bg-teal-50 text-teal-700 border-teal-200/50 dark:bg-teal-950/30 dark:text-teal-300 dark:border-teal-800/40"
+              : "bg-sky-50 text-sky-700 border-sky-200/50 dark:bg-sky-950/30 dark:text-sky-300 dark:border-sky-800/40",
+          )}
+        >
+          {repo.source === "modelscope" ? "ModelScope" : "HuggingFace"}
+        </Badge>
+      </TableCell>
+
       <TableCell className="text-[13px] text-center tabular-nums py-3 font-medium text-foreground/70">
         {repo.downloads.toLocaleString()}
       </TableCell>
@@ -333,7 +347,7 @@ const CacheScanRow = memo(function CacheScanRow({
                   className="text-[13px] cursor-pointer rounded-lg"
                   onClick={() => {
                     navigate(
-                      `/console/repositories/detail?repoId=${encodeURIComponent(repo.repo_id)}&type=${repo.repo_type}`,
+                      `/console/repositories/detail?repoId=${encodeURIComponent(repo.repo_id)}&type=${repo.repo_type}&source=${repo.source}`,
                     );
                   }}
                 >
@@ -471,6 +485,11 @@ export function CacheScanTable({
                   <TableHead className="w-17.5 text-center">
                     <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
                       分类
+                    </span>
+                  </TableHead>
+                  <TableHead className="w-24 text-center">
+                    <span className="text-[11px] font-semibold tracking-wider uppercase text-muted-foreground select-none">
+                      来源
                     </span>
                   </TableHead>
                   <TableHead className="w-22.5 text-center">

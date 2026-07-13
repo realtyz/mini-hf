@@ -1,6 +1,7 @@
 import { useState, useMemo, useDeferredValue } from "react";
 import type {
   RepoScanItem,
+  RepoSource,
   ScanCategory,
   ScanResultData,
 } from "@/lib/api/types";
@@ -11,12 +12,15 @@ export type SortField =
   | "cache_updated_at"
   | "downloads";
 export type SortDirection = "asc" | "desc";
+export type SourceFilter = "all" | RepoSource;
 
 interface UseCacheScanFiltersReturn {
   search: string;
   setSearch: (v: string) => void;
   categoryFilter: "all" | ScanCategory;
   setCategoryFilter: (v: "all" | ScanCategory) => void;
+  sourceFilter: SourceFilter;
+  setSourceFilter: (v: SourceFilter) => void;
   sortField: SortField | null;
   sortDirection: SortDirection;
   setSort: (field: SortField) => void;
@@ -49,6 +53,7 @@ export function useCacheScanFilters(
   const [categoryFilter, setCategoryFilter] = useState<"all" | ScanCategory>(
     "all",
   );
+  const [sourceFilter, setSourceFilter] = useState<SourceFilter>("all");
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
 
@@ -75,19 +80,24 @@ export function useCacheScanFilters(
     if (categoryFilter !== "all") {
       repos = repos.filter((r) => r.category === categoryFilter);
     }
+    if (sourceFilter !== "all") {
+      repos = repos.filter((r) => r.source === sourceFilter);
+    }
     if (sortField) {
       repos.sort((a, b) =>
         nullsLastCompare(a[sortField], b[sortField], sortDirection),
       );
     }
     return repos;
-  }, [result, deferredSearch, categoryFilter, sortField, sortDirection]);
+  }, [result, deferredSearch, categoryFilter, sourceFilter, sortField, sortDirection]);
 
   return {
     search,
     setSearch,
     categoryFilter,
     setCategoryFilter,
+    sourceFilter,
+    setSourceFilter,
     sortField,
     sortDirection,
     setSort,

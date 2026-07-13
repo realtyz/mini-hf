@@ -19,6 +19,7 @@ class RepoScanItem(BaseModel):
     repo_id: str
     repo_type: str
     category: ScanCategory
+    source: str = "huggingface"
     pipeline_tag: str | None = None
     downloads: int
     last_downloaded_at: datetime | None = None

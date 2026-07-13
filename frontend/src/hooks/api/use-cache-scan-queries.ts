@@ -43,13 +43,16 @@ export function useBatchDeleteRepos() {
     mutationFn: ({
       repoIds,
       repoTypes,
+      sources,
     }: {
       repoIds: string[];
       repoTypes?: Record<string, string>;
+      sources?: Record<string, string>;
     }) =>
       api.post<BatchDeleteRepoResponse>(endpoints.repo.batchDelete, {
         repo_ids: repoIds,
         repo_types: repoTypes,
+        sources,
       }),
   });
 }

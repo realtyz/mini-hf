@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import type { ScanCategory } from "@/lib/api/types";
+import type { SourceFilter } from "./use-cache-scan-filters";
 
 interface CacheScanToolbarProps {
   isAdmin: boolean;
@@ -25,6 +26,8 @@ interface CacheScanToolbarProps {
   onRefresh: () => void;
   categoryFilter: "all" | ScanCategory;
   setCategoryFilter: (v: "all" | ScanCategory) => void;
+  sourceFilter: SourceFilter;
+  setSourceFilter: (v: SourceFilter) => void;
   search: string;
   setSearch: (v: string) => void;
   filteredCount: number;
@@ -41,6 +44,8 @@ export function CacheScanToolbar({
   onRefresh,
   categoryFilter,
   setCategoryFilter,
+  sourceFilter,
+  setSourceFilter,
   search,
   setSearch,
   filteredCount,
@@ -215,6 +220,45 @@ export function CacheScanToolbar({
               )}
             >
               未追踪
+            </button>
+          </div>
+
+          <div className="flex items-center rounded-xl border border-border/60 bg-muted/30 p-1 gap-0.5">
+            <button
+              type="button"
+              onClick={() => setSourceFilter("all")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
+                sourceFilter === "all"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              全部来源
+            </button>
+            <button
+              type="button"
+              onClick={() => setSourceFilter("huggingface")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
+                sourceFilter === "huggingface"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              HuggingFace
+            </button>
+            <button
+              type="button"
+              onClick={() => setSourceFilter("modelscope")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all duration-200 cursor-pointer",
+                sourceFilter === "modelscope"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              ModelScope
             </button>
           </div>
 

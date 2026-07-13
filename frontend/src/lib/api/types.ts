@@ -145,6 +145,7 @@ export interface RepoScanItem {
   category: ScanCategory;
   repo_id: string;
   repo_type: string;
+  source: RepoSource;
   pipeline_tag: string | null;
   downloads: number;
   last_downloaded_at: string | null;
@@ -728,6 +729,10 @@ export type TaskPreviewResponse = ApiResponse<TaskPreviewData>;
 
 export interface BatchDeleteRepoRequest {
   repo_ids: string[];
+  /** repo_id -> repo_type (model|dataset), for untracked repos */
+  repo_types?: Record<string, string>;
+  /** repo_id -> source (huggingface|modelscope), selects delete service */
+  sources?: Record<string, string>;
 }
 
 export interface BatchDeleteRepoItem {

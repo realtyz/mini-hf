@@ -196,7 +196,15 @@ class BatchDeleteRepoRequest(BaseModel):
     )
     repo_types: dict[str, str] | None = Field(
         None,
-        description="Optional mapping of repo_id → repo_type (model|dataset) for untracked repos",
+        description="Optional mapping of repo_id -> repo_type (model|dataset) for untracked repos",
+    )
+    sources: dict[str, str] | None = Field(
+        None,
+        description=(
+            "Optional mapping of repo_id -> source (huggingface|modelscope). "
+            "Determines which repo service deletes each repo. Defaults to "
+            "'huggingface' when absent."
+        ),
     )
 
 
