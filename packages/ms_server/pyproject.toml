@@ -5,7 +5,7 @@ description = "ModelScope-compatible API server for hub client integration (port
 requires-python = ">=3.12,<3.13"
 readme = "README.md"
 authors = [{ name = "realtyz", email = "realtyz@outlook.com" }]
-dependencies = ["database", "fastapi[standard]>=0.133.1"]
+dependencies = ["core", "database", "storage", "fastapi[standard]>=0.133.1"]
 
 [build-system]
 requires = ["hatchling"]
@@ -15,4 +15,6 @@ build-backend = "hatchling.build"
 packages = ["src/ms_server"]
 
 [tool.uv.sources]
+core = { workspace = true }
 database = { workspace = true }
+storage = { workspace = true }

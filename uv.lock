@@ -800,14 +800,18 @@ name = "ms-server"
 version = "0.1.0"
 source = { editable = "packages/ms_server" }
 dependencies = [
+    { name = "core" },
     { name = "database" },
     { name = "fastapi", extra = ["standard"] },
+    { name = "storage" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "core", editable = "packages/core" },
     { name = "database", editable = "packages/database" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.133.1" },
+    { name = "storage", editable = "packages/storage" },
 ]
 
 [[package]]
