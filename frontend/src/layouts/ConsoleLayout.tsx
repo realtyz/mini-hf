@@ -68,6 +68,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { queryClient } from "@/lib/query/client";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { MiniHfLogoMark } from "@/components/shared/Logo";
+import { GitHubIcon } from "@/components/shared/GitHubIcon";
 
 // =============================================================================
 // Types & Interfaces
@@ -553,7 +554,26 @@ function ConsoleHeader() {
           <HeaderLink to="/repositories" icon={Boxes} label="仓库列表" />
           <HeaderLink to="/tasks" icon={ListTodo} label="任务列表" />
         </div>
-        <ThemeToggle />
+        <div className="flex items-center gap-0.5">
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href="https://github.com/realtyz/mini-hf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
+                >
+                  <GitHubIcon className="h-4 w-4" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="center">
+                <p className="text-xs">Give me a star</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+          <ThemeToggle />
+        </div>
         <UserDropdown />
       </div>
     </header>

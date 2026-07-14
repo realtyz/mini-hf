@@ -16,7 +16,14 @@ import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Logo } from "@/components/shared/Logo";
+import { GitHubIcon } from "@/components/shared/GitHubIcon";
 import { ThemeToggle } from "@/components/theme/ThemeToggle";
 import { landingContent } from "@/lib/constants/landing";
 import { useAuthStore } from "@/stores/auth-store";
@@ -260,6 +267,24 @@ export function Header({
 
         {/* Right Side Actions */}
         <div className="flex items-center gap-3 ml-auto">
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <a
+                  href="https://github.com/realtyz/mini-hf"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
+                >
+                  <GitHubIcon className="h-4 w-4" />
+                </a>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="center">
+                <p className="text-xs">Give me a star</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
           <ThemeToggle />
 
           <div className="h-6 w-px bg-linear-to-b from-transparent via-border to-transparent" />

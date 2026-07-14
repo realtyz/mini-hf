@@ -10,3 +10,4 @@ export { ConfirmDialog } from "./ConfirmDialog";
 export { ListFooter } from "./ListFooter";
 export { SpotlightCard } from "./SpotlightCard";
 export { SectionLabel } from "./SectionLabel";
+export { GitHubIcon } from "./GitHubIcon";
