@@ -27,6 +27,8 @@ export function useDashboardStats() {
   return {
     stats: {
       totalRepos: data?.data?.total_repos ?? 0,
+      hfRepos: data?.data?.hf_repos ?? 0,
+      msRepos: data?.data?.ms_repos ?? 0,
       totalFiles: data?.data?.total_files ?? 0,
       storageCapacity: data?.data?.storage_capacity ?? 0,
       totalDownloads: data?.data?.total_downloads ?? 0,

@@ -152,7 +152,13 @@ class DashboardStats(BaseModel):
     """Dashboard statistics data."""
 
     total_repos: int = Field(
+        ..., description="Total number of repositories (excluding inactive)"
+    )
+    hf_repos: int = Field(
         ..., description="Total number of HuggingFace repositories (excluding inactive)"
+    )
+    ms_repos: int = Field(
+        ..., description="Total number of ModelScope repositories (excluding inactive)"
     )
     total_files: int = Field(..., description="Total number of files in S3 bucket")
     storage_capacity: int = Field(..., description="Total storage capacity in bytes")
@@ -190,7 +196,15 @@ class BatchDeleteRepoRequest(BaseModel):
     )
     repo_types: dict[str, str] | None = Field(
         None,
-        description="Optional mapping of repo_id → repo_type (model|dataset) for untracked repos",
+        description="Optional mapping of repo_id -> repo_type (model|dataset) for untracked repos",
+    )
+    sources: dict[str, str] | None = Field(
+        None,
+        description=(
+            "Optional mapping of repo_id -> source (huggingface|modelscope). "
+            "Determines which repo service deletes each repo. Defaults to "
+            "'huggingface' when absent."
+        ),
     )
 
 

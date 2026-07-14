@@ -13,6 +13,10 @@ interface HfEndpointListFieldProps {
   value: unknown;
   form: Record<string, unknown>;
   onChange: (key: string, value: unknown) => void;
+  /** Form key of the sibling default-endpoint field (e.g. hf_default_endpoint / ms_default_endpoint). */
+  defaultEndpointKey: string;
+  /** Placeholder for each endpoint input (e.g. https://huggingface.co). */
+  placeholder: string;
 }
 
 export const HfEndpointListField = memo(function HfEndpointListField({
@@ -21,6 +25,8 @@ export const HfEndpointListField = memo(function HfEndpointListField({
   value,
   form,
   onChange,
+  defaultEndpointKey,
+  placeholder,
 }: HfEndpointListFieldProps) {
   const endpoints = useMemo(
     () => (Array.isArray(value) ? value.map(String) : []),
@@ -30,9 +36,9 @@ export const HfEndpointListField = memo(function HfEndpointListField({
   function updateEndpoints(next: string[]) {
     onChange(field.key, next);
     const nonEmpty = next.filter((e) => e.trim() !== "");
-    const defaultEndpoint = String(form.hf_default_endpoint ?? "");
+    const defaultEndpoint = String(form[defaultEndpointKey] ?? "");
     if (nonEmpty.length > 0 && !nonEmpty.includes(defaultEndpoint)) {
-      onChange("hf_default_endpoint", nonEmpty[0]);
+      onChange(defaultEndpointKey, nonEmpty[0]);
     }
   }
 
@@ -69,7 +75,7 @@ export const HfEndpointListField = memo(function HfEndpointListField({
             >
               <Input
                 value={endpoint}
-                placeholder="https://huggingface.co"
+                placeholder={placeholder}
                 className="transition-all duration-200 focus-visible:ring-primary/20"
                 onChange={(event) => handleChange(index, event.target.value)}
               />

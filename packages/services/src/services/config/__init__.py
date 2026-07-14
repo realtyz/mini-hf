@@ -34,6 +34,7 @@ from services.config.service import (
     ConfigService,
     ConfigUpdateItem,
     HFEndpointConfig,
+    MSEndpointConfig,
     NotificationConfig,
     SMTPConfig,
 )
@@ -48,6 +49,7 @@ __all__ = [
     "ConfigService",
     "ConfigUpdateItem",
     "HFEndpointConfig",
+    "MSEndpointConfig",
     "NotificationConfig",
     "SMTPConfig",
 ]

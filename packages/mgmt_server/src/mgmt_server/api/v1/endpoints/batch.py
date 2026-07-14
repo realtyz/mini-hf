@@ -39,7 +39,10 @@ async def batch_delete_repositories(
         request.repo_ids
     )
     bg_task = batch_delete_service.create_background_task(
-        operation_id, unique_ids, repo_types=request.repo_types
+        operation_id,
+        unique_ids,
+        repo_types=request.repo_types,
+        sources=request.sources,
     )
     background_tasks.add_task(bg_task)
     return BatchDeleteRepoResponse(

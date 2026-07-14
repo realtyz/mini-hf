@@ -145,6 +145,7 @@ export interface RepoScanItem {
   category: ScanCategory;
   repo_id: string;
   repo_type: string;
+  source: RepoSource;
   pipeline_tag: string | null;
   downloads: number;
   last_downloaded_at: string | null;
@@ -377,6 +378,8 @@ export interface RepoTreeResponse {
 
 export interface DashboardStats {
   total_repos: number;
+  hf_repos: number;
+  ms_repos: number;
   total_files: number;
   storage_capacity: number;
   total_downloads: number;
@@ -467,6 +470,11 @@ export interface HFEndpointConfigResponse {
   default_endpoint: string;
 }
 
+export interface MSEndpointConfigResponse {
+  endpoints: string[];
+  default_endpoint: string;
+}
+
 export interface HFEndpointSaveRequest {
   endpoints: string[];
   default_endpoint: string;
@@ -500,6 +508,8 @@ export interface ConfigUISchema {
   rows: number;
   helper_text: string;
   col_span: number;
+  /** For hf_endpoint_list widget: form key of the sibling default-endpoint field. */
+  default_endpoint_key: string;
 }
 
 export interface ConfigFieldSchema {
@@ -521,7 +531,7 @@ export interface ConfigCategorySchema {
   id: string;
   label: string;
   description: string;
-  visual: "email" | "huggingface" | "notification" | "task";
+  visual: "email" | "huggingface" | "notification" | "task" | "modelscope";
   fields: ConfigFieldSchema[];
   custom_actions: string[];
 }
@@ -719,6 +729,10 @@ export type TaskPreviewResponse = ApiResponse<TaskPreviewData>;
 
 export interface BatchDeleteRepoRequest {
   repo_ids: string[];
+  /** repo_id -> repo_type (model|dataset), for untracked repos */
+  repo_types?: Record<string, string>;
+  /** repo_id -> source (huggingface|modelscope), selects delete service */
+  sources?: Record<string, string>;
 }
 
 export interface BatchDeleteRepoItem {

@@ -91,3 +91,18 @@ class AuthHeaderBuilder(Protocol):
     """Callable that produces HTTP headers for authenticated downloads."""
 
     def __call__(self, access_token: str | None) -> dict[str, str] | None: ...
+
+
+# ------------------------------------------------------------------
+# Blob key builder
+# ------------------------------------------------------------------
+
+
+class BlobKeyBuilder(Protocol):
+    """Callable that produces an S3 key for a given blob.
+
+    Each source handler injects a builder that calls the appropriate
+    key builder function (build_blob_key for HF, build_ms_blob_key for MS).
+    """
+
+    def __call__(self, repo_id: str, repo_type: str, blob_id: str) -> str: ...

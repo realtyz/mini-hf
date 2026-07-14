@@ -10,6 +10,7 @@ members = [
     "hf-server",
     "mgmt-server",
     "mini-hf",
+    "ms-server",
     "services",
     "storage",
     "worker",
@@ -792,6 +793,25 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b6/cb/6b9d3fcbcd09db6cdd7f1e0fd60be2998c99db07be28f37982c0dbd14496/modelscope_hub-0.1.7.tar.gz", hash = "sha256:b78730f3923cf13d5fbc56c6224a5ba617bf111a562fe3808c03e34c3c07840f", size = 126616, upload-time = "2026-07-07T07:35:36.465Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/07/19/3554c99cfc633cca2ffab2cfc3c8cb064fa17f88bcb68afee7a81957ccc8/modelscope_hub-0.1.7-py3-none-any.whl", hash = "sha256:907e5da4d8b050277a3cbd79d1c2df4f723b549ba38f573f4ffb6d1cd1525349", size = 135758, upload-time = "2026-07-07T07:35:35.283Z" },
+]
+
+[[package]]
+name = "ms-server"
+version = "0.1.0"
+source = { editable = "packages/ms_server" }
+dependencies = [
+    { name = "core" },
+    { name = "database" },
+    { name = "fastapi", extra = ["standard"] },
+    { name = "storage" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "core", editable = "packages/core" },
+    { name = "database", editable = "packages/database" },
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.133.1" },
+    { name = "storage", editable = "packages/storage" },
 ]
 
 [[package]]

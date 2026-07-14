@@ -24,6 +24,7 @@ from mgmt_server.services.task_preview_service import TaskPreviewService
 from mgmt_server.services.cache_scan_service import CacheScanService
 from mgmt_server.services.repair_service import RepairService
 from mgmt_server.services.repo_service import RepoService
+from mgmt_server.services.ms_repo_service import MsRepoService
 from mgmt_server.services.batch_delete_service import BatchDeleteService
 from mgmt_server.services.task_lifecycle_service import TaskLifecycleService
 from mgmt_server.services.token_service import TokenService
@@ -96,6 +97,14 @@ async def get_repo_service(
 ) -> RepoService:
     """Get repository service dependency."""
     return RepoService(db, task_service=task_service)
+
+
+async def get_ms_repo_service(
+    db: Annotated[AsyncSession, Depends(unit_of_work)],
+    task_service: Annotated[TaskService, Depends(get_task_service)],
+) -> MsRepoService:
+    """Get ModelScope repository service dependency."""
+    return MsRepoService(db, task_service=task_service)
 
 
 async def get_task_lifecycle_service(
@@ -184,6 +193,7 @@ DbDep = Annotated[AsyncSession, Depends(unit_of_work)]
 CacheServiceDep = Annotated[CacheService, Depends(get_cache_service)]
 DashboardServiceDep = Annotated[DashboardService, Depends(get_dashboard_service)]
 RepoServiceDep = Annotated[RepoService, Depends(get_repo_service)]
+MsRepoServiceDep = Annotated[MsRepoService, Depends(get_ms_repo_service)]
 TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]
 TaskLifecycleServiceDep = Annotated[
     TaskLifecycleService, Depends(get_task_lifecycle_service)

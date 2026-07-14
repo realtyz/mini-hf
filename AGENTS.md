@@ -4,9 +4,9 @@ Workspace guide for ZCode agents working in `mini-hf`. Keep this short — for d
 
 ## What this is
 
-Mini-HF is a LAN-focused model cache for HuggingFace / ModelScope. It exposes HF Hub-compatible APIs (`HF_ENDPOINT`) so clients on an air-gapped LAN download models through a local cache instead of hitting upstream. Worker nodes need internet access to pull from upstream the first time; subsequent downloads use the cache.
+Mini-HF is a LAN-focused model cache for HuggingFace / ModelScope. It exposes Hub-compatible APIs (`HF_ENDPOINT` for HuggingFace, `MODELSCOPE_ENDPOINT` for ModelScope) so clients on an air-gapped LAN download models through a local cache instead of hitting upstream. Worker nodes need internet access to pull from upstream the first time; subsequent downloads use the cache.
 
-Two FastAPI servers + a worker, backed by PostgreSQL + Redis + S3-compatible storage. React 19 SPA frontend.
+Three FastAPI servers + a worker, backed by PostgreSQL + Redis + S3-compatible storage. React 19 SPA frontend.
 
 ## Read these first (depth lives here)
 
@@ -25,13 +25,14 @@ packages/          # uv workspace — backend (Python 3.12, FastAPI, async SQLAl
   services/        #   HF/ModelScope/task/config/email services + config registry
   mgmt_server/     #   Management API — port 9800, base /api/v1
   hf_server/       #   HF-compatible API — port 9801
+  ms_server/       #   ModelScope-compatible API - port 9802
   worker/          #   Task processor (custom poll loop, not FastAPI)
 frontend/          # React 19 SPA (Vite 7, pnpm)
 alembic/           # DB migrations (alembic.ini at repo root)
 docs/plans/        # design notes / audits
 ```
 
-**Backend dependency chain**: `mgmt_server` / `hf_server` / `worker` → `database` / `cache` / `storage` / `services` → `core`. Don't introduce cycles. Each server + the worker depend on the infrastructure packages, which all depend on `core`.
+**Backend dependency chain**: `mgmt_server` / `hf_server` / `ms_server` / `worker` → `database` / `cache` / `storage` / `services` → `core`. Don't introduce cycles. Each server + the worker depend on the infrastructure packages, which all depend on `core`.
 
 ## Commands
 
@@ -41,6 +42,7 @@ Backend (run from repo root, `uv`):
 uv sync                                              # install deps
 uv run --env-file .env.local python -m mgmt_server.main --reload   # mgmt API (9800)
 uv run --env-file .env.local python -m hf_server.main --reload    # HF API (9801)
+uv run --env-file .env.local python -m ms_server.main --reload     # MS API (9802)
 uv run --env-file .env.local python -m worker.main                # worker
 uv run alembic upgrade head                          # apply migrations
 uv run alembic revision --autogenerate -m "desc"     # new migration
@@ -78,7 +80,7 @@ There is **no frontend test runner**. Safety net is `pnpm tsc --noEmit` + `pnpm 
 ## Operational gotchas
 
 - **S3 is a required external dependency** — not shipped in `docker-compose.yml`. Bucket must already exist. `localhost` for `S3_ENDPOINT` won't work from inside a container; use the host's LAN IP / DNS name.
-- **`APP_HF_SERVER_URL`** is the public URL of the HF API server used in pagination links and download URLs returned to HF clients. Must be reachable from the LAN — not `localhost` in production.
+- **`APP_HF_SERVER_URL`** is the public URL of the HF API server used in pagination links and download URLs returned to HF clients. Must be reachable from the LAN — not `localhost` in production. Likewise **`APP_MS_SERVER_URL`** / `MS_SERVER_URL` (port 9802) is the public URL of the ModelScope API server, surfaced to docs/clients as `{{MS_ENDPOINT}}` / `MODELSCOPE_ENDPOINT`.
 - Local dev uses `.env.local` (backend) and `frontend/.env` (`APP_API_BASE_URL`). `.env.example` is the template.
 - Python is pinned `>=3.12,<3.13`. PyPI index is set to Tsinghua mirror in `pyproject.toml`.
 

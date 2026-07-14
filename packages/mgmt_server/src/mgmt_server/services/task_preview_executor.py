@@ -13,14 +13,18 @@ from typing import Any, NamedTuple
 
 from cache.keys import CacheKeys
 from cache.services.cache import CacheService
+from database.db_models import Source
 from loguru import logger
 from services.huggingface import HuggingfaceService, RepoFile, RepoFolder
+from services.huggingface.utils import filter_repo_objects
+from services.modelscope import ModelScopeService
 from services.task import TaskService
 from sqlalchemy.exc import DatabaseError
 
 from mgmt_server.core.exceptions import ValidationError
 from mgmt_server.utils.token_utils import encode_access_token
 from mgmt_server.services.repo_service import RepoService
+from mgmt_server.services.ms_repo_service import MsRepoService
 
 @dataclass
 class PreviewTaskConfig:
@@ -140,6 +144,152 @@ def build_preview_items(
     return preview_items
 
 
+# ------------------------------------------------------------------
+# ModelScope helpers (dict-based, not RepoFile/RepoFolder)
+# ------------------------------------------------------------------
+
+
+def build_ms_preview_items(
+    files: list[dict],
+    directories: list[dict],
+    required_file_paths: set[str],
+) -> list[dict[str, Any]]:
+    """Build preview items from ModelScope file-tree dicts.
+
+    Mirrors ``build_preview_items`` but reads dict keys (Path/Size) instead of
+    RepoFile/RepoFolder attributes.
+    """
+    preview_items: list[dict[str, Any]] = []
+    required_dirs: set[str] = set()
+    for file_path in required_file_paths:
+        parts = file_path.split("/")
+        for i in range(1, len(parts)):
+            required_dirs.add("/".join(parts[:i]))
+
+    for directory in sorted(directories, key=lambda d: d.get("Path", "")):
+        path = directory.get("Path", "")
+        preview_items.append(
+            {
+                "path": path,
+                "size": 0,
+                "type": "directory",
+                "required": path in required_dirs,
+            }
+        )
+
+    for file in sorted(files, key=lambda f: f.get("Path", "")):
+        path = file.get("Path", "")
+        preview_items.append(
+            {
+                "path": path,
+                "size": int(file.get("Size", 0)),
+                "type": "file",
+                "required": path in required_file_paths,
+            }
+        )
+
+    return preview_items
+
+
+async def _fetch_ms_repo_tree(
+    ms_service: ModelScopeService,
+    repo_id: str,
+    repo_type: str,
+    revision: str,
+    update_state: ProgressCallback,
+    task_logger: Any,
+    upstream_sha: str | None = None,
+) -> tuple[list[dict], list[dict], str]:
+    """Fetch repo file tree from ModelScope.
+
+    If upstream_sha is provided (from validate_repo_access), the resolve_commit
+    call is skipped and only get_repo_tree is called.
+    """
+    await update_state("fetching", "连接 ModelScope...", 5.0)
+    await update_state("fetching", "获取仓库文件树...", 10.0)
+
+    if upstream_sha is not None:
+        # commit already resolved by validate_repo_access - just fetch tree
+        entries = await ms_service.get_repo_tree(repo_id, repo_type, revision)
+        commit_hash = upstream_sha
+        task_logger.debug(
+            "Using upstream_sha from validate_repo_access, skipping resolve_commit"
+        )
+    else:
+        commit_hash, entries, _committed_at = await ms_service.resolve_commit(
+            repo_id, repo_type, revision
+        )
+
+    task_logger.info("Fetched {} entries from ModelScope repository", len(entries))
+    # entries: list[dict] with keys Path/Type/Size/...
+    files = [e for e in entries if e.get("Type") == "blob"]
+    directories = [e for e in entries if e.get("Type") == "tree"]
+    return files, directories, commit_hash
+
+
+async def _process_ms_files(
+    files: list[dict],
+    directories: list[dict],
+    full_download: bool,
+    allow_patterns: list[str] | None,
+    ignore_patterns: list[str] | None,
+    update_state: ProgressCallback,
+    task_logger: Any,
+) -> ProcessedFilesResult:
+    """Filter MS files, build preview items, and compute storage stats.
+
+    Uses the source-agnostic ``filter_repo_objects`` with ``key=lambda e: e["Path"]``.
+    """
+    total_storage = sum(int(f.get("Size", 0)) for f in files)
+    total_file_count = len(files)
+
+    await update_state("processing", f"Processing {total_file_count} files...", 50.0)
+
+    if full_download:
+        required_file_paths = {f.get("Path", "") for f in files}
+        task_logger.debug(
+            "Full download mode: all {} files required", len(required_file_paths)
+        )
+    else:
+        task_logger.info(
+            "Filtering files with allow_patterns={}, ignore_patterns={}",
+            allow_patterns,
+            ignore_patterns,
+        )
+        filtered_files = list(
+            filter_repo_objects(
+                files,
+                allow_patterns=allow_patterns,
+                ignore_patterns=ignore_patterns,
+                key=lambda e: e.get("Path", ""),
+            )
+        )
+        required_file_paths = {f.get("Path", "") for f in filtered_files}
+        task_logger.info(
+            "Filtered: {} of {} files match patterns",
+            len(required_file_paths),
+            len(files),
+        )
+
+    required_storage = sum(
+        int(f.get("Size", 0)) for f in files if f.get("Path", "") in required_file_paths
+    )
+    required_file_count = len(required_file_paths)
+
+    await update_state("processing", "Building preview data...", 80.0)
+
+    preview_items = build_ms_preview_items(files, directories, required_file_paths)
+
+    return ProcessedFilesResult(
+        required_file_paths=required_file_paths,
+        total_storage=total_storage,
+        total_file_count=total_file_count,
+        required_storage=required_storage,
+        required_file_count=required_file_count,
+        preview_items=preview_items,
+    )
+
+
 def _annotate_cached_status(
     preview_items: list[dict[str, Any]],
     cached_paths: set[str],
@@ -153,6 +303,7 @@ def _annotate_cached_status(
 
 
 async def check_cache_status_with_fresh_session(
+    source: str,
     repo_id: str,
     repo_type: str,
     revision: str,
@@ -162,13 +313,17 @@ async def check_cache_status_with_fresh_session(
 ) -> tuple[bool, str | None, set[str]]:
     """Check cache status using a fresh session (for background tasks).
 
-    Standalone function — does not depend on any request-scoped objects.
+    Standalone function - does not depend on any request-scoped objects.
+    Selects RepoService (HF) or MsRepoService (MS) by source.
     """
     from database import new_session
 
     try:
         async with new_session() as session:
-            repo_service = RepoService(session, task_service=TaskService(session))
+            if source == Source.MODELSCOPE.value:
+                repo_service = MsRepoService(session, task_service=TaskService(session))
+            else:
+                repo_service = RepoService(session, task_service=TaskService(session))
             all_cached, cached_commit_hash, cached_paths = await repo_service.check_cached_status(
                 repo_id=repo_id,
                 repo_type=repo_type,
@@ -375,36 +530,62 @@ async def execute_preview_task(
         )
 
     try:
-        hf_service = HuggingfaceService(
-            token=config.access_token, endpoint=config.actual_endpoint
-        )
+        if config.source == Source.MODELSCOPE.value:
+            # ModelScopeService holds an httpx.AsyncClient - must close via async with
+            async with ModelScopeService(
+                token=config.access_token, endpoint=config.actual_endpoint
+            ) as ms_service:
+                files, directories, commit_hash = await _fetch_ms_repo_tree(
+                    ms_service,
+                    config.repo_id,
+                    config.repo_type,
+                    config.revision,
+                    _update_state,
+                    task_logger,
+                    upstream_sha=config.upstream_sha,
+                )
 
-        files, directories, commit_hash = await _fetch_repo_tree(
-            hf_service,
-            config.repo_id,
-            config.repo_type,
-            config.revision,
-            _update_state,
-            task_logger,
-            upstream_sha=config.upstream_sha,
-        )
+                processed = await _process_ms_files(
+                    files,
+                    directories,
+                    config.full_download,
+                    config.allow_patterns,
+                    config.ignore_patterns,
+                    _update_state,
+                    task_logger,
+                )
+        else:
+            hf_service = HuggingfaceService(
+                token=config.access_token, endpoint=config.actual_endpoint
+            )
 
-        processed = await _process_files(
-            files,
-            directories,
-            config.full_download,
-            config.allow_patterns,
-            config.ignore_patterns,
-            hf_service,
-            _update_state,
-            task_logger,
-        )
+            files, directories, commit_hash = await _fetch_repo_tree(
+                hf_service,
+                config.repo_id,
+                config.repo_type,
+                config.revision,
+                _update_state,
+                task_logger,
+                upstream_sha=config.upstream_sha,
+            )
+
+            processed = await _process_files(
+                files,
+                directories,
+                config.full_download,
+                config.allow_patterns,
+                config.ignore_patterns,
+                hf_service,
+                _update_state,
+                task_logger,
+            )
 
         (
             all_required_cached,
             cached_commit_hash,
             cached_paths,
         ) = await check_cache_status_with_fresh_session(
+            config.source,
             config.repo_id,
             config.repo_type,
             config.revision,

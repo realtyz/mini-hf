@@ -37,7 +37,11 @@ from worker.handlers.file_processor import (
     FileProcessResult,
     download_and_upload_files,
 )
-from worker.handlers.source_types import AuthHeaderBuilder, UrlBuilder
+from worker.handlers.source_types import (
+    AuthHeaderBuilder,
+    BlobKeyBuilder,
+    UrlBuilder,
+)
 from worker.handlers.progress_tracker import TaskProgressTracker
 
 
@@ -86,7 +90,7 @@ class TreeLifecycle(ABC):
 
 
 class DownloadInfrastructure(ABC):
-    """Protocol for file download execution and URL/auth configuration (phase 5)."""
+    """Protocol for file download execution and URL/auth/blob-key configuration (phase 5)."""
 
     @abstractmethod
     async def execute_downloads(self) -> None:
@@ -99,6 +103,22 @@ class DownloadInfrastructure(ABC):
     @abstractmethod
     def build_auth_header_builder(self) -> AuthHeaderBuilder:
         """Return an AuthHeaderBuilder callable for the file processor."""
+
+    @abstractmethod
+    def build_blob_key_builder(self) -> BlobKeyBuilder:
+        """Return a BlobKeyBuilder callable for the file processor."""
+
+    @property
+    def head_check_enabled(self) -> bool | None:
+        """Per-source override for the downloader's HEAD pre-check.
+
+        Returns ``None`` by default, which defers to the global
+        ``WORKER_HEAD_CHECK_ENABLED`` setting. Sources whose upstream file
+        endpoint does not respond to HEAD (e.g. ModelScope's ``/repo``
+        endpoint returns 404 for HEAD) override this to return ``False``
+        so the pre-check is skipped and files are fetched directly via GET.
+        """
+        return None
 
 
 class CleanupLifecycle(ABC):
@@ -317,6 +337,8 @@ class BaseDownloadHandler(
             progress_tracker=self._progress_tracker,
             url_builder=self.build_url_builder(),
             auth_header_builder=self.build_auth_header_builder(),
+            blob_key_builder=self.build_blob_key_builder(),
+            head_check_enabled=self.head_check_enabled,
             infra=FileProcessInfrastructure(
                 download_semaphore=asyncio.Semaphore(
                     settings.WORKER_CONCURRENT_DOWNLOADS

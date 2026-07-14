@@ -9,6 +9,7 @@ from mgmt_server.api.v1.schemas.base import BaseResponse
 from mgmt_server.api.v1.schemas.configs import (
     AnnouncementConfigResponse,
     HFEndpointConfigResponse,
+    MSEndpointConfigResponse,
 )
 
 router = APIRouter()
@@ -60,6 +61,24 @@ async def get_public_hf_endpoints(
     default_endpoint = await config_service.get_hf_default_endpoint()
     return BaseResponse[HFEndpointConfigResponse](
         data=HFEndpointConfigResponse(
+            endpoints=endpoints,
+            default_endpoint=default_endpoint,
+        )
+    )
+
+
+@router.get("/ms-endpoints", response_model=BaseResponse[MSEndpointConfigResponse])
+async def get_public_ms_endpoints(
+    config_service: ConfigServiceDep,
+) -> BaseResponse[MSEndpointConfigResponse]:
+    """Get ModelScope endpoints - no auth required.
+
+    Returns available MS endpoints for task creation dialog.
+    """
+    endpoints = await config_service.get_ms_endpoints()
+    default_endpoint = await config_service.get_ms_default_endpoint()
+    return BaseResponse[MSEndpointConfigResponse](
+        data=MSEndpointConfigResponse(
             endpoints=endpoints,
             default_endpoint=default_endpoint,
         )

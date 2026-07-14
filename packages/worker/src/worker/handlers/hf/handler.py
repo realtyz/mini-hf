@@ -4,6 +4,7 @@ from loguru import logger
 from huggingface_hub import RepoFile
 from services.config import ConfigService
 from services.huggingface import HuggingfaceService, hf_url
+from storage import build_blob_key
 
 from database import new_session, RepoStatus
 from database.db_models import Task
@@ -22,7 +23,7 @@ from worker.handlers.hf.adapter import (
 from worker.handlers.hf.cleanup import cleanup_deleted_files
 from worker.handlers.diff_calculator import calculate_file_diff
 from worker.handlers.hf.tree_saver import save_repo_tree
-from worker.handlers.source_types import AuthHeaderBuilder, UrlBuilder
+from worker.handlers.source_types import AuthHeaderBuilder, BlobKeyBuilder, UrlBuilder
 
 
 def _hf_auth_header_builder(access_token: str | None) -> dict[str, str] | None:
@@ -479,6 +480,12 @@ class HfDownloadHandler(BaseDownloadHandler):
     def build_auth_header_builder(self) -> AuthHeaderBuilder:
         """Return an AuthHeaderBuilder for HuggingFace downloads."""
         return _hf_auth_header_builder
+
+    def build_blob_key_builder(self) -> BlobKeyBuilder:
+        """Return a BlobKeyBuilder for HuggingFace S3 keys."""
+        return lambda repo_id, repo_type, blob_id: build_blob_key(
+            repo_id, repo_type, blob_id
+        )
 
 
 # ------------------------------------------------------------------

@@ -15,6 +15,7 @@ import { useAuthStore } from "@/stores/auth-store";
 interface SnapshotListProps {
   snapshots: RepoDetailResponse["data"]["snapshots"];
   repoId: string;
+  source?: "huggingface" | "modelscope";
 }
 
 const SNAPSHOT_STATUS_OPTIONS: {
@@ -31,13 +32,17 @@ const SNAPSHOT_DOT_CLASS: Record<SnapshotStatusType, string> = {
   archived: "bg-muted-foreground/30",
 };
 
-export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
+export function SnapshotList({
+  snapshots,
+  repoId,
+  source = "huggingface",
+}: SnapshotListProps) {
   const [expandedSnapshots, setExpandedSnapshots] = useState<Set<number>>(
     new Set(),
   );
   const user = useAuthStore((s) => s.user);
   const isAdmin = user?.role === "admin";
-  const setSnapshotStatus = useSetSnapshotStatus();
+  const setSnapshotStatus = useSetSnapshotStatus(source);
 
   const toggleSnapshot = (snapshotId: number) => {
     setExpandedSnapshots((prev) => {
@@ -196,6 +201,7 @@ export function SnapshotList({ snapshots, repoId }: SnapshotListProps) {
                       <RepoTreeViewer
                         repoId={repoId}
                         commitHash={snapshot.commit_hash}
+                        source={source}
                       />
                     </div>
                   </div>

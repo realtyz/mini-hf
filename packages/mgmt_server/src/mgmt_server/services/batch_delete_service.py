@@ -14,6 +14,7 @@ from mgmt_server.api.v1.schemas.repos import BatchDeleteRepoItem
 from mgmt_server.core.exceptions import ConflictError, NotFoundError
 from mgmt_server.services.cache_scan_service import _remove_repos_from_cache
 from mgmt_server.services.repo_service import RepoService
+from mgmt_server.services.ms_repo_service import MsRepoService
 
 _DEFAULT_TTL = 86400  # 24 hours
 _BATCH_CONCURRENCY = 5
@@ -58,17 +59,24 @@ class BatchDeleteService:
         operation_id: str,
         repo_ids: list[str],
         repo_types: dict[str, str] | None = None,
+        sources: dict[str, str] | None = None,
     ):
         """Return a callable for FastAPI BackgroundTasks.
 
         Each repo_id is processed in its own DB transaction so that a
         failure in one does not roll back the work of others.
 
-        *repo_types* is an optional mapping of repo_id → repo_type for
+        *repo_types* is an optional mapping of repo_id -> repo_type for
         untracked repos that have no DB profile.
+
+        *sources* is an optional mapping of repo_id -> source
+        ("huggingface" | "modelscope") selecting which repo service
+        (RepoService / MsRepoService) deletes each repo. Defaults to
+        "huggingface" when absent.
         """
 
         repo_types = repo_types or {}
+        sources = sources or {}
 
         async def _run() -> None:
             semaphore = asyncio.Semaphore(_BATCH_CONCURRENCY)
@@ -78,7 +86,12 @@ class BatchDeleteService:
                     try:
                         async with new_session() as session:
                             task_service = TaskService(session)
-                            repo_service = RepoService(
+                            service_cls = (
+                                MsRepoService
+                                if sources.get(repo_id) == "modelscope"
+                                else RepoService
+                            )
+                            repo_service = service_cls(
                                 session, task_service=task_service
                             )
                             result = await repo_service.delete_repo(

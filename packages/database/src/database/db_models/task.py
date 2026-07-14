@@ -34,7 +34,7 @@ class Task(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     source: Mapped[str] = mapped_column(
         String(16), nullable=False
-    )  # 仓库来源，'huggingface' or 'modelscope'
+    )  # 仓库来源，Source 枚举值 ('huggingface' or 'modelscope')
     repo_type: Mapped[str] = mapped_column(
         String(16), nullable=False
     )  # 仓库类型，'model' or 'dataset'

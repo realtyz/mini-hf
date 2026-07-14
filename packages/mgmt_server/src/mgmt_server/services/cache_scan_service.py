@@ -10,6 +10,7 @@ from cache.services.cache import CacheService
 from database.db_models import RepoStatus
 from database.db_repositories import (
     HfRepoProfileRepository,
+    MsRepoProfileRepository,
 )
 from loguru import logger
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +42,7 @@ class CacheScanService:
         self._cache = cache
         self._s3 = s3
         self._profile_repo = HfRepoProfileRepository(session)
+        self._ms_profile_repo = MsRepoProfileRepository(session)
 
     # ------------------------------------------------------------------
     # Public API
@@ -49,9 +51,9 @@ class CacheScanService:
     async def scan(self) -> ScanResultData:
         """Scan S3 storage and identify repos that can be cleaned up.
 
-        Walks every object under ``hf/`` in a single pass, aggregates
-        sizes per repo prefix, then cross-references DB profiles to
-        classify each S3-backed repository.
+        Walks every object under the ``hf/`` and ``ms/`` prefixes (one pass
+        each), aggregates sizes per repo prefix, then cross-references DB
+        profiles to classify each S3-backed repository.
 
         Categories
         ----------
@@ -60,15 +62,39 @@ class CacheScanService:
         * **untracked** – S3 data exists but no DB profile was found.
           These are invisible to a DB-only scan.
         """
-        # 1. One-pass S3 listing → aggregate sizes per repo prefix
-        prefix_sizes: dict[str, int] = {}
-        async for obj in self._s3.list_all_objects("hf/"):
-            group = _repo_group_key(obj["key"])
-            if group is not None:
-                prefix_sizes[group] = prefix_sizes.get(group, 0) + obj["size"]
+        # Source -> profile repository. Each prefix maps to one source and
+        # one profile table (hf_repo_profiles / ms_repo_profiles).
+        prefixes: list[tuple[str, str]] = [
+            ("hf/", "huggingface"),
+            ("ms/", "modelscope"),
+        ]
+        profile_repos = {
+            "huggingface": self._profile_repo,
+            "modelscope": self._ms_profile_repo,
+        }
 
-        if not prefix_sizes:
-            logger.info("Cache scan: no objects found under hf/ prefix")
+        # 1. One-pass S3 listing per prefix -> aggregate sizes per repo prefix
+        #    Parsed records carry the source they were found under.
+        parsed: list[tuple[str, str, str, str, int]] = []  # (source, repo_id, repo_type, prefix, size)
+        saw_any_objects = False
+        for s3_prefix, source in prefixes:
+            prefix_sizes: dict[str, int] = {}
+            async for obj in self._s3.list_all_objects(s3_prefix):
+                saw_any_objects = True
+                group = _repo_group_key(obj["key"])
+                if group is not None:
+                    prefix_sizes[group] = prefix_sizes.get(group, 0) + obj["size"]
+
+            for prefix, size in prefix_sizes.items():
+                pair = _parse_repo_identifier(prefix)
+                if pair is not None:
+                    repo_id, repo_type = pair
+                    parsed.append((source, repo_id, repo_type, prefix, size))
+                else:
+                    logger.debug("Skipping unparseable S3 prefix: {}", prefix)
+
+        if not saw_any_objects:
+            logger.info("Cache scan: no objects found under hf/ or ms/ prefixes")
             result = ScanResultData(
                 scanned_at=datetime.now(),
                 total_tracked_repos=0,
@@ -86,27 +112,27 @@ class CacheScanService:
             )
             return result
 
-        # 2. Parse each prefix → (repo_id, repo_type)
-        parsed: list[tuple[str, str, str, int]] = []  # (repo_id, repo_type, prefix, size)
-        for prefix, size in prefix_sizes.items():
-            pair = _parse_repo_identifier(prefix)
-            if pair is not None:
-                repo_id, repo_type = pair
-                parsed.append((repo_id, repo_type, prefix, size))
-            else:
-                logger.debug("Skipping unparseable S3 prefix: {}", prefix)
-
-        # 3. Batch-fetch DB profiles
-        pairs = [(repo_id, repo_type) for repo_id, repo_type, _, _ in parsed]
-        profiles = await self._profile_repo.get_profiles_by_pairs(pairs)
+        # 2. Batch-fetch DB profiles grouped by source (separate tables)
+        profiles: dict[tuple[str, str, str], object] = {}
+        for source, profile_repo in profile_repos.items():
+            pairs = [
+                (repo_id, repo_type)
+                for src, repo_id, repo_type, _, _ in parsed
+                if src == source
+            ]
+            if not pairs:
+                continue
+            fetched = await profile_repo.get_profiles_by_pairs(pairs)
+            for (repo_id, repo_type), profile in fetched.items():
+                profiles[(source, repo_id, repo_type)] = profile
 
         repos: list[RepoScanItem] = []
         total_wasted = 0
         tracked_count = 0
         untracked_count = 0
 
-        for repo_id, repo_type, _prefix, cached_size in parsed:
-            profile = profiles.get((repo_id, repo_type))
+        for source, repo_id, repo_type, _prefix, cached_size in parsed:
+            profile = profiles.get((source, repo_id, repo_type))
 
             # --- untracked: S3 has data but DB has no record ---
             if profile is None:
@@ -115,6 +141,7 @@ class CacheScanService:
                         category=ScanCategory.untracked,
                         repo_id=repo_id,
                         repo_type=repo_type,
+                        source=source,
                         pipeline_tag=None,
                         downloads=0,
                         last_downloaded_at=None,
@@ -138,6 +165,7 @@ class CacheScanService:
                     category=ScanCategory.tracked,
                     repo_id=profile.repo_id,
                     repo_type=profile.repo_type,
+                    source=source,
                     pipeline_tag=profile.pipeline_tag,
                     downloads=profile.downloads,
                     last_downloaded_at=profile.last_downloaded_at,
@@ -254,10 +282,11 @@ def _repo_group_key(key: str) -> str | None:
 
     Keys are expected in the form::
 
-        hf/{repo_type}--{namespace}--{repo_name}/blobs/{blob_id}
+        {hf|ms}/{repo_type}--{namespace}--{repo_name}/blobs/{blob_id}
 
     Returns everything up to (and including) the second ``/``, e.g.
-    ``"hf/model--facebook--bart-large/"``, or ``None`` if the key
+    ``"hf/model--facebook--bart-large/"`` or
+    ``"ms/model--zhipuai--chatglm/"``, or ``None`` if the key
     does not have enough segments.
     """
     parts = key.split("/", 2)
@@ -269,10 +298,15 @@ def _repo_group_key(key: str) -> str | None:
 def _parse_repo_identifier(prefix: str) -> tuple[str, str] | None:
     """Parse a repo group prefix back into *(repo_id, repo_type)*.
 
+    Works for both HuggingFace and ModelScope prefixes - both are 3
+    characters (``hf/`` / ``ms/``) so ``prefix[3:]`` strips either.
+
     >>> _parse_repo_identifier("hf/model--facebook--bart-large/")
     ('facebook/bart-large', 'model')
+    >>> _parse_repo_identifier("ms/model--zhipuai--chatglm/")
+    ('zhipuai/chatglm', 'model')
     """
-    # Strip "hf/" and trailing "/"
+    # Strip the source prefix ("hf/" or "ms/") and trailing "/"
     identifier = prefix[3:].rstrip("/")
     parts = identifier.split("--")
     if len(parts) != 3:

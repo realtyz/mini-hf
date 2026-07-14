@@ -9,8 +9,8 @@ from typing import Final
 
 from cache.keys import CacheKeys
 from cache.services.cache import CacheService
-from database.db_models import HfRepoProfile, RepoStatus
-from database.db_repositories import HfRepoProfileRepository
+from database.db_models import HfRepoProfile, MsRepoProfile, RepoStatus
+from database.db_repositories import HfRepoProfileRepository, MsRepoProfileRepository
 from loguru import logger
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,26 +34,36 @@ _bg_tasks: set[asyncio.Task] = set()
 async def _fetch_stats_from_sources(
     session: AsyncSession,
     repo: HfRepoProfileRepository | None = None,
+    ms_repo: MsRepoProfileRepository | None = None,
 ) -> DashboardStats:
     """Fetch dashboard stats from DB and S3 using the given session."""
     if repo is None:
         repo = HfRepoProfileRepository(session)
+    if ms_repo is None:
+        ms_repo = MsRepoProfileRepository(session)
 
-    total_repos = await repo.count_repos(
-        statuses=[RepoStatus.ACTIVE, RepoStatus.UPDATING, RepoStatus.CLEANING],
-    )
+    active_statuses = [RepoStatus.ACTIVE, RepoStatus.UPDATING, RepoStatus.CLEANING]
 
-    downloads_stmt = select(func.sum(HfRepoProfile.downloads))
-    result = await session.execute(downloads_stmt)
-    total_downloads = result.scalar() or 0
+    hf_repos = await repo.count_repos(statuses=active_statuses)
+    ms_repos = await ms_repo.count_repos(statuses=active_statuses)
+
+    hf_downloads_stmt = select(func.sum(HfRepoProfile.downloads))
+    hf_result = await session.execute(hf_downloads_stmt)
+    hf_downloads = hf_result.scalar() or 0
+
+    ms_downloads_stmt = select(func.sum(MsRepoProfile.downloads))
+    ms_result = await session.execute(ms_downloads_stmt)
+    ms_downloads = ms_result.scalar() or 0
 
     bucket_stats = await s3_client.get_bucket_stats()
 
     return DashboardStats(
-        total_repos=total_repos,
+        total_repos=hf_repos + ms_repos,
+        hf_repos=hf_repos,
+        ms_repos=ms_repos,
         total_files=bucket_stats["total_files"],
         storage_capacity=bucket_stats["total_size"],
-        total_downloads=total_downloads,
+        total_downloads=hf_downloads + ms_downloads,
     )
 
 
@@ -89,16 +99,21 @@ class DashboardService:
         self._session = session
         self._cache = cache
         self._profile_repo = HfRepoProfileRepository(session)
+        self._ms_profile_repo = MsRepoProfileRepository(session)
 
     async def _fetch_stats(self) -> DashboardStats:
         """Fetch dashboard stats from DB and S3 using the request-scoped session."""
-        return await _fetch_stats_from_sources(self._session, repo=self._profile_repo)
+        return await _fetch_stats_from_sources(
+            self._session, repo=self._profile_repo, ms_repo=self._ms_profile_repo
+        )
 
     async def get_stats(self) -> DashboardStats:
         """Get dashboard statistics using stale-while-revalidate cache strategy.
 
         Returns aggregated statistics for the dashboard:
-        - total_repos: Total number of HuggingFace repositories (excluding inactive)
+        - total_repos: Total number of repositories (excluding inactive)
+        - hf_repos: Total number of HuggingFace repositories (excluding inactive)
+        - ms_repos: Total number of ModelScope repositories (excluding inactive)
         - total_files: Total number of files in S3 bucket
         - storage_capacity: Total storage size in bytes
         - total_downloads: Total download count across all repositories

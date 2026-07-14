@@ -96,7 +96,7 @@ class TestCacheKeys:
     def test_all_returns_all_namespaces(self):
         all_ns = CacheKeys.all()
         assert isinstance(all_ns, dict)
-        assert len(all_ns) == 9
+        assert len(all_ns) == 10
         assert "stats" in all_ns
         assert "rate_limit" in all_ns
         assert all_ns["stats"].name == "mini_hf:stats"

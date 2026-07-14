@@ -111,7 +111,7 @@ class TaskPreviewRequest(BaseModel):
     source: Literal["huggingface", "modelscope"] = "huggingface"
     repo_type: Literal["model", "dataset"] = "model"
     repo_id: RepoId
-    revision: str = "main"
+    revision: str | None = None  # None -> service sets default by source (HF->main, MS->master)
     hf_endpoint: str | None = None
     access_token: str | None = Field(None, max_length=128)
     full_download: bool = True

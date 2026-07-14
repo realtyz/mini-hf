@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from database.db_models.system_config import SystemConfig
 from services.config import (
     HFEndpointConfig,
+    MSEndpointConfig,
     NotificationConfig,
     SMTPConfig,
 )
@@ -181,6 +182,21 @@ class HFEndpointConfigResponse(BaseModel):
         )
 
 
+class MSEndpointConfigResponse(BaseModel):
+    """ModelScope endpoint configuration response schema."""
+
+    endpoints: list[str] = Field(..., description="List of available MS endpoints")
+    default_endpoint: str = Field(..., description="Default MS endpoint to use")
+
+    @classmethod
+    def from_model(cls, config: MSEndpointConfig) -> MSEndpointConfigResponse:
+        """Create from MSEndpointConfig dataclass."""
+        return cls(
+            endpoints=config.endpoints,
+            default_endpoint=config.default_endpoint,
+        )
+
+
 class HFEndpointSaveRequest(BaseModel):
     """HF endpoint configuration save request schema."""
 
@@ -310,6 +326,7 @@ class ConfigUISchema(BaseModel):
     rows: int = 3
     helper_text: str = ""
     col_span: int = 1
+    default_endpoint_key: str = ""
 
 
 class ConfigFieldSchema(BaseModel):

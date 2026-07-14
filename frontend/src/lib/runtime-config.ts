@@ -7,6 +7,7 @@ declare global {
 interface RuntimeConfig {
   API_BASE_URL: string;
   HF_SERVER_URL: string;
+  MS_SERVER_URL: string;
   APP_VERSION: string;
   APP_COPYRIGHT: string;
   EMAIL_DOMAIN: string;
@@ -16,6 +17,7 @@ interface RuntimeConfig {
 const defaults: RuntimeConfig = {
   API_BASE_URL: "http://localhost:9800/api/v1",
   HF_SERVER_URL: "http://localhost:9801",
+  MS_SERVER_URL: "http://localhost:9802",
   APP_VERSION: "1.0.0",
   APP_COPYRIGHT: "© 2026 Mini-HF Project",
   EMAIL_DOMAIN: "example.com",
@@ -26,6 +28,7 @@ function getRuntimeConfig(): RuntimeConfig {
   return {
     API_BASE_URL: runtime.API_BASE_URL || defaults.API_BASE_URL,
     HF_SERVER_URL: runtime.HF_SERVER_URL || defaults.HF_SERVER_URL,
+    MS_SERVER_URL: runtime.MS_SERVER_URL || defaults.MS_SERVER_URL,
     APP_VERSION: runtime.APP_VERSION || defaults.APP_VERSION,
     APP_COPYRIGHT: runtime.APP_COPYRIGHT || defaults.APP_COPYRIGHT,
     EMAIL_DOMAIN: runtime.EMAIL_DOMAIN || defaults.EMAIL_DOMAIN,

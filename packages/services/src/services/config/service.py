@@ -83,6 +83,14 @@ class HFEndpointConfig:
     default_endpoint: str
 
 
+@dataclass
+class MSEndpointConfig:
+    """Typed ModelScope endpoint configuration."""
+
+    endpoints: list[str]
+    default_endpoint: str
+
+
 class ConfigService:
     """Public configuration service for external use.
 
@@ -326,7 +334,7 @@ class ConfigService:
         return smtp
 
     @staticmethod
-    def _clean_hf_endpoints(endpoints: list[str]) -> list[str]:
+    def _clean_endpoints(endpoints: list[str]) -> list[str]:
         return [e.strip() for e in endpoints if e.strip()]
 
     @staticmethod
@@ -336,9 +344,16 @@ class ConfigService:
         if default_endpoint not in endpoints:
             raise ValueError("Default endpoint must be in the endpoints list")
 
+    @staticmethod
+    def _validate_ms_consistency(endpoints: list[str], default_endpoint: str) -> None:
+        if not endpoints:
+            raise ValueError("MS endpoints cannot be empty")
+        if default_endpoint not in endpoints:
+            raise ValueError("Default endpoint must be in the endpoints list")
+
     async def save_hf_endpoint_config(self, hf: HFEndpointConfig) -> HFEndpointConfig:
         """Save HuggingFace endpoint configuration atomically."""
-        cleaned_endpoints = self._clean_hf_endpoints(hf.endpoints)
+        cleaned_endpoints = self._clean_endpoints(hf.endpoints)
         cleaned_default = hf.default_endpoint.strip()
         self._validate_hf_consistency(cleaned_endpoints, cleaned_default)
 
@@ -349,6 +364,20 @@ class ConfigService:
         items = ConfigRegistry.build_save_dicts(values)
         await self._provider.bulk_set(items)
         return HFEndpointConfig(endpoints=cleaned_endpoints, default_endpoint=cleaned_default)
+
+    async def save_ms_endpoint_config(self, ms: MSEndpointConfig) -> MSEndpointConfig:
+        """Save ModelScope endpoint configuration atomically."""
+        cleaned_endpoints = self._clean_endpoints(ms.endpoints)
+        cleaned_default = ms.default_endpoint.strip()
+        self._validate_ms_consistency(cleaned_endpoints, cleaned_default)
+
+        values: dict[ConfigKey, object] = {
+            ConfigKey.MS_ENDPOINTS: cleaned_endpoints,
+            ConfigKey.MS_DEFAULT_ENDPOINT: cleaned_default,
+        }
+        items = ConfigRegistry.build_save_dicts(values)
+        await self._provider.bulk_set(items)
+        return MSEndpointConfig(endpoints=cleaned_endpoints, default_endpoint=cleaned_default)
 
     async def save_notification_config(self, notif: NotificationConfig) -> NotificationConfig:
         """Save notification configuration atomically."""
@@ -399,6 +428,7 @@ class ConfigService:
 
     async def _validate_registered_batch(self, values: dict[str, str]) -> None:
         await self._validate_hf_batch(values)
+        await self._validate_ms_batch(values)
 
     async def _validate_hf_batch(self, values: dict[str, str]) -> None:
         endpoints_key = ConfigKey.HF_ENDPOINTS.value
@@ -409,7 +439,7 @@ class ConfigService:
         if endpoints_key in values:
             raw = values[endpoints_key]
             parsed = json.loads(raw)
-            endpoints = self._clean_hf_endpoints([str(e) for e in parsed])
+            endpoints = self._clean_endpoints([str(e) for e in parsed])
         else:
             endpoints = await self.get_hf_endpoints()
 
@@ -419,6 +449,26 @@ class ConfigService:
             default_endpoint = await self.get_hf_default_endpoint()
 
         self._validate_hf_consistency(endpoints, default_endpoint)
+
+    async def _validate_ms_batch(self, values: dict[str, str]) -> None:
+        endpoints_key = ConfigKey.MS_ENDPOINTS.value
+        default_key = ConfigKey.MS_DEFAULT_ENDPOINT.value
+        if endpoints_key not in values and default_key not in values:
+            return
+
+        if endpoints_key in values:
+            raw = values[endpoints_key]
+            parsed = json.loads(raw)
+            endpoints = self._clean_endpoints([str(e) for e in parsed])
+        else:
+            endpoints = await self.get_ms_endpoints()
+
+        if default_key in values:
+            default_endpoint = values[default_key].strip()
+        else:
+            default_endpoint = await self.get_ms_default_endpoint()
+
+        self._validate_ms_consistency(endpoints, default_endpoint)
 
     async def get_smtp_config(self) -> SMTPConfig:
         return SMTPConfig(
@@ -463,6 +513,34 @@ class ConfigService:
         endpoints = await self.get_hf_endpoints()
         default = await self.get_hf_default_endpoint()
         return HFEndpointConfig(endpoints=endpoints, default_endpoint=default)
+
+    async def get_ms_endpoints(self) -> list[str]:
+        """Get list of configured ModelScope endpoints."""
+        raw = await self._provider.get(ConfigKey.MS_ENDPOINTS, "[]")
+        try:
+            endpoints = json.loads(raw)
+            if isinstance(endpoints, list):
+                return [str(e).strip() for e in endpoints if str(e).strip()]
+        except (json.JSONDecodeError, TypeError):
+            pass
+        return ["https://modelscope.cn"]
+
+    async def get_ms_default_endpoint(self) -> str:
+        """Get default ModelScope endpoint."""
+        endpoints = await self.get_ms_endpoints()
+        default = await self._provider.get(
+            ConfigKey.MS_DEFAULT_ENDPOINT, "https://modelscope.cn"
+        )
+        default = str(default).strip()
+        if default in endpoints:
+            return default
+        return endpoints[0] if endpoints else "https://modelscope.cn"
+
+    async def get_ms_config(self) -> MSEndpointConfig:
+        """Get ModelScope endpoint configuration as typed object."""
+        endpoints = await self.get_ms_endpoints()
+        default = await self.get_ms_default_endpoint()
+        return MSEndpointConfig(endpoints=endpoints, default_endpoint=default)
 
     async def initialize_defaults(self) -> int:
         """Initialize default configurations if they don't exist.

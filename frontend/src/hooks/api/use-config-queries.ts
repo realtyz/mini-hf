@@ -20,6 +20,7 @@ import type {
   SMTPTestRequest,
   SMTPTestResponse,
   HFEndpointConfigResponse,
+  MSEndpointConfigResponse,
   AnnouncementItem,
   AnnouncementCreateRequest,
   AnnouncementUpdateRequest,
@@ -227,6 +228,18 @@ export function usePublicHFEndpoints() {
     queryFn: async () => {
       return api.get<ApiResponse<HFEndpointConfigResponse>>(
         endpoints.health.hfEndpoints,
+      );
+    },
+    staleTime: STALE_TIMES.static,
+  });
+}
+
+export function usePublicMSEndpoints() {
+  return useQuery({
+    queryKey: queryKeys.public.msEndpoints(),
+    queryFn: async () => {
+      return api.get<ApiResponse<MSEndpointConfigResponse>>(
+        endpoints.health.msEndpoints,
       );
     },
     staleTime: STALE_TIMES.static,

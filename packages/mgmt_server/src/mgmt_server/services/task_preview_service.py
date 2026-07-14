@@ -8,12 +8,18 @@ from typing import Any
 
 from cache.keys import CacheKeys
 from cache.services.cache import CacheService
-from database.db_models import User
-from database.db_repositories import HfRepoSnapshotRepository, HfRepoTreeRepository
+from database.db_models import Source, User
+from database.db_repositories import (
+    HfRepoSnapshotRepository,
+    HfRepoTreeRepository,
+    MsRepoSnapshotRepository,
+    MsRepoTreeRepository,
+)
 from loguru import logger
 from services.config import ConfigService
 from services.huggingface import HuggingfaceService
 from services.huggingface.utils import filter_repo_objects
+from services.modelscope import ModelScopeService
 from services.task import TaskService
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -88,7 +94,7 @@ class TaskPreviewService:
         source: str,
         repo_id: str,
         repo_type: str,
-        revision: str,
+        revision: str | None,
         access_token: str | None,
         full_download: bool,
         allow_patterns: list[str] | None,
@@ -102,10 +108,15 @@ class TaskPreviewService:
         for scheduling the background callable (e.g. via FastAPI BackgroundTasks).
         background_callable may be None if the result was served from local cache.
         """
-        if source != "huggingface":
+        if source not in (Source.HUGGINGFACE.value, Source.MODELSCOPE.value):
             raise ValidationError(
-                f"Source '{source}' is not supported for preview. Only 'huggingface' is supported."
+                f"Source '{source}' is not supported for preview. "
+                "Only 'huggingface' and 'modelscope' are supported."
             )
+
+        # revision default by source: HF -> "main", MS -> "master"
+        if revision is None:
+            revision = "master" if source == Source.MODELSCOPE.value else "main"
 
         if (
             "/" not in repo_id
@@ -143,35 +154,56 @@ class TaskPreviewService:
                     "Please wait for existing tasks to complete before submitting a new one."
                 )
 
-        actual_endpoint = await self._get_hf_endpoint(hf_endpoint)
-
-        operator = HuggingfaceService(token=access_token, endpoint=actual_endpoint)
-        is_valid, error_message, _requires_token, upstream_sha = \
-            await operator.validate_repo_access(
-                repo_id=repo_id,
-                repo_type=repo_type,
-                revision=revision,
+        if source == Source.HUGGINGFACE.value:
+            actual_endpoint = await self._get_hf_endpoint(hf_endpoint)
+            operator = HuggingfaceService(token=access_token, endpoint=actual_endpoint)
+            is_valid, error_message, _requires_token, upstream_sha = (
+                await operator.validate_repo_access(
+                    repo_id=repo_id,
+                    repo_type=repo_type,
+                    revision=revision,
+                )
             )
+        else:
+            # MS endpoint comes from ConfigService, not the request payload
+            actual_endpoint = await self._config_service.get_ms_default_endpoint()
+            # ModelScopeService holds an httpx.AsyncClient - must close via async with
+            async with ModelScopeService(
+                token=access_token, endpoint=actual_endpoint
+            ) as ms_operator:
+                is_valid, error_message, _requires_token, upstream_sha = (
+                    await ms_operator.validate_repo_access(
+                        repo_id=repo_id,
+                        repo_type=repo_type,
+                        revision=revision,
+                    )
+                )
         if not is_valid:
             raise ValidationError(error_message)
 
         # Try local snapshot fast path — match by commit_hash regardless of status
         if upstream_sha:
-            snapshot_repo = HfRepoSnapshotRepository(self._session)
+            if source == Source.HUGGINGFACE.value:
+                snapshot_repo = HfRepoSnapshotRepository(self._session)
+            else:
+                snapshot_repo = MsRepoSnapshotRepository(self._session)
             local_snapshot = await snapshot_repo.get_snapshot_by_repo(
                 repo_id=repo_id, repo_type=repo_type, revision=revision,
                 commit_hash=upstream_sha,
             )
 
             if local_snapshot:
-                tree_repo = HfRepoTreeRepository(self._session)
+                if source == Source.HUGGINGFACE.value:
+                    tree_repo = HfRepoTreeRepository(self._session)
+                else:
+                    tree_repo = MsRepoTreeRepository(self._session)
                 tree_items = await tree_repo.get_file_tree(local_snapshot.commit_hash)
 
-                # Guard: fall back to HF API if tree is empty
+                # Guard: fall back to upstream API if tree is empty
                 if not tree_items:
                     logger.debug(
                         "[PreviewTask] Local snapshot {} has empty tree_items, "
-                        "falling back to HF API",
+                        "falling back to upstream API",
                         local_snapshot.commit_hash,
                     )
                 else:

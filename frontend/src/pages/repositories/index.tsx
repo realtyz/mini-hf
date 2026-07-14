@@ -11,11 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { useRepoList } from "@/hooks/api/use-repo-queries";
 import type { RepoProfile, RepoStatus } from "@/lib/api/types";
 import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
@@ -75,7 +70,7 @@ export function Repositories() {
 
   const handleViewDetail = (repo: RepoProfile) => {
     navigate(
-      `/repositories/detail?repoId=${encodeURIComponent(repo.repo_id)}&type=${repo.repo_type}`,
+      `/repositories/detail?repoId=${encodeURIComponent(repo.repo_id)}&type=${repo.repo_type}&source=${modelSource}`,
     );
   };
 
@@ -109,15 +104,10 @@ export function Repositories() {
               <Smile className="mr-2 h-4 w-4" />
               Huggingface
             </TabsTrigger>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <TabsTrigger value="modelscope" disabled>
-                  <Globe className="mr-2 h-4 w-4" />
-                  Modelscope
-                </TabsTrigger>
-              </TooltipTrigger>
-              <TooltipContent>暂不可用</TooltipContent>
-            </Tooltip>
+            <TabsTrigger value="modelscope">
+              <Globe className="mr-2 h-4 w-4" />
+              Modelscope
+            </TabsTrigger>
           </TabsList>
         </Tabs>
 

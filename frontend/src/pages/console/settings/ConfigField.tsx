@@ -31,6 +31,8 @@ export const ConfigField = memo(function ConfigField({
         value={value}
         form={form}
         onChange={onChange}
+        defaultEndpointKey={field.ui.default_endpoint_key}
+        placeholder={field.ui.placeholder}
       />
     );
   }

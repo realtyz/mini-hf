@@ -9,6 +9,8 @@ import {
   Database,
   Box,
   FileCode2,
+  Smile,
+  Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ListFooter } from "@/components/shared/ListFooter";
 import { RepoGrid, RepositoryFilterShell } from "@/components/repo";
 import { PageHeader } from "@/components/shared/PageHeader";
@@ -30,6 +33,7 @@ import { REPO_STATUS_CONFIG } from "@/lib/constants/repo";
 const PAGE_SIZE = 20;
 
 interface RepoListState {
+  modelSource: "huggingface" | "modelscope";
   repoType: "all" | "model" | "dataset";
   search: string;
   statuses: RepoStatus[];
@@ -55,6 +59,7 @@ const STATUS_CONFIG: {
 const DEFAULT_STATUSES: RepoStatus[] = ["active", "updating", "cleaning"];
 
 const DEFAULT_STATE: RepoListState = {
+  modelSource: "huggingface",
   repoType: "all",
   search: "",
   statuses: DEFAULT_STATUSES,
@@ -85,6 +90,10 @@ function parseStateFromParams(params: URLSearchParams): RepoListState {
         ? []
         : (statusesParam.split(",").filter(Boolean) as RepoStatus[]);
   return {
+    modelSource:
+      params.get("source") === "modelscope"
+        ? "modelscope"
+        : DEFAULT_STATE.modelSource,
     repoType:
       (params.get("type") as RepoListState["repoType"]) ?? DEFAULT_STATE.repoType,
     search: params.get("search") ?? "",
@@ -108,6 +117,8 @@ export function RepositoriesConsole() {
         (prev) => {
           const merged = { ...parseStateFromParams(prev), ...patch };
           const next = new URLSearchParams();
+          if (merged.modelSource !== DEFAULT_STATE.modelSource)
+            next.set("source", merged.modelSource);
           if (merged.repoType !== DEFAULT_STATE.repoType)
             next.set("type", merged.repoType);
           if (merged.search !== "") next.set("search", merged.search);
@@ -136,6 +147,7 @@ export function RepositoriesConsole() {
   }, [repoListState.search]);
 
   const { data, isLoading, error, refetch } = useRepoList({
+    modelSource: repoListState.modelSource,
     repoType: repoListState.repoType,
     skip: (repoListState.page - 1) * PAGE_SIZE,
     limit: PAGE_SIZE,
@@ -166,7 +178,7 @@ export function RepositoriesConsole() {
 
   const handleViewDetail = (repo: RepoProfile) => {
     navigate(
-      `/console/repositories/detail?repoId=${encodeURIComponent(repo.repo_id)}&type=${repo.repo_type}`,
+      `/console/repositories/detail?repoId=${encodeURIComponent(repo.repo_id)}&type=${repo.repo_type}&source=${repoListState.modelSource}`,
     );
   };
 
@@ -188,6 +200,28 @@ export function RepositoriesConsole() {
           </Button>
         }
       />
+
+      {/* 数据源切换 */}
+      <Tabs
+        value={repoListState.modelSource}
+        onValueChange={(v) =>
+          updateState({
+            modelSource: v as RepoListState["modelSource"],
+            page: 1,
+          })
+        }
+      >
+        <TabsList>
+          <TabsTrigger value="huggingface">
+            <Smile className="mr-2 h-4 w-4" />
+            Huggingface
+          </TabsTrigger>
+          <TabsTrigger value="modelscope">
+            <Globe className="mr-2 h-4 w-4" />
+            Modelscope
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       {/* Filter bar */}
       <RepositoryFilterShell>

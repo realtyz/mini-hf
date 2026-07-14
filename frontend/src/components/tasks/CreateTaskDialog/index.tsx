@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { useTaskActions } from "@/hooks/api/use-task-actions";
 import { useAsyncPreviewTask } from "@/hooks/api/use-async-preview-task";
-import { usePublicHFEndpoints } from "@/hooks/api/use-config-queries";
+import { usePublicHFEndpoints, usePublicMSEndpoints } from "@/hooks/api/use-config-queries";
 import type { RepoSource, RepoType } from "@/lib/api/types";
 import { AnimatePresence } from "framer-motion";
 import { RepoFormStep } from "./RepoFormStep";
@@ -58,6 +58,7 @@ export function CreateTaskDialog({
 
   const { createTask } = useTaskActions();
   const { data: hfEndpointConfig } = usePublicHFEndpoints();
+  const { data: msEndpointConfig } = usePublicMSEndpoints();
   const previewTask = useAsyncPreviewTask({
     pollInterval: 1000,
     maxPolls: 300,
@@ -74,8 +75,11 @@ export function CreateTaskDialog({
       source: formData.source,
       repo_type: formData.repo_type,
       repo_id: formData.repo_id.trim(),
-      revision: formData.revision || "main",
-      hf_endpoint: formData.hf_endpoint || undefined,
+      revision: formData.revision || undefined,
+      hf_endpoint:
+        formData.source === "huggingface"
+          ? formData.hf_endpoint || undefined
+          : undefined,
       access_token: formData.access_token || undefined,
       full_download: true,
     });
@@ -160,6 +164,7 @@ export function CreateTaskDialog({
                 onFormDataChange={setFormData}
                 hfEndpoints={hfEndpointConfig?.data?.endpoints ?? []}
                 defaultEndpoint={hfEndpointConfig?.data?.default_endpoint ?? ""}
+                defaultMSEndpoint={msEndpointConfig?.data?.default_endpoint ?? ""}
                 previewError={previewError}
               />
             ) : previewTask.data ? (
