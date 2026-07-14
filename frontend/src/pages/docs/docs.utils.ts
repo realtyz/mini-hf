@@ -30,6 +30,9 @@ export async function loadDocContent(slug: string): Promise<string> {
     const hfEndpoint = config.HF_SERVER_URL;
     content = content.replace(/{{HF_ENDPOINT}}/g, hfEndpoint);
 
+    const msEndpoint = config.MS_SERVER_URL;
+    content = content.replace(/{{MS_ENDPOINT}}/g, msEndpoint);
+
     return content;
   } catch (error) {
     if (import.meta.env.DEV) console.error("Failed to load doc:", error);

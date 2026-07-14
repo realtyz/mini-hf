@@ -4,7 +4,7 @@
 
 ## 任务概述
 
-下载任务用于将 HuggingFace 仓库缓存到本地服务器。任务创建后，系统会自动从 HuggingFace 下载文件并存储到本地存储中。
+下载任务用于将 HuggingFace / Modelscope 仓库缓存到本地服务器。任务创建后，系统会自动从 HuggingFace 下载文件并存储到本地存储中。
 
 ## 任务状态
 

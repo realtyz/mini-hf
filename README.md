@@ -136,6 +136,9 @@ uv run --env-file .env.local python -m mgmt_server.main --reload
 # Start HF API server (in another terminal)
 uv run --env-file .env.local python -m hf_server.main --reload
 
+# Start MS API server (in another terminal)
+uv run --env-file .env.local python -m ms_server.main --reload
+
 # Start worker (in another terminal)
 uv run --env-file .env.local python -m worker.main
 ```

@@ -99,7 +99,7 @@ os.environ["HF_ENDPOINT"] = "{{HF_ENDPOINT}}"
 
 ### Q: mini-hf 支持哪些平台？
 
-目前支持 HuggingFace 的模型和数据集。暂不支持 ModelScope 等其他平台。
+目前支持 HuggingFace / Modelscope 的模型和数据集。
 
 ### Q: 系统有什么限制？
 
