@@ -156,11 +156,7 @@ export function RepoFormStep({
               >
                 <Input
                   id="repo_id"
-                  placeholder={
-                    formData.source === "huggingface"
-                      ? "如：deepseek-ai/DeepSeek-V4-Flash"
-                      : "如：AI-ModelScope/deepseek-v3"
-                  }
+                  placeholder="如：deepseek-ai/DeepSeek-V4-Flash"
                   value={formData.repo_id}
                   onChange={(e) =>
                     onFormDataChange({ ...formData, repo_id: e.target.value })
@@ -180,7 +176,9 @@ export function RepoFormStep({
               >
                 <Input
                   id="revision"
-                  placeholder={formData.source === "huggingface" ? "main" : "master"}
+                  placeholder={
+                    formData.source === "huggingface" ? "main" : "master"
+                  }
                   value={formData.revision}
                   onChange={(e) =>
                     onFormDataChange({ ...formData, revision: e.target.value })
