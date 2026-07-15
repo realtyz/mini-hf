@@ -257,8 +257,10 @@ uv run pytest
 uv run pytest packages/database/tests -v
 
 # Linting
-uv run ruff check .
-uv run ruff check --fix .
+# Use `uvx` (not `uv run`) so ruff runs in an isolated environment
+# without being installed into this project's dependencies.
+uvx ruff check .
+uvx ruff check --fix .
 ```
 
 ### Frontend
