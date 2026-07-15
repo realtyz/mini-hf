@@ -49,6 +49,9 @@ async def list_model_files(
             detail="repository or snapshot not found",
         )
 
+    # Increment downloads counter (mirrors hf_server's revision-info endpoint)
+    await service.increment_downloads(repo_id, "model")
+
     items = await service.get_file_tree_filtered(snapshot.commit_hash, root)
     files = [tree_item_to_ms_entry(it) for it in items]
     return _build_envelope(files)
@@ -85,6 +88,9 @@ async def list_dataset_files(
             status_code=404,
             detail="repository or snapshot not found",
         )
+
+    # Increment downloads counter (mirrors hf_server's revision-info endpoint)
+    await service.increment_downloads(repo_id, "dataset")
 
     if root is None:
         # DB-level pagination
