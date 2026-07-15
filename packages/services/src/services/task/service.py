@@ -332,11 +332,12 @@ class TaskService:
         creator_user_id: Optional[int] = None,
         search: Optional[str] = None,
         exclude_repo_items: bool = False,
+        exclude_active: bool = False,
     ) -> tuple[int, List[Task]]:
         """List tasks with optional filtering and pagination.
 
         Args:
-            status: Filter by status
+            status: Filter by task status
             limit: Maximum results
             offset: Skip offset (deprecated, use skip instead)
             skip: Number of records to skip (pagination)
@@ -344,6 +345,7 @@ class TaskService:
             creator_user_id: Filter by creator user ID
             search: Search term for repo_id (case-insensitive partial match)
             exclude_repo_items: If True, skip loading repo_items JSONB column
+            exclude_active: If True, exclude active-status tasks
 
         Returns:
             Tuple of (total_count, tasks_list)
@@ -359,6 +361,7 @@ class TaskService:
             creator_user_id=creator_user_id,
             search=search,
             exclude_repo_items=exclude_repo_items,
+            exclude_active=exclude_active,
         )
 
     async def list_active_tasks(

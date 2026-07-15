@@ -550,6 +550,7 @@ class TaskLifecycleService:
             since=since,
             search=search,
             exclude_repo_items=True,
+            exclude_active=True,
         )
         return build_task_list_response(tasks, total)
 

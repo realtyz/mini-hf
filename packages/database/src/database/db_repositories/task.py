@@ -9,6 +9,15 @@ from sqlalchemy.orm import defer
 
 from database.db_models import Task, TaskStatus, Source
 
+# 活跃状态：可能自主变化、需触发轮询的任务状态。
+# 与 list_active_tasks() 的返回范围一致。
+ACTIVE_STATUSES: list[TaskStatus] = [
+    TaskStatus.RUNNING,
+    TaskStatus.PENDING,
+    TaskStatus.PENDING_APPROVAL,
+    TaskStatus.CANCELING,
+]
+
 
 class TaskRepository:
     """Task repository for database operations."""
@@ -196,6 +205,7 @@ class TaskRepository:
         creator_user_id: Optional[int] = None,
         search: Optional[str] = None,
         exclude_repo_items: bool = False,
+        exclude_active: bool = False,
     ) -> tuple[int, List[Task]]:
         """List tasks with optional filtering and pagination.
 
@@ -208,6 +218,9 @@ class TaskRepository:
             search: Search term for repo_id (case-insensitive partial match)
             exclude_repo_items: If True, skip loading the repo_items JSONB column
                 to reduce database transfer overhead for list endpoints.
+            exclude_active: If True, exclude active-status tasks (running/pending/
+                pending_approval/canceling). Used by the public history endpoint to
+                avoid overlap with the active-task queue.
 
         Returns:
             Tuple of (total_count, tasks_list)
@@ -235,6 +248,10 @@ class TaskRepository:
         if search:
             base_stmt = base_stmt.where(Task.repo_id.ilike(f"%{search}%"))
             count_stmt = count_stmt.where(Task.repo_id.ilike(f"%{search}%"))
+
+        if exclude_active:
+            base_stmt = base_stmt.where(Task.status.notin_(ACTIVE_STATUSES))
+            count_stmt = count_stmt.where(Task.status.notin_(ACTIVE_STATUSES))
 
         # Get total count
         total_result = await self.session.execute(count_stmt)
@@ -358,14 +375,7 @@ class TaskRepository:
         Returns:
             List of active tasks, ordered by status priority
         """
-        active_statuses = [
-            TaskStatus.RUNNING,
-            TaskStatus.PENDING,
-            TaskStatus.PENDING_APPROVAL,
-            TaskStatus.CANCELING,
-        ]
-
-        stmt = select(Task).where(Task.status.in_(active_statuses))
+        stmt = select(Task).where(Task.status.in_(ACTIVE_STATUSES))
 
         if exclude_repo_items:
             stmt = stmt.options(defer(Task.repo_items))

@@ -1,10 +1,22 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Box, Database, Smile, Globe, Search, X, History } from "lucide-react";
+import {
+  Box,
+  Database,
+  Smile,
+  Globe,
+  Search,
+  X,
+  History,
+  AlertCircle,
+  RefreshCw,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TaskStatusBadge } from "@/components/tasks/TaskStatusBadge";
-import { Pager } from "@/components/shared/Pager";
+import { ListFooter } from "@/components/shared/ListFooter";
 import {
   Table,
   TableBody,
@@ -13,35 +25,51 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { TaskResponse } from "@/lib/api/types";
+import { useTaskList } from "@/hooks/api/use-task-list";
 import { cn, formatDistanceToNow, formatDurationRange } from "@/lib/utils";
-
-interface TaskHistoryTableProps {
-  tasks: TaskResponse[]; // completed + failed
-}
 
 const PAGE_SIZE = 10;
 
-export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
+export function TaskHistoryTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const [search, setSearch] = useState("");
 
-  const filteredTasks = search
-    ? tasks.filter((t) =>
-        t.repo_id.toLowerCase().includes(search.toLowerCase()),
-      )
-    : tasks;
+  const {
+    data,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useTaskList({
+    public: true,
+    hours: 168,
+    limit: PAGE_SIZE,
+    skip: (currentPage - 1) * PAGE_SIZE,
+    search: search || undefined,
+    enablePolling: false,
+  });
 
-  const totalPages = Math.ceil(filteredTasks.length / PAGE_SIZE);
-  const paginatedTasks = filteredTasks.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
+  const { tasks, total, totalPages } = useMemo(
+    () => ({
+      tasks: data?.data ?? [],
+      total: data?.total ?? 0,
+      totalPages: Math.ceil((data?.total ?? 0) / PAGE_SIZE),
+    }),
+    [data?.data, data?.total],
   );
 
   const handleSearch = (value: string) => {
     setSearch(value);
     setCurrentPage(1);
   };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // placeholderData 保留了上一页数据，isLoading 仅在首次加载为 true
+  const showSkeleton = isLoading && tasks.length === 0;
+  const showError = error && tasks.length === 0;
 
   return (
     <motion.div
@@ -78,7 +106,45 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
       </div>
 
       <AnimatePresence mode="wait">
-        {filteredTasks.length === 0 ? (
+        {showSkeleton ? (
+          <motion.div
+            key="loading"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="px-5 py-4 space-y-3"
+          >
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 w-full rounded-lg" />
+            ))}
+          </motion.div>
+        ) : showError ? (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.3 }}
+            className="py-12 text-center text-muted-foreground"
+          >
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-red-50 dark:bg-red-950/30">
+              <AlertCircle className="h-6 w-6 text-red-500" />
+            </div>
+            <p className="text-sm font-medium text-foreground">加载失败</p>
+            <p className="text-xs mt-1 mb-4 text-muted-foreground">
+              请检查网络连接后重试
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetch()}
+              className="transition-transform active:scale-95"
+            >
+              <RefreshCw className="mr-2 h-3.5 w-3.5" />
+              重新加载
+            </Button>
+          </motion.div>
+        ) : tasks.length === 0 ? (
           <motion.div
             key="empty"
             initial={{ opacity: 0, scale: 0.98 }}
@@ -88,19 +154,17 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
             className="py-12 text-center text-muted-foreground"
           >
             <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
-              {tasks.length === 0 ? (
-                <History className="h-6 w-6 text-muted-foreground/60" />
-              ) : (
+              {search ? (
                 <Search className="h-6 w-6 text-muted-foreground/60" />
+              ) : (
+                <History className="h-6 w-6 text-muted-foreground/60" />
               )}
             </div>
             <p className="text-sm font-medium text-foreground">
-              {tasks.length === 0
-                ? "暂无已完成或失败的任务"
-                : "未找到匹配的任务"}
+              {search ? "未找到匹配的任务" : "暂无任务记录"}
             </p>
             <p className="text-xs mt-1">
-              {tasks.length === 0 ? "任务完成后将显示在这里" : "尝试其他关键词"}
+              {search ? "尝试其他关键词" : "任务完成后将显示在这里"}
             </p>
           </motion.div>
         ) : (
@@ -152,7 +216,7 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedTasks.map((task, index) => (
+                {tasks.map((task, index) => (
                   <motion.tr
                     key={task.id}
                     initial={{ opacity: 0, x: -10 }}
@@ -237,28 +301,16 @@ export function TaskHistoryTable({ tasks }: TaskHistoryTableProps) {
       </AnimatePresence>
 
       {/* Footer: Pagination + Stats */}
-      {(totalPages > 1 || filteredTasks.length > 0) && (
-        <div className="flex items-center justify-between border-t border-border/30 px-5 py-3 bg-muted/20">
-          <p className="text-[13px] text-muted-foreground/60">
-            共{" "}
-            <span className="font-mono font-medium tabular-nums text-foreground/80">
-              {filteredTasks.length}
-            </span>{" "}
-            个任务
-            {search && tasks.length !== filteredTasks.length && (
-              <span className="text-muted-foreground/40">
-                （共 {tasks.length} 个）
-              </span>
-            )}
-          </p>
-          {totalPages > 1 && (
-            <Pager
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={setCurrentPage}
-              className="mx-0 w-auto"
-            />
-          )}
+      {(totalPages > 1 || total > 0 || isFetching) && (
+        <div className="border-t border-border/30 px-5 py-3 bg-muted/20">
+          <ListFooter
+            currentPage={currentPage}
+            totalPages={totalPages}
+            total={total}
+            pageSize={PAGE_SIZE}
+            onPageChange={handlePageChange}
+            itemLabel="个任务"
+          />
         </div>
       )}
     </motion.div>

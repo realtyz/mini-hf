@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import api from "@/lib/api/client";
 import { queryKeys } from "@/lib/query/keys";
 import { STALE_TIMES } from "@/lib/query/client";
@@ -93,6 +93,7 @@ export function useTaskList(options: UseTaskListOptions = {}) {
               ...(status !== undefined && { status }),
               ...(hours !== undefined && { hours }),
               ...(limit !== undefined && { limit }),
+              ...(skip !== undefined && { skip }),
               ...(search && { search }),
             }
           : {
@@ -104,6 +105,8 @@ export function useTaskList(options: UseTaskListOptions = {}) {
       });
       return response;
     },
+    // 翻页/搜索时保留旧数据，避免内容闪烁
+    placeholderData: keepPreviousData,
     // 认证模式：当列表中有活跃任务时，每 10 秒自动轮询
     // 公共模式：不轮询（由独立的 useActiveTasks 负责）
     refetchInterval: shouldPoll

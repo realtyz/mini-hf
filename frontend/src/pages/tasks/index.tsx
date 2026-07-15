@@ -18,7 +18,7 @@ import {
   TaskHistoryTable,
 } from "@/components/tasks";
 import { useAuthStore } from "@/stores/auth-store";
-import { useActiveTasks, useTaskList } from "@/hooks/api/use-task-list";
+import { useActiveTasks } from "@/hooks/api/use-task-list";
 import { queryKeys } from "@/lib/query/keys";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -97,38 +97,15 @@ export function Tasks() {
   const {
     data: activeData,
     isLoading: isActiveLoading,
+    isRefetching: isActiveRefetching,
     error: activeError,
   } = useActiveTasks({ enablePolling: true });
-
-  // 历史任务：使用公共列表端点，不轮询
-  const {
-    data: historyData,
-    isLoading: isHistoryLoading,
-    isRefetching: isHistoryRefetching,
-    error: historyError,
-  } = useTaskList({
-    public: true,
-    hours: 168,
-    limit: 50,
-    enablePolling: false,
-  });
 
   // 活跃任务列表（来自专用端点，仅包含 running/pending/pending_approval/canceling）
   const activeTasks = useMemo(() => activeData?.data ?? [], [activeData?.data]);
   const runningTasks = useMemo(
     () => activeTasks.filter((t) => t.status?.toLowerCase() === "running"),
     [activeTasks],
-  );
-
-  // 历史任务列表（来自公共列表端点，包含 completed/failed/cancelled 等）
-  const completedTasks = useMemo(
-    () =>
-      (historyData?.data ?? []).sort(
-        (a, b) =>
-          new Date(b.completed_at || b.updated_at).getTime() -
-          new Date(a.completed_at || a.updated_at).getTime(),
-      ),
-    [historyData?.data],
   );
 
   // 派生选中的任务 ID：优先使用手动选择，否则自动选择第一个运行中的任务
@@ -172,9 +149,9 @@ export function Tasks() {
     queryClient.invalidateQueries({ queryKey: queryKeys.tasks.all });
   };
 
-  // 合并加载和错误状态
-  const isLoading = isActiveLoading && isHistoryLoading;
-  const error = activeError || historyError;
+  // 合并加载和错误状态（仅反映活跃任务，历史任务由 TaskHistoryTable 自管理）
+  const isLoading = isActiveLoading;
+  const error = activeError;
 
   return (
     <div className="container mx-auto flex flex-1 flex-col px-4 py-6 md:py-8">
@@ -199,11 +176,11 @@ export function Tasks() {
               variant="outline"
               size="sm"
               onClick={handleRefetch}
-              disabled={isLoading || isHistoryRefetching}
+              disabled={isLoading || isActiveRefetching}
               className="w-24 cursor-pointer transition-all duration-200 hover:bg-primary/5"
             >
               <RefreshCw
-                className={`mr-2 h-4 w-4 ${isHistoryRefetching ? "animate-spin" : ""}`}
+                className={`mr-2 h-4 w-4 ${isActiveRefetching ? "animate-spin" : ""}`}
               />
               刷新
             </Button>
@@ -378,7 +355,7 @@ export function Tasks() {
               }}
             >
               <h2 className="text-lg font-semibold mb-4">任务记录</h2>
-              <TaskHistoryTable tasks={completedTasks} />
+              <TaskHistoryTable />
             </motion.section>
           </motion.div>
         )}
