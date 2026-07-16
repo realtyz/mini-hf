@@ -22,6 +22,9 @@ from modelscope_hub.errors import (
 
 DEFAULT_ENDPOINT = "https://modelscope.cn"
 DEFAULT_TIMEOUT = 30
+# Model file tree endpoint is non-paginated and returns the full tree in one
+# request, so it needs a longer timeout than the paginated dataset endpoint.
+MODEL_TREE_TIMEOUT = 300
 DEFAULT_PAGE_SIZE = 200
 
 _VALID_REPO_TYPES = ("model", "dataset")
@@ -291,6 +294,7 @@ class ModelScopeService:
             self._build_url(f"models/{repo_id}/repo/files"),
             params={"Revision": revision, "Recursive": "True"},
             headers=self._build_headers(),
+            timeout=MODEL_TREE_TIMEOUT,
         )
         self._raise_for_status(resp)
         return self._extract_data(resp.json())
