@@ -22,10 +22,11 @@ import { queryKeys } from "@/lib/query/keys";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { STRINGS } from "@/lib/constants/strings";
-import type { ScanCategory } from "@/lib/api/types";
+import type { ScanCategory, ApiError } from "@/lib/api/types";
 
 import { useCacheScanFilters } from "./use-cache-scan-filters";
-import type { SortField } from "./use-cache-scan-filters";
+import type { SortField, TimeFilterState } from "./use-cache-scan-filters";
+import { DEFAULT_TIME_FILTER } from "./use-cache-scan-filters";
 import { CacheScanStats } from "./CacheScanStats";
 import { CacheScanToolbar } from "./CacheScanToolbar";
 import { CacheScanTable } from "./CacheScanTable";
@@ -141,10 +142,13 @@ export function CacheScan() {
     setCategoryFilter,
     sourceFilter,
     setSourceFilter,
+    timeFilter,
+    setTimeFilter,
     sortField,
     sortDirection,
     setSort,
     filteredRepos,
+    activeFilterCount,
   } = useCacheScanFilters(result);
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -184,6 +188,13 @@ export function CacheScan() {
     },
     [setSourceFilter],
   );
+  const handleSetTimeFilter = useCallback(
+    (v: TimeFilterState) => {
+      setTimeFilter(v);
+      setSelectedIds(new Set());
+    },
+    [setTimeFilter],
+  );
 
   useEffect(() => {
     const data = batchDeleteStatus.data?.data;
@@ -198,11 +209,11 @@ export function CacheScan() {
           data.total_failed,
         ),
       );
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setBatchDeleteResult(data);
     } else {
       toast.success(STRINGS.cacheScanBatchDeleteCompleted(data.total_deleted));
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBatchDeleteResult(data);
     queryClient.invalidateQueries({ queryKey: queryKeys.cacheScan.result() });
     setBatchOperationId(null);
   }, [batchDeleteStatus.data, queryClient]);
@@ -239,8 +250,9 @@ export function CacheScan() {
     setSearch("");
     setCategoryFilter("all");
     setSourceFilter("all");
+    setTimeFilter(DEFAULT_TIME_FILTER);
     setSelectedIds(new Set());
-  }, [setSearch, setCategoryFilter, setSourceFilter]);
+  }, [setSearch, setCategoryFilter, setSourceFilter, setTimeFilter]);
 
   const handleToggleSelect = useCallback((repoId: string) => {
     setSelectedIds((prev) => {
@@ -293,8 +305,10 @@ export function CacheScan() {
           setSelectedIds(new Set());
           toast.success(STRINGS.cacheScanBatchDeleteStarted(ids.length));
         },
-        onError: () => {
-          toast.error("批量删除启动失败，请重试");
+        onError: (error: ApiError) => {
+          toast.error("批量删除启动失败", {
+            description: error.message || "请稍后重试",
+          });
         },
       },
     );
@@ -342,11 +356,15 @@ export function CacheScan() {
         setCategoryFilter={handleSetCategoryFilter}
         sourceFilter={sourceFilter}
         setSourceFilter={handleSetSourceFilter}
+        timeFilter={timeFilter}
+        setTimeFilter={handleSetTimeFilter}
         search={search}
         setSearch={handleSetSearch}
         filteredCount={filteredRepos.length}
         totalCount={result?.repos.length ?? 0}
         selectedCount={selectedIds.size}
+        activeFilterCount={activeFilterCount}
+        onClearAll={handleClearFilters}
         onBatchDelete={handleBatchDelete}
         isBatchDeleting={batchDeleteRepos.isPending}
       />
