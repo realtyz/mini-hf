@@ -18,7 +18,7 @@ const defaults: RuntimeConfig = {
   API_BASE_URL: "http://localhost:9800/api/v1",
   HF_SERVER_URL: "http://localhost:9801",
   MS_SERVER_URL: "http://localhost:9802",
-  APP_VERSION: "1.0.0",
+  APP_VERSION: "2.0.0",
   APP_COPYRIGHT: "© 2026 Mini-HF Project",
   EMAIL_DOMAIN: "example.com",
 };
