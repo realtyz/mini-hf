@@ -7,6 +7,7 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
 ## Features
 
 - **HF Hub Compatible** — Drop-in replacement for `HF_ENDPOINT` with common API compatibility
+- **ModelScope Compatible** — Drop-in replacement for `MODELSCOPE_ENDPOINT`, works with the official `modelscope` SDK/CLI
 - **Multi-Source Support** — Cache models from both HuggingFace and ModelScope
 - **Smart Version Management** — Automatically track model revisions with incremental updates
 - **Web Management UI** — Modern React 19 dashboard for repository, task, user, and system management
@@ -18,26 +19,27 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
 - **Docker Ready** — Complete containerized deployment with Docker Compose
 
 
-## HF API Deployment Architecture
+## Deployment Architecture
 
 ```
 ┌───────────────────────────────────────────────────────────┐
 │                 User Side (Air-gapped Env)                │
 ├───────────────────┬─────────────────┬─────────────────────┤
-│  HF Client        │ HuggingFace Lib │  AI Applications    │
-│  (hf-cli)         │ (transformers)  │                     │
+│  HF Client        │ HuggingFace Lib │  ModelScope SDK     │
+│  (hf-cli)         │ (transformers)  │  (modelscope)       │
 └───────────────────┴─────────────────┴─────────────────────┘
-                              │
-                              ▼ HF_ENDPOINT=http://{{APP_HF_SERVER_URL}}
+              │ HF_ENDPOINT=            │ MODELSCOPE_ENDPOINT=
+              │   {{HF_SERVER_URL}}     │   {{MS_SERVER_URL}}
+              ▼                         ▼
 ┌───────────────────────────────────────────────────────────┐
 │                      Mini-HF Cluster                      │
 ├───────────────────────────────────────────────────────────┤
-│                ┌──────────────────────────┐               │
-│                │    HF API Server         │               │
-│                │    (Port 9801)           │               │
-│                └──────────────────────────┘               │
-│                      │            │                       │
-│                      ▼            ▼                       │
+│     ┌────────────────────┐   ┌────────────────────┐       │
+│     │   HF API Server    │   │   MS API Server    │       │
+│     │   (Port 9801)      │   │   (Port 9802)      │       │
+│     └─────────┬──────────┘   └─────────┬──────────┘       │
+│               └────────────┬───────────┘                  │
+│                      ▼           ▼                        │
 │         ┌─────────────────┐ ┌─────────────────┐           │
 │         │   Redis Cache   │ │  PostgreSQL DB  │           │
 │         │ (Metadata Cache)│ │ (Repo/File Meta)│           │
@@ -110,11 +112,18 @@ A LAN-focused model cache repository system for HuggingFace and ModelScope. Mini
    - Web UI: http://localhost:8080
    - Management API: http://localhost:9800/api/v1
    - HF API: http://localhost:9801
+   - ModelScope API: http://localhost:9802
 
 5. **Use with HuggingFace**
    ```bash
    export HF_ENDPOINT=http://localhost:9801
    hf download bert-base-uncased
+   ```
+
+6. **Use with ModelScope**
+   ```bash
+   export MODELSCOPE_ENDPOINT=http://localhost:9802
+   modelscope download Qwen/Qwen3-7B
    ```
 
 ## Development Setup
@@ -164,7 +173,8 @@ pnpm build
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `APP_HF_SERVER_URL` | Publicly accessible URL of the HF API server. Required for generating correct pagination links and download URLs. | `http://localhost:9801` |
+| `HF_SERVER_URL` | Publicly accessible URL of the HF API server (port 9801). Used in pagination links and download URLs returned to HF clients — must be reachable from the LAN, not `localhost` in production. | `http://localhost:9801` |
+| `MS_SERVER_URL` | Publicly accessible URL of the ModelScope API server (port 9802). Used in download URLs returned to ModelScope clients — must be reachable from the LAN, not `localhost` in production. | `http://localhost:9802` |
 | `DEFAULT_ADMIN_EMAIL` | Admin user email (auto-created on first startup) | `admin@example.com` |
 | `DEFAULT_ADMIN_PASSWORD` | Admin user password (auto-created on first startup) | `changeme` |
 | `JWT_SECRET_KEY` | Secret key for JWT signing | *(required)* |
@@ -216,10 +226,13 @@ Base: `/api/v1`
 | `/task/{id}` | GET | Task detail |
 | `/task/{id}/review` | POST | Approve pending task |
 | `/task/{id}/cancel` | POST | Cancel task |
+| `/task/{id}/pause` | POST | Pause running task |
+| `/task/{id}/resume` | POST | Resume paused task |
 | `/task/{id}/retry` | POST | Retry failed task |
 | `/task/preview` | POST | Preview task before creation |
 | `/hf_repo/list` | GET | List HuggingFace repositories |
-| `/hf_repo/{repo_id}` | GET | Repository detail |
+| `/hf_repo/model/{repo_id}` | GET | Model repository detail |
+| `/hf_repo/dataset/{repo_id}` | GET | Dataset repository detail |
 | `/dashboard/stats` | GET | Dashboard statistics |
 | `/cache/scan/run` | POST | Run cache scan |
 | `/cache/scan/result` | GET | Cache scan results |
@@ -237,6 +250,16 @@ Base: `/api/v1`
 | `/api/models/{repo_id}/tree/{revision}/{path}` | List file tree |
 | `/api/models/{repo_id}/resolve/{revision}/{filename}` | Download file (redirects to S3) |
 
+### ModelScope-Compatible API (Port 9802)
+
+| Endpoint | Description |
+|----------|-------------|
+| `/api/v1/repos/internalAccelerationInfo` | Acceleration info (ModelScope SDK integration) |
+| `/api/v1/models/{namespace}/{repo_name}/repo/files` | List model file tree |
+| `/api/v1/datasets/{namespace}/{repo_name}/repo/tree` | List dataset file tree |
+| `/api/v1/models/{namespace}/{repo_name}/repo` | Download model file (redirects to S3) |
+| `/api/v1/datasets/{namespace}/{repo_name}/repo` | Download dataset file (redirects to S3) |
+
 ## Project Structure
 
 ```
@@ -249,6 +272,7 @@ mini-hf/
 │   ├── services/            # HuggingFace/ModelScope clients
 │   ├── mgmt_server/         # Management API (FastAPI)
 │   ├── hf_server/           # HF-compatible API (FastAPI)
+│   ├── ms_server/           # ModelScope-compatible API (FastAPI)
 │   └── worker/              # Task processor
 ├── frontend/                 # React 19 frontend
 │   ├── src/
@@ -302,6 +326,8 @@ PENDING_APPROVAL → PENDING → RUNNING → COMPLETED
                                       ↘ FAILED
                                       ↘ CANCELLED
 ```
+
+Running tasks can also pass through intermediate states: `PAUSING → PAUSED` (resumable) and `CANCELING → CANCELLED`.
 
 ## Testing
 
