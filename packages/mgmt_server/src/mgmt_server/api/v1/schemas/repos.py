@@ -192,7 +192,7 @@ class BatchDeleteRepoRequest(BaseModel):
     """Request body for batch repository deletion."""
 
     repo_ids: list[RepoId] = Field(
-        ..., min_length=1, max_length=50, description="List of repo_ids to delete"
+        ..., min_length=1, description="List of repo_ids to delete"
     )
     repo_types: dict[str, str] | None = Field(
         None,
