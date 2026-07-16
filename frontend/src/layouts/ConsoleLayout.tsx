@@ -568,7 +568,7 @@ function ConsoleHeader() {
                 </a>
               </TooltipTrigger>
               <TooltipContent side="bottom" align="center">
-                <p className="text-xs">Give me a star</p>
+                <p className="text-xs">MiniHF Project</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
