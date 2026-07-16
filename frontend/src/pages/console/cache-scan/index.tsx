@@ -22,7 +22,7 @@ import { queryKeys } from "@/lib/query/keys";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { EmptyState } from "@/components/shared/EmptyState";
 import { STRINGS } from "@/lib/constants/strings";
-import type { ScanCategory, ApiError } from "@/lib/api/types";
+import type { ScanCategory } from "@/lib/api/types";
 
 import { useCacheScanFilters } from "./use-cache-scan-filters";
 import type { SortField, TimeFilterState } from "./use-cache-scan-filters";
@@ -305,7 +305,7 @@ export function CacheScan() {
           setSelectedIds(new Set());
           toast.success(STRINGS.cacheScanBatchDeleteStarted(ids.length));
         },
-        onError: (error: ApiError) => {
+        onError: (error: Error) => {
           toast.error("批量删除启动失败", {
             description: error.message || "请稍后重试",
           });

@@ -25,14 +25,14 @@ export type TimeFilterField = "last_downloaded_at" | "cache_updated_at";
  */
 export interface TimeFilterState {
   field: TimeFilterField;
-  dateRange: { from: Date | null; to: Date | null };
+  dateRange: { from: Date | undefined; to: Date | undefined };
   includeNever: boolean;
 }
 
 /** Default (inactive) time filter - shows everything. */
 export const DEFAULT_TIME_FILTER: TimeFilterState = {
   field: "last_downloaded_at",
-  dateRange: { from: null, to: null },
+  dateRange: { from: undefined, to: undefined },
   includeNever: false,
 };
 
@@ -75,7 +75,7 @@ function nullsLastCompare(
  */
 function isWithinRange(
   ts: string,
-  range: { from: Date | null; to: Date | null },
+  range: { from: Date | undefined; to: Date | undefined },
 ): boolean {
   const t = new Date(ts).getTime();
   if (range.from && t < range.from.getTime()) return false;
@@ -117,8 +117,8 @@ export function useCacheScanFilters(
   // Whether the time filter imposes any constraint. When inactive it is
   // skipped entirely (avoids touching repos whose timestamp is null).
   const timeFilterActive =
-    timeFilter.dateRange.from !== null ||
-    timeFilter.dateRange.to !== null ||
+    timeFilter.dateRange.from != null ||
+    timeFilter.dateRange.to != null ||
     timeFilter.includeNever;
 
   const filteredRepos = useMemo(() => {
@@ -140,7 +140,7 @@ export function useCacheScanFilters(
     }
     if (timeFilterActive) {
       const { field, dateRange, includeNever } = timeFilter;
-      const rangeActive = dateRange.from !== null || dateRange.to !== null;
+      const rangeActive = dateRange.from != null || dateRange.to != null;
       repos = repos.filter((r) => {
         const ts = r[field];
         if (ts === null) return includeNever;

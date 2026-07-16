@@ -142,14 +142,14 @@ function FilterPopoverContent({
   // and is flagged by react-hooks/set-state-in-effect.
 
   const rangeActive =
-    draftTime.dateRange.from !== null || draftTime.dateRange.to !== null;
+    draftTime.dateRange.from != null || draftTime.dateRange.to != null;
 
   const handleRangeSelect = (selected: DateRange | undefined) => {
     setDraftTime((prev) => ({
       ...prev,
       dateRange: {
-        from: selected?.from ?? null,
-        to: selected?.to ?? null,
+        from: selected?.from,
+        to: selected?.to,
       },
     }));
   };
@@ -225,7 +225,7 @@ function FilterPopoverContent({
               onClick={() =>
                 setDraftTime((prev) => ({
                   ...prev,
-                  dateRange: { from: null, to: null },
+                  dateRange: { from: undefined, to: undefined },
                 }))
               }
               className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors cursor-pointer"
@@ -406,8 +406,8 @@ export function CacheScanToolbar({
   isBatchDeleting,
 }: CacheScanToolbarProps) {
   const timeFilterActive =
-    timeFilter.dateRange.from !== null ||
-    timeFilter.dateRange.to !== null ||
+    timeFilter.dateRange.from != null ||
+    timeFilter.dateRange.to != null ||
     timeFilter.includeNever;
 
   // Popover open state + an open counter. The counter keys the popover
