@@ -20,6 +20,21 @@ interface BatchDeleteResultDialogProps {
   totalRequested: number;
 }
 
+/**
+ * Map backend error strings (English, from repo_service exceptions) to
+ * localized Chinese messages so users can understand the failure reason.
+ * Unknown errors are returned as-is to preserve diagnostic info.
+ */
+function localizeError(error: string | null | undefined): string {
+  if (!error) return "未知错误";
+  if (error.includes("not found")) return "仓库不存在";
+  if (error.includes("being updated"))
+    return "仓库正在更新中，请等待更新完成";
+  if (error.includes("active download tasks"))
+    return "存在进行中的下载任务，请等待完成";
+  return error;
+}
+
 function FailedItem({ item }: { item: BatchDeleteRepoItem }) {
   return (
     <div className="flex items-start gap-3 rounded-md border border-red-200 bg-red-50/50 px-3 py-2.5 dark:border-red-800/40 dark:bg-red-950/20">
@@ -27,7 +42,7 @@ function FailedItem({ item }: { item: BatchDeleteRepoItem }) {
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium truncate">{item.repo_id}</p>
         <p className="text-xs text-muted-foreground mt-0.5">
-          {item.error || "未知错误"}
+          {localizeError(item.error)}
         </p>
       </div>
     </div>
