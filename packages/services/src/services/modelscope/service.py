@@ -213,14 +213,18 @@ class ModelScopeService:
         parameter -- callers construct a new ModelScopeService(token=...) per
         validation, exactly as they do for HuggingfaceService.
 
-        Strategy: attempt to fetch the file tree. If it succeeds, the repo is
-        accessible and we resolve commit_hash. If it fails with auth errors,
-        the repo requires token (or token is invalid). If 404, the repo doesn't
-        exist. RateLimitError (429) and ServerError (5xx) are caught and
-        returned as transient failures (requires_token=False) -- not re-raised.
+        Strategy: resolve the commit SHA via a lightweight endpoint
+        (models: ``/commits``, datasets: page 1 of ``/repo/tree``) instead of
+        fetching the full recursive file tree. The heavy tree fetch is
+        deferred to the background preview executor; running it here would
+        block the ``POST /task/preview`` response past the frontend's 30s
+        axios timeout for large repos, so the polling loop never starts.
+
+        Error taxonomy is unchanged: auth errors -> requires_token, 404 ->
+        not found, 429/5xx -> transient failures.
         """
         try:
-            commit_hash, _files, _committed_at = await self.resolve_commit(
+            commit_hash, _committed_at = await self._resolve_commit_lightweight(
                 repo_id, repo_type, revision
             )
             # Access succeeded -- if no token was needed, repo is public.
@@ -269,6 +273,105 @@ class ModelScopeService:
             )
 
     # --- internal helpers ---
+
+    async def _resolve_commit_lightweight(
+        self, repo_id: str, repo_type: str, revision: str
+    ) -> tuple[str, int | None]:
+        """Resolve the HEAD commit SHA without fetching the full file tree.
+
+        Used by ``validate_repo_access`` to avoid the heavy recursive tree
+        fetch (which can exceed the frontend's 30s axios timeout for large
+        repos). Models hit a dedicated ``/commits`` endpoint; datasets fetch
+        only page 1 of ``/repo/tree`` (``LatestCommitter`` is present on the
+        first page, so we don't need to walk every page).
+
+        Returns:
+            Tuple of (commit_hash, committed_at) where committed_at is a
+            Unix timestamp or None.
+
+        Raises:
+            InvalidParameter: Unsupported repo_type.
+            NotExistError: Repository/revision not found, or commits array
+                is unexpectedly empty.
+            AuthenticationError/PermissionDeniedError: Auth failures.
+        """
+        if repo_type not in _VALID_REPO_TYPES:
+            raise InvalidParameter(
+                f"Unsupported repo_type '{repo_type}'. Only 'model' and 'dataset' "
+                "are supported."
+            )
+        if repo_type == "model":
+            return await self._fetch_model_commit(repo_id, revision)
+        return await self._fetch_dataset_commit_short(repo_id, revision)
+
+    async def _fetch_model_commit(
+        self, repo_id: str, revision: str
+    ) -> tuple[str, int | None]:
+        """Fetch the HEAD commit SHA via the lightweight ``/commits`` endpoint.
+
+        Undocumented in ModelScope's API surface (the SDK doesn't use it), but
+        returns the full 40-char SHA in ~475 bytes vs. the full recursive
+        tree that ``_fetch_model_tree_raw`` would pull. Only used for the
+        validation/fast-path; the background preview executor still fetches
+        the full tree for diffing.
+        """
+        resp = await self._client.get(
+            self._build_url(f"models/{repo_id}/commits"),
+            params={"Revision": revision, "PageNumber": 1, "PageSize": 1},
+            headers=self._build_headers(),
+        )
+        self._raise_for_status(resp)
+        data = self._extract_data(resp.json())
+        commits = data.get("Commit", []) if isinstance(data, dict) else []
+        if not commits:
+            raise NotExistError(
+                f"Repository '{repo_id}' has no commits at revision '{revision}'.",
+                status_code=404,
+                request_id=resp.headers.get("x-request-id"),
+                response_body=resp.json(),
+                url=str(resp.url),
+                method=resp.request.method,
+            )
+        head = commits[0]
+        commit_hash = head.get("Id") or ""
+        committed_at = head.get("CommittedDate")
+        return commit_hash, committed_at
+
+    async def _fetch_dataset_commit_short(
+        self, repo_id: str, revision: str
+    ) -> tuple[str, int | None]:
+        """Resolve the dataset HEAD commit SHA from page 1 of ``/repo/tree``.
+
+        Datasets have no ``/commits`` endpoint (returns parameter error), but
+        ``LatestCommitter`` is present on every page, so fetching only page 1
+        suffices for SHA resolution. The full tree (all pages) is fetched
+        later by the background preview executor for diffing.
+        """
+        resp = await self._client.get(
+            self._build_url(f"datasets/{repo_id}/repo/tree"),
+            params={
+                "Revision": revision,
+                "Recursive": "True",
+                "PageNumber": 1,
+                "PageSize": DEFAULT_PAGE_SIZE,
+            },
+            headers=self._build_headers(),
+        )
+        self._raise_for_status(resp)
+        data = self._extract_data(resp.json())
+        if isinstance(data, list):
+            files = data
+            latest_committer: dict = {}
+        elif isinstance(data, dict):
+            files = data.get("Files", [])
+            latest_committer = data.get("LatestCommitter", {}) or {}
+        else:
+            files = []
+            latest_committer = {}
+        short_id = latest_committer.get("ShortId", "") or ""
+        commit_hash = self._extract_commit_hash(files, short_id)
+        committed_at = latest_committer.get("CommittedDate")
+        return commit_hash, committed_at
 
     async def _fetch_tree_raw(
         self, repo_id: str, repo_type: str, revision: str

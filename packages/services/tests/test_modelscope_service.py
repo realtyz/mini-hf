@@ -255,6 +255,107 @@ class TestFetchDatasetTreeRawPagination:
         assert call_count == 1
 
 
+class TestFetchModelCommit:
+    @pytest.mark.asyncio
+    async def test_extracts_sha_and_committed_date(self):
+        payload = {"Data": {"Commit": [
+            {"Id": "09b42cad3d112e832108974449ccb5e8e0f5b5d1",
+             "CommittedDate": 1753546348, "Message": "Create LICENSE"},
+        ], "TotalCount": 1}}
+
+        captured = {}
+
+        def handler(req):
+            captured["url"] = str(req.url)
+            captured["method"] = req.method
+            captured["params"] = dict(req.url.params)
+            return httpx.Response(200, json=payload)
+
+        svc = _make_service_with_mock(handler)
+        sha, committed_at = await svc._fetch_model_commit("Qwen/Qwen3-0.6B", "master")
+        assert sha == "09b42cad3d112e832108974449ccb5e8e0f5b5d1"
+        assert committed_at == 1753546348
+        assert captured["method"] == "GET"
+        assert "/api/v1/models/Qwen/Qwen3-0.6B/commits" in captured["url"]
+        assert captured["params"]["Revision"] == "master"
+        assert captured["params"]["PageNumber"] == "1"
+        assert captured["params"]["PageSize"] == "1"
+
+    @pytest.mark.asyncio
+    async def test_empty_commit_list_raises_not_exist(self):
+        payload = {"Data": {"Commit": [], "TotalCount": 0}}
+
+        svc = _make_service_with_mock(lambda req: httpx.Response(200, json=payload))
+        with pytest.raises(NotExistError):
+            await svc._fetch_model_commit("a/b", "master")
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize("status", [404, 401, 403, 429, 500])
+    async def test_error_status_propagates(self, status):
+        svc = _make_service_with_mock(
+            lambda req: httpx.Response(status, json={"Message": "boom"})
+        )
+        with pytest.raises((NotExistError, AuthenticationError,
+                             PermissionDeniedError, RateLimitError, ServerError)):
+            await svc._fetch_model_commit("a/b", "master")
+
+
+class TestFetchDatasetCommitShort:
+    @pytest.mark.asyncio
+    async def test_returns_sha_from_page1_latest_committer(self):
+        full_sha = "6d077077a1b2c3d4e5f6789012345678901234ab"
+        payload = {"Data": {
+            "Files": [{"Path": "config.json", "Type": "blob", "Size": 100,
+                       "Revision": full_sha}],
+            "LatestCommitter": {"ShortId": "6d077077", "CommittedDate": 1753546348},
+        }}
+
+        svc = _make_service_with_mock(lambda req: httpx.Response(200, json=payload))
+        sha, committed_at = await svc._fetch_dataset_commit_short(
+            "ZhipuAI/LongBench", "master"
+        )
+        assert sha == full_sha
+        assert committed_at == 1753546348
+
+    @pytest.mark.asyncio
+    async def test_only_one_request_issued(self):
+        """Lightweight dataset commit resolution must NOT walk all pages."""
+        full_sha = "6d077077a1b2c3d4e5f6789012345678901234ab"
+        # Return page_size files so the heavy paginator WOULD keep going --
+        # if _fetch_dataset_commit_short accidentally reuses it, this catches that.
+        files = [{"Path": f"f{i}", "Type": "blob", "Revision": full_sha}
+                 for i in range(200)]
+        call_count = 0
+
+        def handler(req):
+            nonlocal call_count
+            call_count += 1
+            return httpx.Response(200, json={"Data": {
+                "Files": files,
+                "LatestCommitter": {"ShortId": "6d077077", "CommittedDate": 111},
+            }})
+
+        svc = _make_service_with_mock(handler)
+        sha, _ = await svc._fetch_dataset_commit_short("ZhipuAI/LongBench", "master")
+        assert sha == full_sha
+        assert call_count == 1  # critical: must not paginate
+
+    @pytest.mark.asyncio
+    async def test_short_id_no_match_falls_back_to_pseudo_commit(self):
+        """No per-file Revision prefix-matches ShortId -> pseudo_commit fallback."""
+        payload = {"Data": {
+            "Files": [{"Path": "config.json", "Type": "blob", "Size": 100,
+                       "Revision": "ffffffffffffffffffffffffffffffffffffffff"}],
+            "LatestCommitter": {"ShortId": "6d077077", "CommittedDate": 1753546348},
+        }}
+
+        svc = _make_service_with_mock(lambda req: httpx.Response(200, json=payload))
+        sha, committed_at = await svc._fetch_dataset_commit_short("a/b", "master")
+        # 64-char sha256 pseudo commit, not the 40-char real SHA
+        assert len(sha) == 64
+        assert committed_at == 1753546348
+
+
 class TestResolveCommit:
     @pytest.mark.asyncio
     async def test_returns_real_sha_on_short_id_match(self):
@@ -302,11 +403,12 @@ class TestResolveCommit:
 class TestValidateRepoAccess:
     @pytest.mark.asyncio
     async def test_public_repo_success(self):
-        payload = {"Data": {
-            "Files": [{"Path": "config.json", "Type": "blob", "Size": 100,
-                       "Revision": "6d077077a1b2c3d4e5f6789012345678901234ab"}],
-            "LatestCommitter": {"ShortId": "6d077077", "CommittedDate": 1753546348},
-        }}
+        # validate_repo_access now resolves SHA via the lightweight /commits
+        # endpoint (model path), not the full tree fetch.
+        payload = {"Data": {"Commit": [
+            {"Id": "6d077077a1b2c3d4e5f6789012345678901234ab",
+             "CommittedDate": 1753546348},
+        ], "TotalCount": 1}}
 
         def handler(req):
             return httpx.Response(200, json=payload)
