@@ -78,6 +78,9 @@ class Settings(BaseSettings):
     S3_REGION: str = "us-east-1"
     S3_USE_SSL: bool = False
     S3_VERIFY_SSL: bool = False
+    # Presigned URL expiration in seconds. Large model files on a slow LAN may
+    # need more than the boto3-typical 5 minutes to finish downloading.
+    S3_PRESIGNED_URL_EXPIRATION: int = 3600
 
 
 settings = Settings()  # type: ignore

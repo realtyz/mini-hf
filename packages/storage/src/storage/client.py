@@ -279,7 +279,7 @@ class S3Client:
     async def create_presigned_url(
         self,
         key: str,
-        expiration: int = 300,
+        expiration: int | None = None,
         http_method: str = "get",
         content_type: str | None = None,
         download_filename: str | None = None,
@@ -288,7 +288,8 @@ class S3Client:
 
         Args:
             key: The object key (path) in the bucket.
-            expiration: URL expiration time in seconds (default: 1 hour).
+            expiration: URL expiration time in seconds. Defaults to
+                settings.S3_PRESIGNED_URL_EXPIRATION.
             http_method: HTTP method for the URL ('get' or 'put').
             content_type: Required Content-Type for PUT requests.
             download_filename: If provided, sets Content-Disposition header for download.
@@ -300,6 +301,9 @@ class S3Client:
             ClientError: If URL generation fails.
         """
         client = self._get_client()
+
+        if expiration is None:
+            expiration = settings.S3_PRESIGNED_URL_EXPIRATION
 
         params = {
             "Bucket": self.bucket_name,
