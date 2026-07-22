@@ -96,8 +96,8 @@ class CacheKeys:
         ),
         "preview_result": CacheNamespace(
             f"{_PREFIX}:preview_result",
-            ttl=300,
-            description="Task preview result cache (5min)",
+            ttl=1800,
+            description="Task preview result cache (30min)",
         ),
         "preview_task": CacheNamespace(
             f"{_PREFIX}:preview_task",
