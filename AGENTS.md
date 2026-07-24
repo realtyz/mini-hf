@@ -173,7 +173,8 @@ Router prefixes (see `packages/mgmt_server/src/mgmt_server/api/v1/router.py` for
 |--------|------|---------|
 | `/auth` | `auth.py` | `/sign-in` (JWT login), register, `/verify-email`, `/send-verify-code`, `/forgot-password`, `/reset-password`, `/refresh`, `/logout` |
 | `/user` | `user.py` | User CRUD (admin) + `/me`, `/me/password` (current user) |
-| `/hf_repo` | `repo.py` | Repository management - list, detail (`/model/{repo_id}`, `/dataset/{repo_id}`), tree, file, delete |
+| `/hf_repo` | `repo.py` | HuggingFace repository management - list, detail (`/model/{repo_id}`, `/dataset/{repo_id}`), tree, file, delete |
+| `/ms_repo` | `ms_repo.py` | ModelScope repository management - list (`/list`, `/list-public`), detail (`/model/{repo_id}`, `/dataset/{repo_id}`), tree, file, delete |
 | `/task` | `task.py` | Task queue - list, `/preview`, `/review` (approve), `/cancel`, `/pause`/`/resume`, `/retry`, `/progress` |
 | `/config` | `config.py` | System config CRUD + `/schema` (registry-driven UI form), `/batch` (batch update), `/init` |
 | `/batch` | `batch.py` | Cross-resource batch operations |
@@ -200,9 +201,11 @@ ModelScope-compatible endpoints:
 
 | Endpoint | Purpose |
 |----------|---------|
-| `/api/v1/acceleration/models/{repo_id}` | Acceleration info (ModelScope SDK integration) |
-| `/api/v1/files/{repo_id}/tree` | File tree listing |
-| `/api/v1/files/{repo_id}/download` | File download (redirects to S3 presigned URL) |
+| `/api/v1/repos/internalAccelerationInfo` | Acceleration info (ModelScope SDK integration) |
+| `/api/v1/models/{namespace}/{repo_name}/repo/files` | List model file tree |
+| `/api/v1/datasets/{namespace}/{repo_name}/repo/tree` | List dataset file tree |
+| `/api/v1/models/{namespace}/{repo_name}/repo` | Download model file (redirects to S3 presigned URL) |
+| `/api/v1/datasets/{namespace}/{repo_name}/repo` | Download dataset file (redirects to S3 presigned URL) |
 
 ## Environment Configuration
 
@@ -312,9 +315,23 @@ Both servers use **FastAPI** with async endpoints. Key patterns:
 
 ## Testing
 
-Backend tests use pytest. Run specific test files:
+Backend tests use pytest with `pytest-asyncio`. Tests hit a **real PostgreSQL database** (not SQLite in-memory) — configure `PG_*` in `.env.local`. Async fixtures like `db_session` are defined in package-level `conftest.py` files.
+
 ```bash
+# All tests
+uv run pytest
+
+# Single package
+uv run pytest packages/cache/tests -v
+
+# Single test file
 uv run pytest packages/cache/tests/test_cache_service.py -v
+
+# Single test by pattern (preferred for quick iterations)
+uv run pytest -k "test_cache_key_format" -v
+
+# Match multiple related tests
+uv run pytest -k "test_config_registry" -v
 ```
 
 ---
